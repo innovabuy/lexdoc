@@ -1,4 +1,4 @@
-import { PrismaClient, CabinetStatus, UserRole, UserStatus } from '@prisma/client';
+import { PrismaClient, CabinetStatus, UserRole, AuditAction } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -33,7 +33,6 @@ async function main() {
       address: '123 Avenue des Avocats',
       city: 'Paris',
       postalCode: '75001',
-      country: 'France',
       siret: '12345678901234',
       status: CabinetStatus.ACTIVE,
     },
@@ -51,7 +50,8 @@ async function main() {
       firstName: 'Jean',
       lastName: 'Administrateur',
       role: UserRole.ADMIN,
-      status: UserStatus.ACTIVE,
+      isActive: true,
+      emailVerified: true,
       cabinetId: demoCabinet.id,
     },
   });
@@ -69,7 +69,8 @@ async function main() {
       firstName: 'Marie',
       lastName: 'Dupont',
       role: UserRole.AVOCAT,
-      status: UserStatus.ACTIVE,
+      isActive: true,
+      emailVerified: true,
       cabinetId: demoCabinet.id,
     },
   });
@@ -81,7 +82,8 @@ async function main() {
       firstName: 'Pierre',
       lastName: 'Martin',
       role: UserRole.AVOCAT,
-      status: UserStatus.ACTIVE,
+      isActive: true,
+      emailVerified: true,
       cabinetId: demoCabinet.id,
     },
   });
@@ -98,7 +100,8 @@ async function main() {
       firstName: 'Sophie',
       lastName: 'Bernard',
       role: UserRole.SECRETAIRE,
-      status: UserStatus.ACTIVE,
+      isActive: true,
+      emailVerified: true,
       cabinetId: demoCabinet.id,
     },
   });
@@ -112,120 +115,59 @@ async function main() {
     data: {
       name: 'Clients',
       cabinetId: demoCabinet.id,
-      createdById: adminUser.id,
     },
   });
 
-  const modèlesFolder = await prisma.folder.create({
+  await prisma.folder.create({
     data: {
       name: 'Modèles',
       cabinetId: demoCabinet.id,
-      createdById: adminUser.id,
     },
   });
 
-  const archivesFolder = await prisma.folder.create({
+  await prisma.folder.create({
     data: {
       name: 'Archives',
       cabinetId: demoCabinet.id,
-      createdById: adminUser.id,
     },
   });
 
   // Create sub-folders for clients
-  const client1Folder = await prisma.folder.create({
+  await prisma.folder.create({
     data: {
       name: 'Entreprise ABC - Droit des sociétés',
       parentId: clientsFolder.id,
       cabinetId: demoCabinet.id,
-      createdById: avocat1.id,
     },
   });
 
-  const client2Folder = await prisma.folder.create({
+  await prisma.folder.create({
     data: {
       name: 'M. Durand - Divorce',
       parentId: clientsFolder.id,
       cabinetId: demoCabinet.id,
-      createdById: avocat2.id,
     },
   });
 
   console.log('Created folder structure');
 
-  // Create templates
-  console.log('Creating document templates...');
+  // Create audit log for login
+  console.log('Creating sample audit log...');
 
-  await prisma.template.createMany({
-    data: [
-      {
-        name: 'Lettre de mission',
-        description: 'Modèle standard de lettre de mission client',
-        content: '# Lettre de Mission\n\nObjet : Mission de conseil juridique\n\n...',
-        cabinetId: demoCabinet.id,
-        createdById: adminUser.id,
-      },
-      {
-        name: 'Convention d\'honoraires',
-        description: 'Convention type pour les honoraires',
-        content: '# Convention d\'Honoraires\n\nEntre les soussignés :\n\n...',
-        cabinetId: demoCabinet.id,
-        createdById: adminUser.id,
-      },
-      {
-        name: 'Procuration',
-        description: 'Modèle de procuration générale',
-        content: '# Procuration\n\nJe soussigné(e),\n\n...',
-        cabinetId: demoCabinet.id,
-        createdById: adminUser.id,
-      },
-      {
-        name: 'Conclusions',
-        description: 'Structure type pour des conclusions',
-        content: '# Conclusions\n\nPour : [CLIENT]\nContre : [PARTIE_ADVERSE]\n\n...',
-        cabinetId: demoCabinet.id,
-        createdById: avocat1.id,
-      },
-    ],
+  await prisma.auditLog.create({
+    data: {
+      action: AuditAction.USER_LOGIN,
+      userId: adminUser.id,
+      cabinetId: demoCabinet.id,
+      entity: 'User',
+      entityId: adminUser.id,
+      ipAddress: '192.168.1.100',
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+      details: { method: 'password' },
+    },
   });
 
-  console.log('Created templates');
-
-  // Create audit logs
-  console.log('Creating sample audit logs...');
-
-  await prisma.auditLog.createMany({
-    data: [
-      {
-        action: 'LOGIN',
-        userId: adminUser.id,
-        cabinetId: demoCabinet.id,
-        ipAddress: '192.168.1.100',
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-        details: { method: 'password' },
-      },
-      {
-        action: 'CREATE',
-        userId: avocat1.id,
-        cabinetId: demoCabinet.id,
-        entityType: 'Folder',
-        entityId: client1Folder.id,
-        ipAddress: '192.168.1.101',
-        details: { folderName: client1Folder.name },
-      },
-      {
-        action: 'CREATE',
-        userId: avocat2.id,
-        cabinetId: demoCabinet.id,
-        entityType: 'Folder',
-        entityId: client2Folder.id,
-        ipAddress: '192.168.1.102',
-        details: { folderName: client2Folder.name },
-      },
-    ],
-  });
-
-  console.log('Created audit logs');
+  console.log('Created audit log');
 
   // Summary
   console.log('\n========================================');
