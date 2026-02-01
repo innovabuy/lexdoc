@@ -37,6 +37,11 @@ const TemplateDetailPage = lazy(() => import('@/pages/document-builder/TemplateD
 const GenerateDocumentPage = lazy(() => import('@/pages/document-builder/GenerateDocumentPage'));
 const GeneratedDocumentDetailPage = lazy(() => import('@/pages/document-builder/GeneratedDocumentDetailPage'));
 
+// Document Blocks
+const DocumentBlocksListPage = lazy(() => import('@/pages/document-blocks/DocumentBlocksListPage'));
+const DocumentBlockDetailPage = lazy(() => import('@/pages/document-blocks/DocumentBlockDetailPage'));
+const DocumentBlockFormPage = lazy(() => import('@/pages/document-blocks/DocumentBlockFormPage'));
+
 const AppRoutes: React.FC = () => {
   return (
     <Suspense fallback={<LoadingOverlay />}>
@@ -201,6 +206,40 @@ const AppRoutes: React.FC = () => {
             element={
               <ProtectedRoute roles={['ADMIN', 'AVOCAT']}>
                 <DocumentBuilderPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Document Blocks */}
+          <Route
+            path="/document-blocks"
+            element={
+              <ProtectedRoute roles={['ADMIN', 'AVOCAT']}>
+                <DocumentBlocksListPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/document-blocks/new"
+            element={
+              <ProtectedRoute roles={['ADMIN', 'AVOCAT']}>
+                <DocumentBlockFormPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/document-blocks/:id"
+            element={
+              <ProtectedRoute roles={['ADMIN', 'AVOCAT']}>
+                <DocumentBlockDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/document-blocks/:id/edit"
+            element={
+              <ProtectedRoute roles={['ADMIN', 'AVOCAT']}>
+                <DocumentBlockFormPage />
               </ProtectedRoute>
             }
           />
