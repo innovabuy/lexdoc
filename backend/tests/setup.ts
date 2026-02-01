@@ -28,6 +28,7 @@ beforeAll(async () => {
   await prisma.generatedDocument.deleteMany();
   await prisma.builderTemplate.deleteMany();
   await prisma.documentBlock.deleteMany();
+  await prisma.avocatLegalInfo.deleteMany();
   await prisma.user.deleteMany();
   await prisma.cabinet.deleteMany();
 });

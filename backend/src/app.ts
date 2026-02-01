@@ -24,6 +24,7 @@ import lrarRoutes, { webhookRouter as lrarWebhookRouter } from '@/modules/lrar/l
 import documentBlocksRoutes from '@/modules/document-blocks/document-blocks.routes';
 import builderTemplatesRoutes from '@/modules/builder-templates/builder-templates.routes';
 import generatedDocumentsRoutes from '@/modules/generated-documents/generated-documents.routes';
+import avocatLegalInfoRoutes from '@/modules/avocat-legal-info/avocat-legal-info.routes';
 
 const app = express();
 
@@ -116,6 +117,7 @@ app.use('/api/lrar', apiLimiter, lrarRoutes);
 app.use('/api/document-blocks', apiLimiter, documentBlocksRoutes);
 app.use('/api/builder-templates', apiLimiter, builderTemplatesRoutes);
 app.use('/api/generated-documents', apiLimiter, generatedDocumentsRoutes);
+app.use('/api/avocat-legal-info', apiLimiter, avocatLegalInfoRoutes);
 
 // Webhook routes (public, no rate limiting)
 app.use('/api/webhooks', signatureWebhookRouter);
@@ -140,6 +142,7 @@ app.get('/api', (_req, res) => {
       documentBlocks: '/api/document-blocks',
       builderTemplates: '/api/builder-templates',
       generatedDocuments: '/api/generated-documents',
+      avocatLegalInfo: '/api/avocat-legal-info',
       webhooks: '/api/webhooks',
     },
   });
