@@ -100,31 +100,12 @@ export class CabinetsService {
     });
 
     return {
-      users: {
-        count: userCount,
-        max: cabinet?.maxUsers || 5,
-      },
-      documents: {
-        count: documentCount,
-      },
-      folders: {
-        count: folderCount,
-      },
-      storage: {
-        used: Number(storageUsed._sum?.size || 0),
-        max: Number(cabinet?.maxStorage || 10737418240),
-        usedFormatted: this.formatBytes(Number(storageUsed._sum?.size || 0)),
-        maxFormatted: this.formatBytes(Number(cabinet?.maxStorage || 10737418240)),
-      },
+      totalUsers: userCount,
+      totalDocuments: documentCount,
+      totalFolders: folderCount,
+      storageUsed: Number(storageUsed._sum?.size || 0),
+      storageLimit: Number(cabinet?.maxStorage || 10737418240),
     };
-  }
-
-  private formatBytes(bytes: number): string {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
 }
 

@@ -85,6 +85,8 @@ const AppRoutes: React.FC = () => {
 
           {/* GED - Document Management */}
           <Route path="/documents/*" element={<DocumentsPage />} />
+          <Route path="/folders" element={<DocumentsPage />} />
+          <Route path="/folders/*" element={<DocumentsPage />} />
 
           {/* Signatures */}
           <Route
