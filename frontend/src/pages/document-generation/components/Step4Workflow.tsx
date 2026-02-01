@@ -16,7 +16,9 @@ import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import { toast } from 'react-hot-toast';
+import { useSendDocumentForSignature } from '@/hooks/useDocumentBuilder';
 import type { GeneratedDocument, OutputFormat, WorkflowConfig } from '@/lib/types/documentBuilder';
+import SignatureModal from './SignatureModal';
 
 interface Step4WorkflowProps {
   documentId?: string;
@@ -25,9 +27,16 @@ interface Step4WorkflowProps {
   workflowConfig?: WorkflowConfig;
   onBack: () => void;
   onFinalize: (options: { outputFormat: OutputFormat }) => Promise<void>;
-  onSendSignature?: () => Promise<void>;
   onSendLrar?: () => Promise<void>;
   isLoading?: boolean;
+  // Pre-filled signatories from client/avocat data
+  prefilledSignatories?: Array<{
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string;
+    role: 'client' | 'avocat' | 'partie_adverse' | 'temoin' | 'autre';
+  }>;
 }
 
 type ActionType = 'download' | 'signature' | 'lrar' | null;
@@ -39,17 +48,23 @@ export const Step4Workflow: React.FC<Step4WorkflowProps> = ({
   workflowConfig,
   onBack,
   onFinalize,
-  onSendSignature,
   onSendLrar,
   isLoading = false,
+  prefilledSignatories = [],
 }) => {
   const [outputFormat, setOutputFormat] = useState<OutputFormat>('PDF');
   const [activeAction, setActiveAction] = useState<ActionType>(null);
   const [completedActions, setCompletedActions] = useState<ActionType[]>([]);
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
+
+  const sendSignatureMutation = useSendDocumentForSignature();
 
   const hasSignature = workflowConfig?.signature?.enabled;
   const hasLrar = workflowConfig?.lrar?.enabled;
   const hasAutoStore = workflowConfig?.autoStore?.enabled;
+
+  // Check if document is finalized (required for signature)
+  const isFinalized = document?.status === 'FINALIZED' || completedActions.includes('download');
 
   const handleDownload = async () => {
     setActiveAction('download');
@@ -64,17 +79,44 @@ export const Step4Workflow: React.FC<Step4WorkflowProps> = ({
     }
   };
 
-  const handleSignature = async () => {
-    if (!onSendSignature) return;
-    setActiveAction('signature');
+  const handleOpenSignatureModal = () => {
+    if (!isFinalized) {
+      toast.error('Veuillez d\'abord finaliser le document');
+      return;
+    }
+    setShowSignatureModal(true);
+  };
+
+  const handleSendSignature = async (data: {
+    signatories: Array<{
+      firstName: string;
+      lastName: string;
+      email: string;
+      phone?: string;
+      role: 'client' | 'avocat' | 'partie_adverse' | 'temoin' | 'autre';
+    }>;
+    signingOrder: 'sequential' | 'parallel';
+    customMessage?: string;
+  }) => {
+    if (!documentId) {
+      toast.error('Document non trouve');
+      return;
+    }
+
     try {
-      await onSendSignature();
+      await sendSignatureMutation.mutateAsync({
+        id: documentId,
+        input: {
+          signatories: data.signatories,
+          signingOrder: data.signingOrder,
+          customMessage: data.customMessage,
+          profile: workflowConfig?.signature?.profile?.toLowerCase() as 'default' | 'certified' | 'advanced' || 'default',
+        },
+      });
+      setShowSignatureModal(false);
       setCompletedActions((prev) => [...prev, 'signature']);
-      toast.success('Document envoye pour signature');
     } catch {
-      toast.error('Erreur lors de l\'envoi pour signature');
-    } finally {
-      setActiveAction(null);
+      // Error is handled by the mutation
     }
   };
 
@@ -117,12 +159,12 @@ export const Step4Workflow: React.FC<Step4WorkflowProps> = ({
             </p>
             {document?.status && (
               <Badge
-                variant={document.status === 'FINALIZED' ? 'success' : 'gray'}
+                variant={document.status === 'FINALIZED' ? 'success' : document.status === 'SIGNED' ? 'success' : 'gray'}
                 className="mt-2"
               >
                 {document.status === 'DRAFT' && 'Brouillon'}
                 {document.status === 'FINALIZED' && 'Finalise'}
-                {document.status === 'SENT' && 'Envoye'}
+                {document.status === 'SENT' && 'En attente de signature'}
                 {document.status === 'SIGNED' && 'Signe'}
               </Badge>
             )}
@@ -222,22 +264,19 @@ export const Step4Workflow: React.FC<Step4WorkflowProps> = ({
             </div>
             <h4 className="font-medium text-gray-900 mb-1">Signature electronique</h4>
             <p className="text-xs text-gray-500 mb-4">
-              {hasSignature
-                ? 'Envoyer le document pour signature'
-                : 'Non configure pour ce modele'}
+              {!hasSignature
+                ? 'Non configure pour ce modele'
+                : !isFinalized
+                ? 'Finalisez d\'abord le document'
+                : 'Envoyer le document pour signature'}
             </p>
             <Button
-              onClick={handleSignature}
-              disabled={!hasSignature || isLoading || isActionActive('signature')}
+              onClick={handleOpenSignatureModal}
+              disabled={!hasSignature || !isFinalized || isLoading || isActionComplete('signature')}
               variant={isActionComplete('signature') ? 'ghost' : 'outline'}
               className="w-full"
             >
-              {isActionActive('signature') ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Envoi...
-                </>
-              ) : isActionComplete('signature') ? (
+              {isActionComplete('signature') ? (
                 <>
                   <CheckCircle className="h-4 w-4 mr-2" />
                   Envoye
@@ -245,7 +284,7 @@ export const Step4Workflow: React.FC<Step4WorkflowProps> = ({
               ) : (
                 <>
                   <PenTool className="h-4 w-4 mr-2" />
-                  Envoyer pour signature
+                  Configurer la signature
                 </>
               )}
             </Button>
@@ -364,6 +403,16 @@ export const Step4Workflow: React.FC<Step4WorkflowProps> = ({
           </Button>
         )}
       </div>
+
+      {/* Signature Modal */}
+      <SignatureModal
+        isOpen={showSignatureModal}
+        onClose={() => setShowSignatureModal(false)}
+        onSubmit={handleSendSignature}
+        documentTitle={templateName}
+        initialSignatories={prefilledSignatories}
+        isLoading={sendSignatureMutation.isPending}
+      />
     </div>
   );
 };

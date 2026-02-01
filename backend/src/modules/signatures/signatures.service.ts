@@ -1,17 +1,44 @@
 import { prisma } from '@/config/database';
 import { minioClient } from '@/config/minio';
 import { config } from '@/config';
-import { SignatureStatus, SignatoryStatus, Prisma } from '@prisma/client';
+import { SignatureStatus, SignatoryStatus, GeneratedDocumentStatus, Prisma } from '@prisma/client';
 import { NotFoundError, BadRequestError } from '@/utils/errors';
 import { logger } from '@/utils/logger';
 import { downloadFromMinio } from '@/modules/documents/upload.middleware';
 import { getUniversignClient, type Signatory } from './universign.client';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import * as os from 'os';
 import type {
   CreateSignatureInput,
   ListSignaturesInput,
   SignatureTransactionResponse,
   UniversignWebhookPayload,
 } from './signatures.schemas';
+
+const execAsync = promisify(exec);
+
+// Signatory input for generated document signature
+export interface GeneratedDocumentSignatory {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  role: 'client' | 'avocat' | 'partie_adverse' | 'temoin' | 'autre';
+}
+
+// Signature request result
+export interface SignatureRequestResult {
+  transactionId: string;
+  signers: Array<{
+    email: string;
+    signUrl: string;
+    status: string;
+  }>;
+  expiresAt: Date;
+}
 
 export class SignaturesService {
   /**
@@ -132,6 +159,359 @@ export class SignaturesService {
 
       logger.error('Failed to create Universign transaction:', error);
       throw new BadRequestError(`Erreur lors de la création de la signature: ${error.message}`);
+    }
+  }
+
+  /**
+   * Create signature request from a generated document
+   * Handles DOCX to PDF conversion and Universign transaction creation
+   */
+  async createSignatureRequestFromDocument(
+    documentId: string,
+    cabinetId: string,
+    userId: string,
+    signatories: GeneratedDocumentSignatory[],
+    options?: {
+      signingOrder?: 'sequential' | 'parallel';
+      customMessage?: string;
+      profile?: 'default' | 'certified' | 'advanced';
+    }
+  ): Promise<SignatureRequestResult> {
+    // 1. Load generated document from DB
+    const generatedDoc = await prisma.generatedDocument.findFirst({
+      where: {
+        id: documentId,
+        cabinetId,
+        deletedAt: null,
+      },
+      include: {
+        template: {
+          select: {
+            id: true,
+            name: true,
+            documentType: true,
+            workflowConfig: true,
+          },
+        },
+        folder: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!generatedDoc) {
+      throw new NotFoundError('Document genere non trouve');
+    }
+
+    if (generatedDoc.status !== GeneratedDocumentStatus.FINALIZED) {
+      throw new BadRequestError('Le document doit etre finalise avant envoi en signature');
+    }
+
+    if (!generatedDoc.outputFilePath) {
+      throw new BadRequestError('Le fichier du document n\'est pas disponible');
+    }
+
+    // 2. Get document file from MinIO
+    let documentBuffer: Buffer;
+    try {
+      const stream = await minioClient.getObject(
+        config.minio.buckets.documents,
+        generatedDoc.outputFilePath
+      );
+
+      const chunks: Buffer[] = [];
+      for await (const chunk of stream) {
+        chunks.push(chunk);
+      }
+      documentBuffer = Buffer.concat(chunks);
+    } catch (error: any) {
+      logger.error(`Failed to fetch document from MinIO: ${error.message}`);
+      throw new BadRequestError('Impossible de recuperer le fichier du document');
+    }
+
+    // 3. Convert DOCX to PDF if needed
+    let pdfBuffer: Buffer;
+    const isDocx = generatedDoc.outputFilePath.toLowerCase().endsWith('.docx');
+
+    if (isDocx) {
+      try {
+        pdfBuffer = await this.convertDocxToPdf(documentBuffer);
+        logger.info(`[Signature] Converted DOCX to PDF for document ${documentId}`);
+      } catch (error: any) {
+        logger.error(`DOCX to PDF conversion failed: ${error.message}`);
+        throw new BadRequestError('Erreur lors de la conversion du document en PDF');
+      }
+    } else {
+      pdfBuffer = documentBuffer;
+    }
+
+    // 4. Create Universign transaction
+    const universignClient = getUniversignClient();
+    const webhookUrl = `${config.urls.backend}/api/webhooks/universign`;
+    const profile = options?.profile || 'default';
+
+    try {
+      const transaction = await universignClient.createTransaction(
+        pdfBuffer,
+        `${generatedDoc.title}.pdf`,
+        {
+          documentId: generatedDoc.id,
+          signatories: signatories.map((s) => ({
+            firstName: s.firstName,
+            lastName: s.lastName,
+            email: s.email,
+            phone: s.phone,
+          })),
+          title: generatedDoc.title,
+          description: options?.customMessage || `Signature du document "${generatedDoc.title}"`,
+          profile,
+          language: 'fr',
+          successUrl: `${config.urls.frontend}/document-generation/documents/${generatedDoc.id}?signed=true`,
+          cancelUrl: `${config.urls.frontend}/document-generation/documents/${generatedDoc.id}?signed=false`,
+          webhookUrl,
+        }
+      );
+
+      // 5. Update generated document with workflow status
+      const workflowStatus = (generatedDoc.workflowStatus || {}) as Record<string, any>;
+      workflowStatus.signature = {
+        transactionId: transaction.id,
+        status: 'PENDING',
+        signatories: signatories.map((s) => ({
+          email: s.email,
+          role: s.role,
+          status: 'PENDING',
+        })),
+        createdAt: new Date().toISOString(),
+        profile,
+        signingOrder: options?.signingOrder || 'sequential',
+      };
+
+      await prisma.generatedDocument.update({
+        where: { id: generatedDoc.id },
+        data: {
+          status: GeneratedDocumentStatus.SENT,
+          workflowStatus: workflowStatus as Prisma.InputJsonValue,
+          sentAt: new Date(),
+        },
+      });
+
+      // 6. Create audit log
+      await this.createAuditLog(cabinetId, userId, generatedDoc.id, 'SIGNATURE_REQUEST_CREATED', {
+        documentTitle: generatedDoc.title,
+        transactionId: transaction.id,
+        signatoryCount: signatories.length,
+      });
+
+      logger.info(`[Signature] Created signature request for document ${documentId}: ${transaction.id}`);
+
+      return {
+        transactionId: transaction.id,
+        signers: transaction.signers.map((signer) => ({
+          email: signer.email,
+          signUrl: signer.url,
+          status: signer.status,
+        })),
+        expiresAt: transaction.expiresAt,
+      };
+    } catch (error: any) {
+      logger.error(`Failed to create Universign transaction: ${error.message}`);
+      throw new BadRequestError(`Erreur lors de la creation de la demande de signature: ${error.message}`);
+    }
+  }
+
+  /**
+   * Handle Universign webhook specifically for generated documents
+   * Called when signature status changes
+   */
+  async handleGeneratedDocumentWebhook(payload: UniversignWebhookPayload): Promise<void> {
+    logger.info(`[Webhook] Processing generated document webhook: ${payload.transactionId} -> ${payload.status}`);
+
+    // Find generated document with this transaction ID in workflowStatus
+    const documents = await prisma.generatedDocument.findMany({
+      where: {
+        deletedAt: null,
+        workflowStatus: {
+          path: ['signature', 'transactionId'],
+          equals: payload.transactionId,
+        },
+      },
+      include: {
+        folder: { select: { id: true, name: true } },
+      },
+    });
+
+    if (documents.length === 0) {
+      logger.warn(`[Webhook] No generated document found for transaction: ${payload.transactionId}`);
+      return;
+    }
+
+    for (const document of documents) {
+      const workflowStatus = (document.workflowStatus || {}) as Record<string, any>;
+      const signatureStatus = workflowStatus.signature || {};
+
+      // Update signer statuses
+      if (payload.signers) {
+        signatureStatus.signatories = signatureStatus.signatories?.map((s: any) => {
+          const payloadSigner = payload.signers?.find((ps) => ps.email === s.email);
+          if (payloadSigner) {
+            return {
+              ...s,
+              status: this.mapSignatoryStatus(payloadSigner.status),
+              signedAt: payloadSigner.signedAt,
+              refusedAt: payloadSigner.refusedAt,
+              refusedReason: payloadSigner.refusedReason,
+            };
+          }
+          return s;
+        }) || [];
+      }
+
+      // Update overall signature status
+      signatureStatus.status = this.mapWebhookStatus(payload.status);
+      signatureStatus.updatedAt = new Date().toISOString();
+
+      let documentStatus = document.status;
+      let signedAt: Date | undefined;
+
+      // Handle completed signature
+      if (payload.status.toLowerCase() === 'completed') {
+        documentStatus = GeneratedDocumentStatus.SIGNED;
+        signedAt = new Date();
+        signatureStatus.completedAt = signedAt.toISOString();
+
+        // Download and store signed document
+        await this.storeSignedGeneratedDocument(document, payload.transactionId);
+      }
+
+      // Handle refused/expired
+      if (['refused', 'expired', 'cancelled', 'canceled'].includes(payload.status.toLowerCase())) {
+        documentStatus = GeneratedDocumentStatus.FINALIZED; // Revert to finalized
+        signatureStatus.failedAt = new Date().toISOString();
+        signatureStatus.failureReason = payload.status;
+      }
+
+      workflowStatus.signature = signatureStatus;
+
+      // Update document
+      await prisma.generatedDocument.update({
+        where: { id: document.id },
+        data: {
+          status: documentStatus,
+          workflowStatus: workflowStatus as Prisma.InputJsonValue,
+          signedAt,
+        },
+      });
+
+      // Create audit log
+      await this.createAuditLog(
+        document.cabinetId,
+        document.createdById,
+        document.id,
+        payload.status.toLowerCase() === 'completed'
+          ? 'DOCUMENT_SIGNATURE_COMPLETED'
+          : 'DOCUMENT_SIGNATURE_UPDATED',
+        { status: payload.status, transactionId: payload.transactionId }
+      );
+
+      logger.info(`[Webhook] Updated generated document ${document.id} signature status to ${payload.status}`);
+    }
+  }
+
+  /**
+   * Store signed document from Universign to MinIO
+   */
+  private async storeSignedGeneratedDocument(
+    document: { id: string; cabinetId: string; folderId: string; title: string },
+    transactionId: string
+  ): Promise<void> {
+    try {
+      const universignClient = getUniversignClient();
+
+      // Download signed document
+      const signedDoc = await universignClient.downloadSignedDocument(transactionId);
+
+      // Generate storage path: /documents/{cabinetId}/{folderId}/signed_{filename}.pdf
+      const sanitizedTitle = document.title.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const signedPath = `${document.cabinetId}/${document.folderId}/signed_${sanitizedTitle}_${Date.now()}.pdf`;
+
+      await minioClient.putObject(
+        config.minio.buckets.documents,
+        signedPath,
+        signedDoc,
+        signedDoc.length,
+        { 'Content-Type': 'application/pdf' }
+      );
+
+      // Download and store certificates
+      const certificates = await universignClient.downloadCertificates(transactionId);
+      const certPath = `${document.cabinetId}/${document.folderId}/certificates_${sanitizedTitle}_${Date.now()}.pdf`;
+
+      await minioClient.putObject(
+        config.minio.buckets.documents,
+        certPath,
+        certificates,
+        certificates.length,
+        { 'Content-Type': 'application/pdf' }
+      );
+
+      // Update document with signed file path
+      const workflowStatus = (await prisma.generatedDocument.findUnique({
+        where: { id: document.id },
+        select: { workflowStatus: true },
+      }))?.workflowStatus as Record<string, any> || {};
+
+      workflowStatus.signature = {
+        ...workflowStatus.signature,
+        signedDocumentPath: signedPath,
+        certificatesPath: certPath,
+      };
+
+      await prisma.generatedDocument.update({
+        where: { id: document.id },
+        data: {
+          workflowStatus: workflowStatus as Prisma.InputJsonValue,
+        },
+      });
+
+      logger.info(`[Signature] Stored signed document for ${document.id} at ${signedPath}`);
+    } catch (error: any) {
+      logger.error(`[Signature] Failed to store signed document: ${error.message}`);
+    }
+  }
+
+  /**
+   * Convert DOCX to PDF using LibreOffice
+   */
+  private async convertDocxToPdf(docxBuffer: Buffer): Promise<Buffer> {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'lexdoc-convert-'));
+    const inputPath = path.join(tempDir, 'input.docx');
+    const outputPath = path.join(tempDir, 'input.pdf');
+
+    try {
+      // Write DOCX to temp file
+      await fs.writeFile(inputPath, docxBuffer);
+
+      // Convert using LibreOffice
+      await execAsync(
+        `libreoffice --headless --convert-to pdf --outdir "${tempDir}" "${inputPath}"`,
+        { timeout: 60000 }
+      );
+
+      // Read the PDF
+      const pdfBuffer = await fs.readFile(outputPath);
+
+      return pdfBuffer;
+    } finally {
+      // Cleanup temp files
+      try {
+        await fs.rm(tempDir, { recursive: true, force: true });
+      } catch {
+        // Ignore cleanup errors
+      }
     }
   }
 

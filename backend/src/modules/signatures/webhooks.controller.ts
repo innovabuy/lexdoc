@@ -40,8 +40,12 @@ export class SignatureWebhooksController {
       const webhookData = parseResult.data;
       logger.info(`[Webhook] Received Universign webhook: ${webhookData.transactionId} -> ${webhookData.status}`);
 
-      // 3. Process webhook
+      // 3. Process webhook - try both handlers
+      // First try regular signature transactions
       await signaturesService.handleWebhook(webhookData);
+
+      // Also try generated documents (they use workflowStatus.signature.transactionId)
+      await signaturesService.handleGeneratedDocumentWebhook(webhookData);
 
       // 4. Respond 200 OK (important for webhook retry logic)
       res.status(200).json({ success: true });

@@ -8,6 +8,7 @@ import {
   generatedDocumentQuerySchema,
   documentIdParamSchema,
   finalizeDocumentSchema,
+  sendSignatureRequestSchema,
 } from './generated-documents.schemas';
 
 const router = Router();
@@ -338,6 +339,136 @@ router.post(
   '/:id/duplicate',
   validateParams(documentIdParamSchema),
   generatedDocumentsController.duplicate.bind(generatedDocumentsController)
+);
+
+/**
+ * @swagger
+ * /api/generated-documents/{id}/send-signature:
+ *   post:
+ *     summary: Send document for electronic signature via Universign
+ *     tags: [Generated Documents]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - signatories
+ *             properties:
+ *               signatories:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - firstName
+ *                     - lastName
+ *                     - email
+ *                     - role
+ *                   properties:
+ *                     firstName:
+ *                       type: string
+ *                     lastName:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                       format: email
+ *                     phone:
+ *                       type: string
+ *                     role:
+ *                       type: string
+ *                       enum: [client, avocat, partie_adverse, temoin, autre]
+ *               signingOrder:
+ *                 type: string
+ *                 enum: [sequential, parallel]
+ *                 default: sequential
+ *               customMessage:
+ *                 type: string
+ *               profile:
+ *                 type: string
+ *                 enum: [default, certified, advanced]
+ *                 default: default
+ *     responses:
+ *       201:
+ *         description: Signature request created
+ *       400:
+ *         description: Document not finalized or other validation error
+ *       404:
+ *         description: Document not found
+ */
+router.post(
+  '/:id/send-signature',
+  validateParams(documentIdParamSchema),
+  validateBody(sendSignatureRequestSchema),
+  generatedDocumentsController.sendSignature.bind(generatedDocumentsController)
+);
+
+/**
+ * @swagger
+ * /api/generated-documents/{id}/signature-status:
+ *   get:
+ *     summary: Get signature status for a document
+ *     tags: [Generated Documents]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Signature status
+ *       404:
+ *         description: Document not found
+ */
+router.get(
+  '/:id/signature-status',
+  validateParams(documentIdParamSchema),
+  generatedDocumentsController.getSignatureStatus.bind(generatedDocumentsController)
+);
+
+/**
+ * @swagger
+ * /api/generated-documents/{id}/download-signed:
+ *   get:
+ *     summary: Download the signed document
+ *     tags: [Generated Documents]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Signed PDF document
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: Signed document not available
+ */
+router.get(
+  '/:id/download-signed',
+  validateParams(documentIdParamSchema),
+  generatedDocumentsController.downloadSignedDocument.bind(generatedDocumentsController)
 );
 
 export default router;

@@ -96,6 +96,24 @@ const Modal: React.FC<ModalProps> = ({
   );
 };
 
+interface ModalHeaderProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+const ModalHeader: React.FC<ModalHeaderProps> = ({ children, className }) => {
+  return (
+    <div
+      className={cn(
+        'border-b border-gray-100 px-6 py-4 -mx-6 -mt-4 mb-4',
+        className
+      )}
+    >
+      {children}
+    </div>
+  );
+};
+
 interface ModalFooterProps {
   children: React.ReactNode;
   className?: string;
@@ -114,5 +132,5 @@ const ModalFooter: React.FC<ModalFooterProps> = ({ children, className }) => {
   );
 };
 
-export { Modal, ModalFooter };
+export { Modal, ModalHeader, ModalFooter };
 export default Modal;

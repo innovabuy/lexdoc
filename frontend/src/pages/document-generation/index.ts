@@ -7,3 +7,4 @@ export { default as Step2VariablesFiller } from './components/Step2VariablesFill
 export { default as Step3Preview } from './components/Step3Preview';
 export { default as Step4Workflow } from './components/Step4Workflow';
 export { default as GeneratedDocumentCard } from './components/GeneratedDocumentCard';
+export { default as SignatureModal } from './components/SignatureModal';

@@ -14,6 +14,7 @@ import type {
   UpdateGeneratedDocumentInput,
   FinalizeDocumentInput,
 } from '@/lib/types/documentBuilder';
+import type { SendSignatureInput } from '@/lib/api/documentBuilder';
 
 // ============================================
 // DOCUMENT BLOCKS HOOKS
@@ -360,5 +361,36 @@ export function useDuplicateGeneratedDocument() {
     onError: (error: unknown) => {
       toast.error(getApiErrorMessage(error, 'Erreur lors de la duplication du document'));
     },
+  });
+}
+
+// ============================================
+// SIGNATURE HOOKS
+// ============================================
+
+export function useSendDocumentForSignature() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: SendSignatureInput }) =>
+      documentBuilderApi.sendDocumentForSignature(id, input),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['generated-documents'] });
+      queryClient.invalidateQueries({ queryKey: ['generated-documents', variables.id] });
+      toast.success('Document envoye en signature avec succes');
+    },
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Erreur lors de l\'envoi en signature'));
+    },
+  });
+}
+
+export function useDocumentSignatureStatus(id: string | undefined) {
+  return useQuery({
+    queryKey: ['generated-documents', id, 'signature-status'],
+    queryFn: () => documentBuilderApi.getDocumentSignatureStatus(id!),
+    enabled: !!id,
+    staleTime: 10 * 1000, // Refresh every 10 seconds for status updates
+    refetchInterval: 30 * 1000, // Auto-refresh every 30 seconds
   });
 }

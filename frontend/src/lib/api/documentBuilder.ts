@@ -308,3 +308,72 @@ export async function duplicateGeneratedDocument(id: string): Promise<GeneratedD
   );
   return data.data;
 }
+
+// ============================================
+// SIGNATURE API
+// ============================================
+
+export interface SignatoryInput {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  role: 'client' | 'avocat' | 'partie_adverse' | 'temoin' | 'autre';
+}
+
+export interface SendSignatureInput {
+  signatories: SignatoryInput[];
+  signingOrder?: 'sequential' | 'parallel';
+  customMessage?: string;
+  profile?: 'default' | 'certified' | 'advanced';
+}
+
+export interface SignatureRequestResult {
+  transactionId: string;
+  signers: Array<{
+    email: string;
+    signUrl: string;
+    status: string;
+  }>;
+  expiresAt: string;
+}
+
+export interface SignatureStatus {
+  transactionId: string;
+  status: string;
+  signatories: Array<{
+    email: string;
+    role: string;
+    status: string;
+    signedAt?: string;
+    refusedAt?: string;
+    refusedReason?: string;
+  }>;
+  createdAt: string;
+  updatedAt?: string;
+  completedAt?: string;
+  signedDocumentPath?: string;
+  certificatesPath?: string;
+}
+
+export async function sendDocumentForSignature(
+  id: string,
+  input: SendSignatureInput
+): Promise<SignatureRequestResult> {
+  const { data } = await apiClient.post<{ success: boolean; data: SignatureRequestResult }>(
+    `/generated-documents/${id}/send-signature`,
+    input
+  );
+  return data.data;
+}
+
+export async function getDocumentSignatureStatus(id: string): Promise<SignatureStatus | null> {
+  const { data } = await apiClient.get<{ success: boolean; data: SignatureStatus | null }>(
+    `/generated-documents/${id}/signature-status`
+  );
+  return data.data;
+}
+
+export function getSignedDocumentDownloadUrl(id: string): string {
+  return `/api/generated-documents/${id}/download-signed`;
+}

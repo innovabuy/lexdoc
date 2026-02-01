@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { generatedDocumentsService } from './generated-documents.service';
+import { signaturesService } from '@/modules/signatures/signatures.service';
 import { ApiResponse } from '@/types';
+import type { SendSignatureRequestInput } from './generated-documents.schemas';
 
 export class GeneratedDocumentsController {
   /**
@@ -216,6 +218,92 @@ export class GeneratedDocumentsController {
       };
 
       res.status(201).json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/generated-documents/:id/send-signature
+   * Send document for electronic signature via Universign
+   */
+  async sendSignature(req: Request, res: Response, next: NextFunction) {
+    try {
+      const input = req.body as SendSignatureRequestInput;
+
+      const result = await signaturesService.createSignatureRequestFromDocument(
+        req.params.id,
+        req.cabinetId!,
+        req.user!.id,
+        input.signatories,
+        {
+          signingOrder: input.signingOrder,
+          customMessage: input.customMessage,
+          profile: input.profile,
+        }
+      );
+
+      const response: ApiResponse = {
+        success: true,
+        data: result,
+        message: 'Document envoye en signature avec succes',
+      };
+
+      res.status(201).json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/generated-documents/:id/signature-status
+   * Get signature status for a document
+   */
+  async getSignatureStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      const document = await generatedDocumentsService.getById(req.params.id, req.cabinetId!);
+
+      const workflowStatus = (document.workflowStatus || {}) as Record<string, any>;
+      const signatureStatus = workflowStatus.signature || null;
+
+      const response: ApiResponse = {
+        success: true,
+        data: signatureStatus,
+      };
+
+      res.json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/generated-documents/:id/download-signed
+   * Download the signed document
+   */
+  async downloadSignedDocument(req: Request, res: Response, next: NextFunction) {
+    try {
+      const document = await generatedDocumentsService.getById(req.params.id, req.cabinetId!);
+
+      const workflowStatus = (document.workflowStatus || {}) as Record<string, any>;
+      const signedPath = workflowStatus.signature?.signedDocumentPath;
+
+      if (!signedPath) {
+        return res.status(404).json({
+          success: false,
+          message: 'Document signe non disponible',
+        });
+      }
+
+      const { minioClient } = await import('@/config/minio');
+      const { config } = await import('@/config');
+
+      const stream = await minioClient.getObject(config.minio.buckets.documents, signedPath);
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${document.title}_signed.pdf"`);
+
+      stream.pipe(res);
     } catch (error) {
       next(error);
     }
