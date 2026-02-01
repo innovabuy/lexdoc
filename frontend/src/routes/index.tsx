@@ -47,6 +47,9 @@ const DocumentTemplatesListPage = lazy(() => import('@/pages/document-templates/
 const TemplateBuilderPage = lazy(() => import('@/pages/document-templates/TemplateBuilderPage'));
 const DocumentTemplateDetailPage = lazy(() => import('@/pages/document-templates/TemplateDetailPage'));
 
+// Profile
+const AvocatLegalInfoPage = lazy(() => import('@/pages/profile/AvocatLegalInfoPage'));
+
 const AppRoutes: React.FC = () => {
   return (
     <Suspense fallback={<LoadingOverlay />}>
@@ -70,6 +73,7 @@ const AppRoutes: React.FC = () => {
         >
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/profile/legal" element={<AvocatLegalInfoPage />} />
           <Route path="/settings" element={<SettingsPage />} />
 
           {/* Admin only routes */}
