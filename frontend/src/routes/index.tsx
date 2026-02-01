@@ -50,6 +50,10 @@ const DocumentTemplateDetailPage = lazy(() => import('@/pages/document-templates
 // Profile
 const AvocatLegalInfoPage = lazy(() => import('@/pages/profile/AvocatLegalInfoPage'));
 
+// Document Generation
+const GeneratedDocumentsListPage = lazy(() => import('@/pages/document-generation/GeneratedDocumentsListPage'));
+const DocumentGenerationWizard = lazy(() => import('@/pages/document-generation/DocumentGenerationWizard'));
+
 const AppRoutes: React.FC = () => {
   return (
     <Suspense fallback={<LoadingOverlay />}>
@@ -283,6 +287,32 @@ const AppRoutes: React.FC = () => {
             element={
               <ProtectedRoute roles={['ADMIN', 'AVOCAT']}>
                 <TemplateBuilderPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Document Generation */}
+          <Route
+            path="/document-generation"
+            element={
+              <ProtectedRoute roles={['ADMIN', 'AVOCAT', 'COLLABORATEUR']}>
+                <GeneratedDocumentsListPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/document-generation/new"
+            element={
+              <ProtectedRoute roles={['ADMIN', 'AVOCAT', 'COLLABORATEUR']}>
+                <DocumentGenerationWizard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/document-generation/documents/:documentId"
+            element={
+              <ProtectedRoute roles={['ADMIN', 'AVOCAT', 'COLLABORATEUR']}>
+                <DocumentGenerationWizard />
               </ProtectedRoute>
             }
           />
