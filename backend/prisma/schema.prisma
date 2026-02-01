@@ -1,0 +1,451 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Cabinet {
+  id          String        @id @default(uuid())
+  name        String
+  siret       String?       @unique
+  address     String?
+  postalCode  String?       @map("postal_code")
+  city        String?
+  phone       String?
+  email       String        @unique
+  status      CabinetStatus @default(TRIAL)
+  trialEndsAt DateTime?     @map("trial_ends_at")
+  maxUsers    Int           @default(5) @map("max_users")
+  maxStorage  BigInt        @default(10737418240) @map("max_storage")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  deletedAt   DateTime?     @map("deleted_at")
+  auditLogs   AuditLog[]
+  documents   Document[]
+  folders     Folder[]
+  templates   Template[]
+  users       User[]
+  signatureTransactions SignatureTransaction[]
+  lrarShipments         LrarShipment[]
+
+  @@map("cabinets")
+}
+
+model User {
+  id               String     @id @default(uuid())
+  cabinetId        String     @map("cabinet_id")
+  email            String     @unique
+  password         String
+  firstName        String     @map("first_name")
+  lastName         String     @map("last_name")
+  phone            String?
+  role             UserRole   @default(COLLABORATEUR)
+  twoFactorEnabled Boolean    @default(false) @map("two_factor_enabled")
+  twoFactorSecret  String?    @map("two_factor_secret")
+  lastLoginAt      DateTime?  @map("last_login_at")
+  refreshTokens    String[]   @default([]) @map("refresh_tokens")
+  isActive         Boolean    @default(true) @map("is_active")
+  emailVerified    Boolean    @default(false) @map("email_verified")
+  emailVerifiedAt  DateTime?  @map("email_verified_at")
+  resetToken       String?    @map("reset_token")
+  resetTokenExpiry DateTime?  @map("reset_token_expiry")
+  verifyToken      String?    @map("verify_token")
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+  deletedAt        DateTime?  @map("deleted_at")
+  auditLogs        AuditLog[]
+  createdDocuments Document[] @relation("DocumentCreator")
+  cabinet          Cabinet    @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  initiatedSignatures SignatureTransaction[] @relation("SignatureInitiator")
+  initiatedLrar       LrarShipment[]         @relation("LrarInitiator")
+
+  @@index([cabinetId])
+  @@index([email])
+  @@map("users")
+}
+
+model Folder {
+  id          String     @id @default(uuid())
+  cabinetId   String     @map("cabinet_id")
+  name        String
+  description String?
+  color       String?    @default("#3B82F6")
+  parentId    String?    @map("parent_id")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  deletedAt   DateTime?  @map("deleted_at")
+  documents   Document[]
+  cabinet     Cabinet    @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  parent      Folder?    @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children    Folder[]   @relation("FolderHierarchy")
+
+  @@index([cabinetId])
+  @@index([parentId])
+  @@map("folders")
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model Document {
+  id              String            @id @default(uuid())
+  cabinetId       String            @map("cabinet_id")
+  folderId        String?           @map("folder_id")
+  createdById     String            @map("created_by_id")
+  filename        String
+  originalName    String            @map("original_name")
+  mimeType        String            @map("mime_type")
+  size            BigInt
+  minioPath       String            @map("minio_path")
+  minioBucket     String            @default("documents") @map("minio_bucket")
+  type            DocumentType      @default(OTHER)
+  title           String
+  description     String?
+  tags            String[]          @default([])
+  documentDate    DateTime?         @map("document_date")
+  expiresAt       DateTime?         @map("expires_at")
+  version         Int               @default(1)
+  isLatestVersion Boolean           @default(true) @map("is_latest_version")
+  isEncrypted     Boolean           @default(true) @map("is_encrypted")
+  encryptionKey   String?           @map("encryption_key")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+  deletedAt       DateTime?         @map("deleted_at")
+  versions        DocumentVersion[]
+  cabinet         Cabinet           @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  createdBy       User              @relation("DocumentCreator", fields: [createdById], references: [id])
+  folder          Folder?           @relation(fields: [folderId], references: [id])
+  signatureTransactions SignatureTransaction[]
+  lrarShipments         LrarShipment[]
+
+  @@index([cabinetId])
+  @@index([folderId])
+  @@index([createdById])
+  @@index([type])
+  @@map("documents")
+}
+
+model DocumentVersion {
+  id          String   @id @default(uuid())
+  documentId  String   @map("document_id")
+  version     Int
+  filename    String
+  minioPath   String   @map("minio_path")
+  size        BigInt
+  comment     String?
+  createdById String   @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, version])
+  @@index([documentId])
+  @@map("document_versions")
+}
+
+model Template {
+  id          String           @id @default(uuid())
+  cabinetId   String           @map("cabinet_id")
+  name        String
+  description String?
+  category    TemplateCategory @default(OTHER)
+  filename    String
+  minioPath   String           @map("minio_path")
+  variables   Json             @default("[]")
+  usageCount  Int              @default(0) @map("usage_count")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+  deletedAt   DateTime?        @map("deleted_at")
+  cabinet     Cabinet          @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+
+  @@index([cabinetId])
+  @@index([category])
+  @@map("templates")
+}
+
+model AuditLog {
+  id        String      @id @default(uuid())
+  cabinetId String      @map("cabinet_id")
+  userId    String?     @map("user_id")
+  action    AuditAction
+  entity    String
+  entityId  String      @map("entity_id")
+  details   Json?
+  ipAddress String?     @map("ip_address")
+  userAgent String?     @map("user_agent")
+  createdAt DateTime    @default(now()) @map("created_at")
+  cabinet   Cabinet     @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  user      User?       @relation(fields: [userId], references: [id])
+
+  @@index([cabinetId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+enum CabinetStatus {
+  ACTIVE
+  SUSPENDED
+  TRIAL
+  CANCELED
+}
+
+enum UserRole {
+  ADMIN
+  AVOCAT
+  COLLABORATEUR
+  SECRETAIRE
+}
+
+enum DocumentType {
+  ACTE
+  CONTRAT
+  COURRIER
+  DECISION
+  PIECE
+  TEMPLATE
+  OTHER
+}
+
+enum TemplateCategory {
+  CONTRAT
+  ACTE
+  COURRIER
+  PROCEDURE
+  OTHER
+}
+
+enum AuditAction {
+  USER_LOGIN
+  USER_LOGOUT
+  USER_CREATED
+  USER_UPDATED
+  USER_DELETED
+  USER_2FA_ENABLED
+  USER_2FA_DISABLED
+  USER_PASSWORD_CHANGED
+  USER_PASSWORD_RESET
+  DOCUMENT_CREATED
+  DOCUMENT_UPDATED
+  DOCUMENT_DELETED
+  DOCUMENT_DOWNLOADED
+  DOCUMENT_SHARED
+  FOLDER_CREATED
+  FOLDER_UPDATED
+  FOLDER_DELETED
+  TEMPLATE_CREATED
+  TEMPLATE_USED
+  CABINET_UPDATED
+  SIGNATURE_CREATED
+  SIGNATURE_UPDATED
+  SIGNATURE_COMPLETED
+  SIGNATURE_CANCELLED
+  LRAR_CREATED
+  LRAR_UPDATED
+  LRAR_DELIVERED
+  LRAR_RETURNED
+}
+
+// ============================================
+// PHASE 6: SIGNATURE & LRAR MODELS
+// ============================================
+
+/// Signature transaction for electronic signatures via Universign
+model SignatureTransaction {
+  id                    String                    @id @default(uuid())
+  cabinetId             String                    @map("cabinet_id")
+  documentId            String                    @map("document_id")
+  initiatorId           String                    @map("initiator_id")
+
+  // Universign data
+  universignId          String?                   @unique @map("universign_id")
+  status                SignatureStatus           @default(PENDING)
+  profile               SignatureProfile          @default(DEFAULT)
+
+  // Metadata
+  title                 String
+  description           String?
+  language              String                    @default("fr")
+
+  // Signed document storage
+  signedDocumentPath    String?                   @map("signed_document_path")
+  certificatesPath      String?                   @map("certificates_path")
+
+  // URLs
+  successUrl            String?                   @map("success_url")
+  cancelUrl             String?                   @map("cancel_url")
+
+  // Timestamps
+  expiresAt             DateTime?                 @map("expires_at")
+  completedAt           DateTime?                 @map("completed_at")
+  createdAt             DateTime                  @default(now()) @map("created_at")
+  updatedAt             DateTime                  @updatedAt @map("updated_at")
+  deletedAt             DateTime?                 @map("deleted_at")
+
+  // Relations
+  cabinet               Cabinet                   @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  document              Document                  @relation(fields: [documentId], references: [id])
+  initiator             User                      @relation("SignatureInitiator", fields: [initiatorId], references: [id])
+  signatories           SignatureSignatory[]
+
+  @@index([cabinetId])
+  @@index([documentId])
+  @@index([initiatorId])
+  @@index([status])
+  @@index([universignId])
+  @@map("signature_transactions")
+}
+
+/// Signatory in a signature transaction
+model SignatureSignatory {
+  id                    String                    @id @default(uuid())
+  transactionId         String                    @map("transaction_id")
+
+  // Signatory info
+  firstName             String                    @map("first_name")
+  lastName              String                    @map("last_name")
+  email                 String
+  phone                 String?
+
+  // Signature status
+  status                SignatoryStatus           @default(PENDING)
+  signOrder             Int                       @default(1) @map("sign_order")
+  signUrl               String?                   @map("sign_url")
+  signedAt              DateTime?                 @map("signed_at")
+  refusedAt             DateTime?                 @map("refused_at")
+  refusedReason         String?                   @map("refused_reason")
+
+  // Timestamps
+  createdAt             DateTime                  @default(now()) @map("created_at")
+  updatedAt             DateTime                  @updatedAt @map("updated_at")
+
+  // Relations
+  transaction           SignatureTransaction      @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([transactionId])
+  @@index([email])
+  @@map("signature_signatories")
+}
+
+/// LRAR shipment for registered mail via SendingBox
+model LrarShipment {
+  id                    String                    @id @default(uuid())
+  cabinetId             String                    @map("cabinet_id")
+  documentId            String                    @map("document_id")
+  initiatorId           String                    @map("initiator_id")
+
+  // SendingBox data
+  sendingboxId          String?                   @unique @map("sendingbox_id")
+  trackingNumber        String?                   @map("tracking_number")
+  status                LrarStatus                @default(PENDING)
+
+  // Metadata
+  subject               String
+  reference             String?
+
+  // Recipient info
+  recipientFirstName    String                    @map("recipient_first_name")
+  recipientLastName     String                    @map("recipient_last_name")
+  recipientAddress      String                    @map("recipient_address")
+  recipientPostalCode   String                    @map("recipient_postal_code")
+  recipientCity         String                    @map("recipient_city")
+  recipientCountry      String                    @default("FR") @map("recipient_country")
+
+  // Sender info
+  senderFirstName       String                    @map("sender_first_name")
+  senderLastName        String                    @map("sender_last_name")
+  senderAddress         String                    @map("sender_address")
+  senderPostalCode      String                    @map("sender_postal_code")
+  senderCity            String                    @map("sender_city")
+  senderCountry         String                    @default("FR") @map("sender_country")
+
+  // Options
+  color                 Boolean                   @default(false)
+  duplexPrinting        Boolean                   @default(true) @map("duplex_printing")
+  registeredMail        Boolean                   @default(true) @map("registered_mail")
+
+  // Proof storage
+  proofPath             String?                   @map("proof_path")
+
+  // Cost tracking
+  cost                  Decimal?                  @db.Decimal(10, 2)
+
+  // Timestamps
+  sentAt                DateTime?                 @map("sent_at")
+  deliveredAt           DateTime?                 @map("delivered_at")
+  returnedAt            DateTime?                 @map("returned_at")
+  estimatedDeliveryAt   DateTime?                 @map("estimated_delivery_at")
+  createdAt             DateTime                  @default(now()) @map("created_at")
+  updatedAt             DateTime                  @updatedAt @map("updated_at")
+  deletedAt             DateTime?                 @map("deleted_at")
+
+  // Relations
+  cabinet               Cabinet                   @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  document              Document                  @relation(fields: [documentId], references: [id])
+  initiator             User                      @relation("LrarInitiator", fields: [initiatorId], references: [id])
+  trackingEvents        LrarTrackingEvent[]
+
+  @@index([cabinetId])
+  @@index([documentId])
+  @@index([initiatorId])
+  @@index([status])
+  @@index([sendingboxId])
+  @@index([trackingNumber])
+  @@map("lrar_shipments")
+}
+
+/// Tracking event for LRAR shipment
+model LrarTrackingEvent {
+  id                    String                    @id @default(uuid())
+  shipmentId            String                    @map("shipment_id")
+
+  // Event info
+  status                String
+  description           String?
+  location              String?
+
+  // Timestamps
+  eventAt               DateTime                  @map("event_at")
+  createdAt             DateTime                  @default(now()) @map("created_at")
+
+  // Relations
+  shipment              LrarShipment              @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId])
+  @@map("lrar_tracking_events")
+}
+
+enum SignatureStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  EXPIRED
+  ERROR
+}
+
+enum SignatureProfile {
+  DEFAULT
+  CERTIFIED
+  ADVANCED
+}
+
+enum SignatoryStatus {
+  PENDING
+  IN_PROGRESS
+  SIGNED
+  REFUSED
+}
+
+enum LrarStatus {
+  PENDING
+  PROCESSING
+  SENT
+  IN_TRANSIT
+  DELIVERED
+  RETURNED
+  ERROR
+  CANCELLED
+}

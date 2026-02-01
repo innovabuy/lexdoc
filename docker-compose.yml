@@ -1,0 +1,228 @@
+version: '3.8'
+
+services:
+  # =====================================================
+  # POSTGRESQL - Base de données
+  # =====================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: lexdoc-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-lexdoc_production}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - lexdoc_internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB:-lexdoc_production}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # =====================================================
+  # MINIO - Stockage objet S3 dédié LexDoc
+  # =====================================================
+  minio:
+    image: minio/minio:latest
+    container_name: lexdoc-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    ports:
+      - "9002:9000"  # API S3 (port libre)
+      - "9003:9001"  # Console admin (port libre)
+    networks:
+      - lexdoc_internal
+      - cap-navigator_cap_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=cap-navigator_cap_network"
+
+      # API S3
+      - "traefik.http.routers.lexdoc-minio-api.rule=Host(`minio.lexdoc.${DOMAIN}`)"
+      - "traefik.http.routers.lexdoc-minio-api.entrypoints=websecure"
+      - "traefik.http.routers.lexdoc-minio-api.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.lexdoc-minio-api.service=lexdoc-minio-api"
+      - "traefik.http.services.lexdoc-minio-api.loadbalancer.server.port=9000"
+
+      # Console admin
+      - "traefik.http.routers.lexdoc-minio-console.rule=Host(`minio-console.lexdoc.${DOMAIN}`)"
+      - "traefik.http.routers.lexdoc-minio-console.entrypoints=websecure"
+      - "traefik.http.routers.lexdoc-minio-console.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.lexdoc-minio-console.service=lexdoc-minio-console"
+      - "traefik.http.services.lexdoc-minio-console.loadbalancer.server.port=9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # =====================================================
+  # BACKEND - API Node.js/Express
+  # =====================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lexdoc-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-lexdoc_production}?schema=public
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+
+      # MinIO
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_USE_SSL: "false"
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET_DOCUMENTS: lexdoc-documents
+      MINIO_BUCKET_TEMPLATES: lexdoc-templates
+
+      # URLs publiques
+      FRONTEND_URL: https://lexdoc.${DOMAIN}
+      BACKEND_URL: https://api.lexdoc.${DOMAIN}
+      CORS_ORIGINS: https://lexdoc.${DOMAIN}
+
+      # Email
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
+      EMAIL_FROM: noreply@lexdoc.${DOMAIN}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - lexdoc_internal
+      - cap-navigator_cap_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=cap-navigator_cap_network"
+      - "traefik.http.routers.lexdoc-backend.rule=Host(`api.lexdoc.${DOMAIN}`)"
+      - "traefik.http.routers.lexdoc-backend.entrypoints=websecure"
+      - "traefik.http.routers.lexdoc-backend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.lexdoc-backend.loadbalancer.server.port=3000"
+
+      # Middlewares sécurité
+      - "traefik.http.routers.lexdoc-backend.middlewares=lexdoc-security,lexdoc-ratelimit"
+      - "traefik.http.middlewares.lexdoc-security.headers.stsSeconds=31536000"
+      - "traefik.http.middlewares.lexdoc-security.headers.stsIncludeSubdomains=true"
+      - "traefik.http.middlewares.lexdoc-security.headers.customFrameOptionsValue=SAMEORIGIN"
+      - "traefik.http.middlewares.lexdoc-security.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.lexdoc-security.headers.browserXssFilter=true"
+      - "traefik.http.middlewares.lexdoc-ratelimit.ratelimit.average=100"
+      - "traefik.http.middlewares.lexdoc-ratelimit.ratelimit.burst=50"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # =====================================================
+  # FRONTEND - Application React
+  # =====================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: https://api.lexdoc.${DOMAIN}
+        VITE_APP_NAME: LexDoc
+    container_name: lexdoc-frontend
+    restart: unless-stopped
+    networks:
+      - cap-navigator_cap_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=cap-navigator_cap_network"
+      - "traefik.http.routers.lexdoc-frontend.rule=Host(`lexdoc.${DOMAIN}`)"
+      - "traefik.http.routers.lexdoc-frontend.entrypoints=websecure"
+      - "traefik.http.routers.lexdoc-frontend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.lexdoc-frontend.loadbalancer.server.port=80"
+
+      # Compression
+      - "traefik.http.routers.lexdoc-frontend.middlewares=lexdoc-compress"
+      - "traefik.http.middlewares.lexdoc-compress.compress=true"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # =====================================================
+  # MIGRATIONS - Database migrations (one-time)
+  # =====================================================
+  migrations:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lexdoc-migrations
+    command: sh -c "npx prisma migrate deploy"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-lexdoc_production}?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - lexdoc_internal
+
+  # =====================================================
+  # HEALTHCHECK - Monitoring endpoint
+  # =====================================================
+  healthcheck:
+    build:
+      context: ./healthcheck
+      dockerfile: Dockerfile
+    container_name: lexdoc-healthcheck
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-lexdoc_production}?schema=public
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - lexdoc_internal
+      - cap-navigator_cap_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=cap-navigator_cap_network"
+      - "traefik.http.routers.lexdoc-health.rule=Host(`health.lexdoc.${DOMAIN}`)"
+      - "traefik.http.routers.lexdoc-health.entrypoints=websecure"
+      - "traefik.http.routers.lexdoc-health.tls.certresolver=letsencrypt"
+      - "traefik.http.services.lexdoc-health.loadbalancer.server.port=3000"
+
+networks:
+  # Réseau interne LexDoc (isolation)
+  lexdoc_internal:
+    driver: bridge
+
+  # Réseau Traefik existant (EXTERNE - ne pas créer)
+  cap-navigator_cap_network:
+    external: true
+
+volumes:
+  postgres_data:
+    driver: local
+  minio_data:
+    driver: local
