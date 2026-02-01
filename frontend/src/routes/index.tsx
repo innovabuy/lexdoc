@@ -30,6 +30,13 @@ const LrarPage = lazy(() => import('@/pages/lrar/LrarPage'));
 const NewLrarPage = lazy(() => import('@/pages/lrar/NewLrarPage'));
 const LrarDetailPage = lazy(() => import('@/pages/lrar/LrarDetailPage'));
 
+// Document Builder
+const DocumentBuilderPage = lazy(() => import('@/pages/document-builder/DocumentBuilderPage'));
+const TemplateEditorPage = lazy(() => import('@/pages/document-builder/TemplateEditorPage'));
+const TemplateDetailPage = lazy(() => import('@/pages/document-builder/TemplateDetailPage'));
+const GenerateDocumentPage = lazy(() => import('@/pages/document-builder/GenerateDocumentPage'));
+const GeneratedDocumentDetailPage = lazy(() => import('@/pages/document-builder/GeneratedDocumentDetailPage'));
+
 const AppRoutes: React.FC = () => {
   return (
     <Suspense fallback={<LoadingOverlay />}>
@@ -136,6 +143,64 @@ const AppRoutes: React.FC = () => {
             element={
               <ProtectedRoute roles={['ADMIN', 'AVOCAT', 'COLLABORATEUR']}>
                 <LrarDetailPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Document Builder */}
+          <Route
+            path="/document-builder"
+            element={
+              <ProtectedRoute roles={['ADMIN', 'AVOCAT']}>
+                <DocumentBuilderPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/document-builder/templates/new"
+            element={
+              <ProtectedRoute roles={['ADMIN', 'AVOCAT']}>
+                <TemplateEditorPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/document-builder/templates/:templateId"
+            element={
+              <ProtectedRoute roles={['ADMIN', 'AVOCAT']}>
+                <TemplateDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/document-builder/templates/:templateId/edit"
+            element={
+              <ProtectedRoute roles={['ADMIN', 'AVOCAT']}>
+                <TemplateEditorPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/document-builder/generate/:templateId"
+            element={
+              <ProtectedRoute roles={['ADMIN', 'AVOCAT']}>
+                <GenerateDocumentPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/document-builder/documents/:documentId"
+            element={
+              <ProtectedRoute roles={['ADMIN', 'AVOCAT']}>
+                <GeneratedDocumentDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/document-builder/documents"
+            element={
+              <ProtectedRoute roles={['ADMIN', 'AVOCAT']}>
+                <DocumentBuilderPage />
               </ProtectedRoute>
             }
           />

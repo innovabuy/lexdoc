@@ -6,3 +6,5 @@ export * from './useDebounce';
 export * from './useMediaQuery';
 export * from './useSignatures';
 export * from './useLrar';
+export * from './useFolders';
+export * from './useDocumentBuilder';

@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   PenTool,
   Mail,
+  Layers,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useUIStore } from '@/store/uiStore';
@@ -26,6 +27,7 @@ const navItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Documents', href: '/documents', icon: FileText },
   { label: 'Dossiers', href: '/folders', icon: FolderOpen },
+  { label: 'Document Builder', href: '/document-builder', icon: Layers, roles: ['ADMIN', 'AVOCAT'] },
   { label: 'Signatures', href: '/signatures', icon: PenTool, roles: ['ADMIN', 'AVOCAT', 'COLLABORATEUR'] },
   { label: 'LRAR', href: '/lrar', icon: Mail, roles: ['ADMIN', 'AVOCAT', 'COLLABORATEUR'] },
   { label: 'Utilisateurs', href: '/users', icon: Users, roles: ['ADMIN'] },
