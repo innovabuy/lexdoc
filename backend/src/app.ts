@@ -21,6 +21,7 @@ import documentsRoutes from '@/modules/documents/documents.routes';
 import foldersRoutes from '@/modules/folders/folders.routes';
 import signaturesRoutes, { webhookRouter as signatureWebhookRouter } from '@/modules/signatures/signatures.routes';
 import lrarRoutes, { webhookRouter as lrarWebhookRouter } from '@/modules/lrar/lrar.routes';
+import documentBlocksRoutes from '@/modules/document-blocks/document-blocks.routes';
 
 const app = express();
 
@@ -110,6 +111,7 @@ app.use('/api/documents', apiLimiter, documentsRoutes);
 app.use('/api/folders', apiLimiter, foldersRoutes);
 app.use('/api/signatures', apiLimiter, signaturesRoutes);
 app.use('/api/lrar', apiLimiter, lrarRoutes);
+app.use('/api/document-blocks', apiLimiter, documentBlocksRoutes);
 
 // Webhook routes (public, no rate limiting)
 app.use('/api/webhooks', signatureWebhookRouter);
@@ -131,6 +133,7 @@ app.get('/api', (_req, res) => {
       folders: '/api/folders',
       signatures: '/api/signatures',
       lrar: '/api/lrar',
+      documentBlocks: '/api/document-blocks',
       webhooks: '/api/webhooks',
     },
   });
