@@ -9,6 +9,7 @@ import {
   documentIdParamSchema,
   finalizeDocumentSchema,
   sendSignatureRequestSchema,
+  sendLrarRequestSchema,
 } from './generated-documents.schemas';
 
 const router = Router();
@@ -469,6 +470,137 @@ router.get(
   '/:id/download-signed',
   validateParams(documentIdParamSchema),
   generatedDocumentsController.downloadSignedDocument.bind(generatedDocumentsController)
+);
+
+/**
+ * @swagger
+ * /api/generated-documents/{id}/send-lrar:
+ *   post:
+ *     summary: Send document via LRAR (registered mail)
+ *     tags: [Generated Documents]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - recipient
+ *             properties:
+ *               recipient:
+ *                 type: object
+ *                 required:
+ *                   - name
+ *                   - address
+ *                   - postalCode
+ *                   - city
+ *                 properties:
+ *                   name:
+ *                     type: string
+ *                   address:
+ *                     type: string
+ *                   postalCode:
+ *                     type: string
+ *                   city:
+ *                     type: string
+ *                   country:
+ *                     type: string
+ *                     default: FR
+ *               options:
+ *                 type: object
+ *                 properties:
+ *                   color:
+ *                     type: boolean
+ *                     default: false
+ *                   duplex:
+ *                     type: boolean
+ *                     default: false
+ *                   registered:
+ *                     type: boolean
+ *                     default: true
+ *     responses:
+ *       201:
+ *         description: LRAR request created
+ *       400:
+ *         description: Document not finalized or validation error
+ *       404:
+ *         description: Document not found
+ */
+router.post(
+  '/:id/send-lrar',
+  validateParams(documentIdParamSchema),
+  validateBody(sendLrarRequestSchema),
+  generatedDocumentsController.sendLrar.bind(generatedDocumentsController)
+);
+
+/**
+ * @swagger
+ * /api/generated-documents/{id}/lrar-tracking:
+ *   get:
+ *     summary: Get LRAR tracking status for a document
+ *     tags: [Generated Documents]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: LRAR tracking status
+ *       404:
+ *         description: Document not found
+ */
+router.get(
+  '/:id/lrar-tracking',
+  validateParams(documentIdParamSchema),
+  generatedDocumentsController.getLrarTracking.bind(generatedDocumentsController)
+);
+
+/**
+ * @swagger
+ * /api/generated-documents/{id}/download-ar:
+ *   get:
+ *     summary: Download the delivery proof (AR)
+ *     tags: [Generated Documents]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: AR PDF document
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       400:
+ *         description: No LRAR or proof not available
+ *       404:
+ *         description: Document not found
+ */
+router.get(
+  '/:id/download-ar',
+  validateParams(documentIdParamSchema),
+  generatedDocumentsController.downloadAR.bind(generatedDocumentsController)
 );
 
 export default router;

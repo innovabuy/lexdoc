@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { getSendingBoxClient } from './sendingbox.client';
-import { lrarService } from './lrar.service';
+import { lrarService, generatedDocumentLrarService } from './lrar.service';
 import { logger } from '@/utils/logger';
 import { sendingboxWebhookSchema } from './lrar.schemas';
 
@@ -40,8 +40,9 @@ export class LrarWebhooksController {
       const webhookData = parseResult.data;
       logger.info(`[Webhook] Received SendingBox webhook: ${webhookData.shipmentId} -> ${webhookData.status}`);
 
-      // 3. Process webhook
+      // 3. Process webhook for both regular and generated documents
       await lrarService.handleWebhook(webhookData);
+      await generatedDocumentLrarService.handleGeneratedDocumentWebhook(webhookData);
 
       // 4. Respond 200 OK (important for webhook retry logic)
       res.status(200).json({ success: true });

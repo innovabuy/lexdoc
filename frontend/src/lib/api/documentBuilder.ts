@@ -377,3 +377,73 @@ export async function getDocumentSignatureStatus(id: string): Promise<SignatureS
 export function getSignedDocumentDownloadUrl(id: string): string {
   return `/api/generated-documents/${id}/download-signed`;
 }
+
+// ============================================
+// LRAR API
+// ============================================
+
+export interface LrarRecipientInput {
+  name: string;
+  address: string;
+  postalCode: string;
+  city: string;
+  country?: string;
+}
+
+export interface LrarOptionsInput {
+  color?: boolean;
+  duplex?: boolean;
+  registered?: boolean;
+}
+
+export interface SendLrarInput {
+  recipient: LrarRecipientInput;
+  options?: LrarOptionsInput;
+}
+
+export interface LrarSendResult {
+  letterId: string;
+  trackingNumber?: string;
+  trackingUrl: string;
+  estimatedDelivery?: string;
+  cost?: number;
+}
+
+export interface LrarTrackingEvent {
+  date: string;
+  type: string;
+  description?: string;
+  location?: string;
+}
+
+export interface LrarTrackingStatus {
+  letterId: string;
+  status: string;
+  trackingNumber?: string;
+  events: LrarTrackingEvent[];
+  estimatedDelivery?: string;
+  deliveredAt?: string;
+  proofAvailable: boolean;
+}
+
+export async function sendDocumentAsLrar(
+  id: string,
+  input: SendLrarInput
+): Promise<LrarSendResult> {
+  const { data } = await apiClient.post<{ success: boolean; data: LrarSendResult }>(
+    `/generated-documents/${id}/send-lrar`,
+    input
+  );
+  return data.data;
+}
+
+export async function getLrarTrackingStatus(id: string): Promise<LrarTrackingStatus | null> {
+  const { data } = await apiClient.get<{ success: boolean; data: LrarTrackingStatus | null }>(
+    `/generated-documents/${id}/lrar-tracking`
+  );
+  return data.data;
+}
+
+export function getARDownloadUrl(id: string): string {
+  return `/api/generated-documents/${id}/download-ar`;
+}

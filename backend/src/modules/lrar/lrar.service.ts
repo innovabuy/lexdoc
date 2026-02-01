@@ -6,12 +6,19 @@ import { NotFoundError, BadRequestError } from '@/utils/errors';
 import { logger } from '@/utils/logger';
 import { downloadFromMinio } from '@/modules/documents/upload.middleware';
 import { getSendingBoxClient, type Recipient } from './sendingbox.client';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import * as os from 'os';
 import type {
   CreateLrarInput,
   ListLrarInput,
   LrarShipmentResponse,
   SendingboxWebhookPayload,
 } from './lrar.schemas';
+
+const execAsync = promisify(exec);
 
 export class LrarService {
   /**
@@ -570,4 +577,551 @@ export class LrarService {
   }
 }
 
+// ============================================
+// GENERATED DOCUMENTS LRAR METHODS
+// ============================================
+
+export interface GeneratedDocumentRecipient {
+  name: string;
+  address: string;
+  postalCode: string;
+  city: string;
+  country?: string;
+}
+
+export interface LrarSendOptions {
+  color?: boolean;
+  duplex?: boolean;
+  registered?: boolean;
+}
+
+export interface GeneratedDocumentLrarResult {
+  letterId: string;
+  trackingNumber?: string;
+  trackingUrl: string;
+  estimatedDelivery?: Date;
+  cost?: number;
+}
+
+export interface LrarTrackingResult {
+  letterId: string;
+  status: string;
+  trackingNumber?: string;
+  events: Array<{
+    date: Date;
+    type: string;
+    description?: string;
+    location?: string;
+  }>;
+  estimatedDelivery?: Date;
+  deliveredAt?: Date;
+  proofAvailable: boolean;
+}
+
+export class GeneratedDocumentLrarService {
+  /**
+   * Send a generated document as LRAR
+   */
+  async sendDocumentAsLRAR(
+    documentId: string,
+    cabinetId: string,
+    userId: string,
+    recipient: GeneratedDocumentRecipient,
+    options: LrarSendOptions = {}
+  ): Promise<GeneratedDocumentLrarResult> {
+    // 1. Load generated document from DB
+    const generatedDoc = await prisma.generatedDocument.findFirst({
+      where: {
+        id: documentId,
+        cabinetId,
+        deletedAt: null,
+      },
+      include: {
+        folder: { select: { id: true, name: true } },
+        createdBy: { select: { id: true, firstName: true, lastName: true, email: true } },
+      },
+    });
+
+    if (!generatedDoc) {
+      throw new NotFoundError('Document genere non trouve');
+    }
+
+    if (generatedDoc.status !== 'FINALIZED') {
+      throw new BadRequestError('Le document doit etre finalise avant envoi en LRAR');
+    }
+
+    if (!generatedDoc.outputFilePath) {
+      throw new BadRequestError('Le fichier du document n\'est pas disponible');
+    }
+
+    // 2. Get cabinet and user info for sender
+    const [cabinet, user] = await Promise.all([
+      prisma.cabinet.findUnique({ where: { id: cabinetId } }),
+      prisma.user.findUnique({ where: { id: userId } }),
+    ]);
+
+    if (!cabinet || !user) {
+      throw new NotFoundError('Cabinet ou utilisateur non trouve');
+    }
+
+    // 3. Get document file from MinIO
+    let documentBuffer: Buffer;
+    try {
+      const stream = await minioClient.getObject(
+        config.minio.buckets.documents,
+        generatedDoc.outputFilePath
+      );
+
+      const chunks: Buffer[] = [];
+      for await (const chunk of stream) {
+        chunks.push(chunk);
+      }
+      documentBuffer = Buffer.concat(chunks);
+    } catch (error: any) {
+      logger.error(`Failed to get document from MinIO: ${error.message}`);
+      throw new BadRequestError('Impossible de recuperer le fichier du document');
+    }
+
+    // 4. Convert to PDF if DOCX
+    const isDocx = generatedDoc.outputFilePath.toLowerCase().endsWith('.docx');
+    if (isDocx) {
+      documentBuffer = await this.convertDocxToPdf(documentBuffer);
+    }
+
+    // 5. Send to SendingBox
+    try {
+      const sendingBoxClient = getSendingBoxClient();
+      const webhookUrl = `${config.urls.backend}/api/webhooks/sendingbox`;
+
+      // Parse recipient name to first/last
+      const nameParts = recipient.name.trim().split(/\s+/);
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || nameParts[0] || '';
+
+      const shipment = await sendingBoxClient.createShipment(
+        documentBuffer,
+        `${generatedDoc.title}.pdf`,
+        {
+          documentId: generatedDoc.id,
+          recipient: {
+            firstName,
+            lastName,
+            address: recipient.address,
+            postalCode: recipient.postalCode,
+            city: recipient.city,
+            country: recipient.country || 'FR',
+          },
+          sender: {
+            firstName: user.firstName,
+            lastName: user.lastName,
+            address: cabinet.address || '',
+            postalCode: cabinet.postalCode || '',
+            city: cabinet.city || '',
+            country: 'FR',
+          },
+          subject: generatedDoc.title,
+          reference: generatedDoc.id,
+          color: options.color ?? false,
+          duplexPrinting: options.duplex ?? false,
+          registeredMail: options.registered ?? true,
+          webhookUrl,
+        }
+      );
+
+      // 6. Update generated document with workflow status
+      const workflowStatus = (generatedDoc.workflowStatus || {}) as Record<string, any>;
+      workflowStatus.lrar = {
+        letterId: shipment.id,
+        status: 'PROCESSING',
+        trackingNumber: shipment.trackingNumber,
+        recipient: {
+          name: recipient.name,
+          address: recipient.address,
+          postalCode: recipient.postalCode,
+          city: recipient.city,
+          country: recipient.country || 'FR',
+        },
+        options: {
+          color: options.color ?? false,
+          duplex: options.duplex ?? false,
+          registered: options.registered ?? true,
+        },
+        cost: shipment.cost,
+        createdAt: new Date().toISOString(),
+        estimatedDelivery: shipment.estimatedDelivery?.toISOString(),
+      };
+
+      await prisma.generatedDocument.update({
+        where: { id: generatedDoc.id },
+        data: {
+          workflowStatus: workflowStatus as Prisma.InputJsonValue,
+        },
+      });
+
+      // 7. Create audit log
+      await this.createAuditLog(cabinetId, userId, generatedDoc.id, 'LRAR_SENT', {
+        documentTitle: generatedDoc.title,
+        letterId: shipment.id,
+        recipient: recipient.name,
+      });
+
+      logger.info(`[LRAR] Created shipment for document ${documentId}: ${shipment.id}`);
+
+      return {
+        letterId: shipment.id,
+        trackingNumber: shipment.trackingNumber,
+        trackingUrl: `${config.urls.frontend}/document-generation/documents/${documentId}?tab=lrar`,
+        estimatedDelivery: shipment.estimatedDelivery,
+        cost: shipment.cost,
+      };
+    } catch (error: any) {
+      logger.error(`Failed to create SendingBox shipment: ${error.message}`);
+      throw new BadRequestError(`Erreur lors de l'envoi LRAR: ${error.message}`);
+    }
+  }
+
+  /**
+   * Handle SendingBox webhook for generated documents
+   */
+  async handleGeneratedDocumentWebhook(payload: SendingboxWebhookPayload): Promise<void> {
+    logger.info(`[Webhook] Processing generated document LRAR webhook: ${payload.shipmentId} -> ${payload.status}`);
+
+    // Find generated document with this letter ID in workflowStatus
+    const documents = await prisma.generatedDocument.findMany({
+      where: {
+        deletedAt: null,
+        workflowStatus: {
+          path: ['lrar', 'letterId'],
+          equals: payload.shipmentId,
+        },
+      },
+      include: {
+        folder: { select: { id: true, name: true } },
+        createdBy: { select: { id: true, email: true, firstName: true } },
+      },
+    });
+
+    if (documents.length === 0) {
+      logger.warn(`[Webhook] No generated document found for letter: ${payload.shipmentId}`);
+      return;
+    }
+
+    for (const document of documents) {
+      const workflowStatus = (document.workflowStatus || {}) as Record<string, any>;
+      const lrarStatus = workflowStatus.lrar || {};
+
+      // Map webhook status
+      const newStatus = this.mapLrarWebhookStatus(payload.status);
+      lrarStatus.status = newStatus;
+
+      if (payload.trackingNumber) {
+        lrarStatus.trackingNumber = payload.trackingNumber;
+      }
+
+      // Add tracking event
+      if (!lrarStatus.events) {
+        lrarStatus.events = [];
+      }
+      if (payload.trackingEvent) {
+        lrarStatus.events.push({
+          date: payload.trackingEvent.timestamp,
+          type: payload.trackingEvent.status,
+          description: payload.trackingEvent.description,
+          location: payload.trackingEvent.location,
+        });
+      }
+
+      // Handle delivery - download and store AR
+      if (newStatus === 'DELIVERED') {
+        lrarStatus.deliveredAt = new Date().toISOString();
+
+        // Store delivery proof (AR)
+        await this.storeDeliveryProof(document, payload.shipmentId);
+        lrarStatus.proofPath = `${document.cabinetId}/${document.folderId}/ar_${document.id}.pdf`;
+
+        // Send notification email to user
+        await this.sendDeliveryNotification(document);
+      }
+
+      if (newStatus === 'RETURNED') {
+        lrarStatus.returnedAt = new Date().toISOString();
+      }
+
+      if (newStatus === 'SENT' && !lrarStatus.sentAt) {
+        lrarStatus.sentAt = new Date().toISOString();
+      }
+
+      workflowStatus.lrar = lrarStatus;
+
+      await prisma.generatedDocument.update({
+        where: { id: document.id },
+        data: {
+          workflowStatus: workflowStatus as Prisma.InputJsonValue,
+        },
+      });
+
+      // Create audit log
+      const auditAction = newStatus === 'DELIVERED' ? 'LRAR_DELIVERED' :
+                         newStatus === 'RETURNED' ? 'LRAR_RETURNED' : 'LRAR_UPDATED';
+
+      await this.createAuditLog(
+        document.cabinetId,
+        document.createdById,
+        document.id,
+        auditAction,
+        { status: newStatus, letterId: payload.shipmentId }
+      );
+
+      logger.info(`[Webhook] Document ${document.id} LRAR updated to ${newStatus}`);
+    }
+  }
+
+  /**
+   * Get LRAR tracking status for a generated document
+   */
+  async getTrackingStatus(
+    documentId: string,
+    cabinetId: string
+  ): Promise<LrarTrackingResult | null> {
+    const document = await prisma.generatedDocument.findFirst({
+      where: {
+        id: documentId,
+        cabinetId,
+        deletedAt: null,
+      },
+    });
+
+    if (!document) {
+      throw new NotFoundError('Document genere non trouve');
+    }
+
+    const workflowStatus = (document.workflowStatus || {}) as Record<string, any>;
+    const lrarStatus = workflowStatus.lrar;
+
+    if (!lrarStatus || !lrarStatus.letterId) {
+      return null;
+    }
+
+    // Fetch real-time status from SendingBox
+    try {
+      const sendingBoxClient = getSendingBoxClient();
+      const status = await sendingBoxClient.getShipmentStatus(lrarStatus.letterId);
+
+      return {
+        letterId: lrarStatus.letterId,
+        status: status.status,
+        trackingNumber: status.trackingNumber,
+        events: status.trackingEvents.map(e => ({
+          date: e.date,
+          type: e.status,
+          description: e.description,
+          location: e.location,
+        })),
+        estimatedDelivery: lrarStatus.estimatedDelivery ? new Date(lrarStatus.estimatedDelivery) : undefined,
+        deliveredAt: lrarStatus.deliveredAt ? new Date(lrarStatus.deliveredAt) : undefined,
+        proofAvailable: !!lrarStatus.proofPath || status.status === 'DELIVERED',
+      };
+    } catch (error: any) {
+      logger.warn(`Failed to get real-time tracking: ${error.message}`);
+
+      // Return cached status from workflowStatus
+      return {
+        letterId: lrarStatus.letterId,
+        status: lrarStatus.status,
+        trackingNumber: lrarStatus.trackingNumber,
+        events: lrarStatus.events || [],
+        estimatedDelivery: lrarStatus.estimatedDelivery ? new Date(lrarStatus.estimatedDelivery) : undefined,
+        deliveredAt: lrarStatus.deliveredAt ? new Date(lrarStatus.deliveredAt) : undefined,
+        proofAvailable: !!lrarStatus.proofPath,
+      };
+    }
+  }
+
+  /**
+   * Download delivery proof (AR) for a generated document
+   */
+  async downloadProof(
+    documentId: string,
+    cabinetId: string
+  ): Promise<{ buffer: Buffer; filename: string }> {
+    const document = await prisma.generatedDocument.findFirst({
+      where: {
+        id: documentId,
+        cabinetId,
+        deletedAt: null,
+      },
+    });
+
+    if (!document) {
+      throw new NotFoundError('Document genere non trouve');
+    }
+
+    const workflowStatus = (document.workflowStatus || {}) as Record<string, any>;
+    const lrarStatus = workflowStatus.lrar;
+
+    if (!lrarStatus || !lrarStatus.letterId) {
+      throw new BadRequestError('Aucun envoi LRAR pour ce document');
+    }
+
+    // If proof is stored locally
+    if (lrarStatus.proofPath) {
+      try {
+        const stream = await minioClient.getObject(
+          config.minio.buckets.documents,
+          lrarStatus.proofPath
+        );
+
+        const chunks: Buffer[] = [];
+        for await (const chunk of stream) {
+          chunks.push(chunk);
+        }
+
+        return {
+          buffer: Buffer.concat(chunks),
+          filename: `AR_${document.title}.pdf`,
+        };
+      } catch (error) {
+        logger.warn('Proof not found in storage, fetching from SendingBox');
+      }
+    }
+
+    // Otherwise, fetch from SendingBox
+    const sendingBoxClient = getSendingBoxClient();
+    const buffer = await sendingBoxClient.downloadProof(lrarStatus.letterId);
+
+    // Store for future use
+    const proofPath = `${cabinetId}/${document.folderId}/ar_${documentId}.pdf`;
+    await minioClient.putObject(
+      config.minio.buckets.documents,
+      proofPath,
+      buffer,
+      buffer.length,
+      { 'Content-Type': 'application/pdf' }
+    );
+
+    // Update workflowStatus with proof path
+    lrarStatus.proofPath = proofPath;
+    workflowStatus.lrar = lrarStatus;
+    await prisma.generatedDocument.update({
+      where: { id: documentId },
+      data: {
+        workflowStatus: workflowStatus as Prisma.InputJsonValue,
+      },
+    });
+
+    return {
+      buffer,
+      filename: `AR_${document.title}.pdf`,
+    };
+  }
+
+  /**
+   * Store delivery proof from SendingBox
+   */
+  private async storeDeliveryProof(
+    document: { id: string; cabinetId: string; folderId: string },
+    letterId: string
+  ): Promise<void> {
+    try {
+      const sendingBoxClient = getSendingBoxClient();
+      const proof = await sendingBoxClient.downloadProof(letterId);
+      const proofPath = `${document.cabinetId}/${document.folderId}/ar_${document.id}.pdf`;
+
+      await minioClient.putObject(
+        config.minio.buckets.documents,
+        proofPath,
+        proof,
+        proof.length,
+        { 'Content-Type': 'application/pdf' }
+      );
+
+      logger.info(`[LRAR] Stored delivery proof for ${document.id}`);
+    } catch (error: any) {
+      logger.error(`[LRAR] Failed to store delivery proof: ${error.message}`);
+    }
+  }
+
+  /**
+   * Send delivery notification email
+   */
+  private async sendDeliveryNotification(
+    document: { id: string; title: string; createdBy: { email: string; firstName: string } }
+  ): Promise<void> {
+    try {
+      // TODO: Implement email sending
+      logger.info(`[LRAR] Would send delivery notification to ${document.createdBy.email} for ${document.title}`);
+    } catch (error: any) {
+      logger.error(`[LRAR] Failed to send delivery notification: ${error.message}`);
+    }
+  }
+
+  /**
+   * Convert DOCX to PDF using LibreOffice
+   */
+  private async convertDocxToPdf(docxBuffer: Buffer): Promise<Buffer> {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'lrar-convert-'));
+    const inputPath = path.join(tempDir, 'input.docx');
+    const outputPath = path.join(tempDir, 'input.pdf');
+
+    try {
+      await fs.writeFile(inputPath, docxBuffer);
+
+      await execAsync(
+        `libreoffice --headless --convert-to pdf --outdir "${tempDir}" "${inputPath}"`
+      );
+
+      const pdfBuffer = await fs.readFile(outputPath);
+      return pdfBuffer;
+    } finally {
+      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+    }
+  }
+
+  private mapLrarWebhookStatus(status: string): string {
+    const statusMap: Record<string, string> = {
+      'draft': 'PENDING',
+      'pending': 'PENDING',
+      'processing': 'PROCESSING',
+      'printed': 'PROCESSING',
+      'letter_printed': 'PROCESSING',
+      'sent': 'SENT',
+      'letter_sent': 'SENT',
+      'in_transit': 'IN_TRANSIT',
+      'out_for_delivery': 'IN_TRANSIT',
+      'delivered': 'DELIVERED',
+      'letter_delivered': 'DELIVERED',
+      'returned': 'RETURNED',
+      'letter_returned': 'RETURNED',
+      'failed': 'ERROR',
+      'cancelled': 'CANCELLED',
+    };
+
+    return statusMap[status.toLowerCase()] || status.toUpperCase();
+  }
+
+  private async createAuditLog(
+    cabinetId: string,
+    userId: string,
+    entityId: string,
+    action: string,
+    details: Record<string, any>
+  ) {
+    try {
+      await prisma.auditLog.create({
+        data: {
+          cabinetId,
+          userId,
+          action: action as any,
+          entity: 'GeneratedDocument',
+          entityId,
+          details,
+        },
+      });
+    } catch (error) {
+      logger.error('Failed to create audit log:', error);
+    }
+  }
+}
+
 export const lrarService = new LrarService();
+export const generatedDocumentLrarService = new GeneratedDocumentLrarService();

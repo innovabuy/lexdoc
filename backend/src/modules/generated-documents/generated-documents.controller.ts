@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { generatedDocumentsService } from './generated-documents.service';
 import { signaturesService } from '@/modules/signatures/signatures.service';
+import { generatedDocumentLrarService } from '@/modules/lrar/lrar.service';
 import { ApiResponse } from '@/types';
-import type { SendSignatureRequestInput } from './generated-documents.schemas';
+import type { SendSignatureRequestInput, SendLrarRequestInput } from './generated-documents.schemas';
 
 export class GeneratedDocumentsController {
   /**
@@ -304,6 +305,74 @@ export class GeneratedDocumentsController {
       res.setHeader('Content-Disposition', `attachment; filename="${document.title}_signed.pdf"`);
 
       stream.pipe(res);
+    } catch (error) {
+      next(error);
+    }
+  }
+  /**
+   * POST /api/generated-documents/:id/send-lrar
+   * Send document via LRAR (registered mail)
+   */
+  async sendLrar(req: Request, res: Response, next: NextFunction) {
+    try {
+      const input = req.body as SendLrarRequestInput;
+
+      const result = await generatedDocumentLrarService.sendDocumentAsLRAR(
+        req.params.id,
+        req.cabinetId!,
+        req.user!.id,
+        input.recipient,
+        input.options
+      );
+
+      const response: ApiResponse = {
+        success: true,
+        data: result,
+        message: 'Document envoye en LRAR avec succes',
+      };
+
+      res.status(201).json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/generated-documents/:id/lrar-tracking
+   * Get LRAR tracking status for a document
+   */
+  async getLrarTracking(req: Request, res: Response, next: NextFunction) {
+    try {
+      const tracking = await generatedDocumentLrarService.getTrackingStatus(
+        req.params.id,
+        req.cabinetId!
+      );
+
+      const response: ApiResponse = {
+        success: true,
+        data: tracking,
+      };
+
+      res.json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/generated-documents/:id/download-ar
+   * Download the delivery proof (AR)
+   */
+  async downloadAR(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { buffer, filename } = await generatedDocumentLrarService.downloadProof(
+        req.params.id,
+        req.cabinetId!
+      );
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(buffer);
     } catch (error) {
       next(error);
     }

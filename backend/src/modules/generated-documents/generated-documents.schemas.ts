@@ -68,6 +68,25 @@ export const sendSignatureRequestSchema = z.object({
   profile: z.enum(['default', 'certified', 'advanced']).optional().default('default'),
 });
 
+// LRAR recipient schema
+const lrarRecipientSchema = z.object({
+  name: z.string().min(1, 'Le nom du destinataire est requis'),
+  address: z.string().min(1, 'L\'adresse est requise'),
+  postalCode: z.string().regex(/^\d{5}$/, 'Le code postal doit contenir 5 chiffres'),
+  city: z.string().min(1, 'La ville est requise'),
+  country: z.string().optional().default('FR'),
+});
+
+// Send LRAR request schema
+export const sendLrarRequestSchema = z.object({
+  recipient: lrarRecipientSchema,
+  options: z.object({
+    color: z.boolean().optional().default(false),
+    duplex: z.boolean().optional().default(false),
+    registered: z.boolean().optional().default(true),
+  }).optional().default({}),
+});
+
 // Types
 export type CreateGeneratedDocumentInput = z.infer<typeof createGeneratedDocumentSchema>;
 export type UpdateGeneratedDocumentInput = z.infer<typeof updateGeneratedDocumentSchema>;
@@ -76,3 +95,5 @@ export type GeneratedDocumentQuery = z.infer<typeof generatedDocumentQuerySchema
 export type DocumentIdParam = z.infer<typeof documentIdParamSchema>;
 export type SendSignatureRequestInput = z.infer<typeof sendSignatureRequestSchema>;
 export type SignatoryInput = z.infer<typeof signatorySchema>;
+export type SendLrarRequestInput = z.infer<typeof sendLrarRequestSchema>;
+export type LrarRecipientInput = z.infer<typeof lrarRecipientSchema>;

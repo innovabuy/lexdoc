@@ -14,7 +14,7 @@ import type {
   UpdateGeneratedDocumentInput,
   FinalizeDocumentInput,
 } from '@/lib/types/documentBuilder';
-import type { SendSignatureInput } from '@/lib/api/documentBuilder';
+import type { SendSignatureInput, SendLrarInput } from '@/lib/api/documentBuilder';
 
 // ============================================
 // DOCUMENT BLOCKS HOOKS
@@ -392,5 +392,36 @@ export function useDocumentSignatureStatus(id: string | undefined) {
     enabled: !!id,
     staleTime: 10 * 1000, // Refresh every 10 seconds for status updates
     refetchInterval: 30 * 1000, // Auto-refresh every 30 seconds
+  });
+}
+
+// ============================================
+// LRAR HOOKS
+// ============================================
+
+export function useSendDocumentAsLrar() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: SendLrarInput }) =>
+      documentBuilderApi.sendDocumentAsLrar(id, input),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['generated-documents'] });
+      queryClient.invalidateQueries({ queryKey: ['generated-documents', variables.id] });
+      toast.success('Document envoye en LRAR avec succes');
+    },
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Erreur lors de l\'envoi LRAR'));
+    },
+  });
+}
+
+export function useLrarTrackingStatus(id: string | undefined) {
+  return useQuery({
+    queryKey: ['generated-documents', id, 'lrar-tracking'],
+    queryFn: () => documentBuilderApi.getLrarTrackingStatus(id!),
+    enabled: !!id,
+    staleTime: 30 * 1000, // Refresh every 30 seconds for status updates
+    refetchInterval: 60 * 1000, // Auto-refresh every minute
   });
 }

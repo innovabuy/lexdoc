@@ -16,9 +16,10 @@ import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import { toast } from 'react-hot-toast';
-import { useSendDocumentForSignature } from '@/hooks/useDocumentBuilder';
+import { useSendDocumentForSignature, useSendDocumentAsLrar } from '@/hooks/useDocumentBuilder';
 import type { GeneratedDocument, OutputFormat, WorkflowConfig } from '@/lib/types/documentBuilder';
 import SignatureModal from './SignatureModal';
+import LRARModal from './LRARModal';
 
 interface Step4WorkflowProps {
   documentId?: string;
@@ -27,7 +28,6 @@ interface Step4WorkflowProps {
   workflowConfig?: WorkflowConfig;
   onBack: () => void;
   onFinalize: (options: { outputFormat: OutputFormat }) => Promise<void>;
-  onSendLrar?: () => Promise<void>;
   isLoading?: boolean;
   // Pre-filled signatories from client/avocat data
   prefilledSignatories?: Array<{
@@ -37,6 +37,14 @@ interface Step4WorkflowProps {
     phone?: string;
     role: 'client' | 'avocat' | 'partie_adverse' | 'temoin' | 'autre';
   }>;
+  // Pre-filled recipient for LRAR
+  prefilledRecipient?: {
+    name?: string;
+    address?: string;
+    postalCode?: string;
+    city?: string;
+    country?: string;
+  };
 }
 
 type ActionType = 'download' | 'signature' | 'lrar' | null;
@@ -48,16 +56,18 @@ export const Step4Workflow: React.FC<Step4WorkflowProps> = ({
   workflowConfig,
   onBack,
   onFinalize,
-  onSendLrar,
   isLoading = false,
   prefilledSignatories = [],
+  prefilledRecipient = {},
 }) => {
   const [outputFormat, setOutputFormat] = useState<OutputFormat>('PDF');
   const [activeAction, setActiveAction] = useState<ActionType>(null);
   const [completedActions, setCompletedActions] = useState<ActionType[]>([]);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const [showLrarModal, setShowLrarModal] = useState(false);
 
   const sendSignatureMutation = useSendDocumentForSignature();
+  const sendLrarMutation = useSendDocumentAsLrar();
 
   const hasSignature = workflowConfig?.signature?.enabled;
   const hasLrar = workflowConfig?.lrar?.enabled;
@@ -120,17 +130,45 @@ export const Step4Workflow: React.FC<Step4WorkflowProps> = ({
     }
   };
 
-  const handleLrar = async () => {
-    if (!onSendLrar) return;
-    setActiveAction('lrar');
+  const handleOpenLrarModal = () => {
+    if (!isFinalized) {
+      toast.error('Veuillez d\'abord finaliser le document');
+      return;
+    }
+    setShowLrarModal(true);
+  };
+
+  const handleSendLrar = async (data: {
+    recipient: {
+      name: string;
+      address: string;
+      postalCode: string;
+      city: string;
+      country: string;
+    };
+    options: {
+      color: boolean;
+      duplex: boolean;
+      registered: boolean;
+    };
+  }) => {
+    if (!documentId) {
+      toast.error('Document non trouve');
+      return;
+    }
+
     try {
-      await onSendLrar();
+      await sendLrarMutation.mutateAsync({
+        id: documentId,
+        input: {
+          recipient: data.recipient,
+          options: data.options,
+        },
+      });
+      setShowLrarModal(false);
       setCompletedActions((prev) => [...prev, 'lrar']);
-      toast.success('LRAR preparee avec succes');
     } catch {
-      toast.error('Erreur lors de la preparation LRAR');
-    } finally {
-      setActiveAction(null);
+      // Error is handled by the mutation
     }
   };
 
@@ -305,30 +343,27 @@ export const Step4Workflow: React.FC<Step4WorkflowProps> = ({
             </div>
             <h4 className="font-medium text-gray-900 mb-1">Envoi LRAR</h4>
             <p className="text-xs text-gray-500 mb-4">
-              {hasLrar
-                ? 'Preparer l\'envoi en recommande'
-                : 'Non configure pour ce modele'}
+              {!hasLrar
+                ? 'Non configure pour ce modele'
+                : !isFinalized
+                ? 'Finalisez d\'abord le document'
+                : 'Envoyer le document en recommande'}
             </p>
             <Button
-              onClick={handleLrar}
-              disabled={!hasLrar || isLoading || isActionActive('lrar')}
+              onClick={handleOpenLrarModal}
+              disabled={!hasLrar || !isFinalized || isLoading || isActionComplete('lrar')}
               variant={isActionComplete('lrar') ? 'ghost' : 'outline'}
               className="w-full"
             >
-              {isActionActive('lrar') ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Preparation...
-                </>
-              ) : isActionComplete('lrar') ? (
+              {isActionComplete('lrar') ? (
                 <>
                   <CheckCircle className="h-4 w-4 mr-2" />
-                  Prepare
+                  Envoye
                 </>
               ) : (
                 <>
                   <Mail className="h-4 w-4 mr-2" />
-                  Preparer LRAR
+                  Configurer LRAR
                 </>
               )}
             </Button>
@@ -412,6 +447,16 @@ export const Step4Workflow: React.FC<Step4WorkflowProps> = ({
         documentTitle={templateName}
         initialSignatories={prefilledSignatories}
         isLoading={sendSignatureMutation.isPending}
+      />
+
+      {/* LRAR Modal */}
+      <LRARModal
+        isOpen={showLrarModal}
+        onClose={() => setShowLrarModal(false)}
+        onSubmit={handleSendLrar}
+        documentTitle={templateName}
+        initialRecipient={prefilledRecipient}
+        isLoading={sendLrarMutation.isPending}
       />
     </div>
   );
