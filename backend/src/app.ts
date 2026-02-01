@@ -23,6 +23,7 @@ import signaturesRoutes, { webhookRouter as signatureWebhookRouter } from '@/mod
 import lrarRoutes, { webhookRouter as lrarWebhookRouter } from '@/modules/lrar/lrar.routes';
 import documentBlocksRoutes from '@/modules/document-blocks/document-blocks.routes';
 import builderTemplatesRoutes from '@/modules/builder-templates/builder-templates.routes';
+import generatedDocumentsRoutes from '@/modules/generated-documents/generated-documents.routes';
 
 const app = express();
 
@@ -114,6 +115,7 @@ app.use('/api/signatures', apiLimiter, signaturesRoutes);
 app.use('/api/lrar', apiLimiter, lrarRoutes);
 app.use('/api/document-blocks', apiLimiter, documentBlocksRoutes);
 app.use('/api/builder-templates', apiLimiter, builderTemplatesRoutes);
+app.use('/api/generated-documents', apiLimiter, generatedDocumentsRoutes);
 
 // Webhook routes (public, no rate limiting)
 app.use('/api/webhooks', signatureWebhookRouter);
@@ -137,6 +139,7 @@ app.get('/api', (_req, res) => {
       lrar: '/api/lrar',
       documentBlocks: '/api/document-blocks',
       builderTemplates: '/api/builder-templates',
+      generatedDocuments: '/api/generated-documents',
       webhooks: '/api/webhooks',
     },
   });
