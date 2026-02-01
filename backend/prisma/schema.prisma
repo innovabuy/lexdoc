@@ -9,59 +9,71 @@ datasource db {
 }
 
 model Cabinet {
-  id          String        @id @default(uuid())
-  name        String
-  siret       String?       @unique
-  address     String?
-  postalCode  String?       @map("postal_code")
-  city        String?
-  phone       String?
-  email       String        @unique
-  status      CabinetStatus @default(TRIAL)
-  trialEndsAt DateTime?     @map("trial_ends_at")
-  maxUsers    Int           @default(5) @map("max_users")
-  maxStorage  BigInt        @default(10737418240) @map("max_storage")
-  createdAt   DateTime      @default(now()) @map("created_at")
-  updatedAt   DateTime      @updatedAt @map("updated_at")
-  deletedAt   DateTime?     @map("deleted_at")
-  auditLogs   AuditLog[]
-  documents   Document[]
-  folders     Folder[]
-  templates   Template[]
-  users       User[]
+  id                    String                 @id @default(uuid())
+  name                  String
+  siret                 String?                @unique
+  address               String?
+  postalCode            String?                @map("postal_code")
+  city                  String?
+  phone                 String?
+  email                 String                 @unique
+  status                CabinetStatus          @default(TRIAL)
+  trialEndsAt           DateTime?              @map("trial_ends_at")
+  maxUsers              Int                    @default(5) @map("max_users")
+  maxStorage            BigInt                 @default(10737418240) @map("max_storage")
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+  deletedAt             DateTime?              @map("deleted_at")
+  auditLogs             AuditLog[]
+  documents             Document[]
+  folders               Folder[]
+  templates             Template[]
+  users                 User[]
   signatureTransactions SignatureTransaction[]
   lrarShipments         LrarShipment[]
+
+  // Document Builder relations
+  documentBlocks     DocumentBlock[]
+  builderTemplates   BuilderTemplate[]
+  generatedDocuments GeneratedDocument[]
+  avocatLegalInfos   AvocatLegalInfo[]
 
   @@map("cabinets")
 }
 
 model User {
-  id               String     @id @default(uuid())
-  cabinetId        String     @map("cabinet_id")
-  email            String     @unique
-  password         String
-  firstName        String     @map("first_name")
-  lastName         String     @map("last_name")
-  phone            String?
-  role             UserRole   @default(COLLABORATEUR)
-  twoFactorEnabled Boolean    @default(false) @map("two_factor_enabled")
-  twoFactorSecret  String?    @map("two_factor_secret")
-  lastLoginAt      DateTime?  @map("last_login_at")
-  refreshTokens    String[]   @default([]) @map("refresh_tokens")
-  isActive         Boolean    @default(true) @map("is_active")
-  emailVerified    Boolean    @default(false) @map("email_verified")
-  emailVerifiedAt  DateTime?  @map("email_verified_at")
-  resetToken       String?    @map("reset_token")
-  resetTokenExpiry DateTime?  @map("reset_token_expiry")
-  verifyToken      String?    @map("verify_token")
-  createdAt        DateTime   @default(now()) @map("created_at")
-  updatedAt        DateTime   @updatedAt @map("updated_at")
-  deletedAt        DateTime?  @map("deleted_at")
-  auditLogs        AuditLog[]
-  createdDocuments Document[] @relation("DocumentCreator")
-  cabinet          Cabinet    @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  id                  String                 @id @default(uuid())
+  cabinetId           String                 @map("cabinet_id")
+  email               String                 @unique
+  password            String
+  firstName           String                 @map("first_name")
+  lastName            String                 @map("last_name")
+  phone               String?
+  role                UserRole               @default(COLLABORATEUR)
+  twoFactorEnabled    Boolean                @default(false) @map("two_factor_enabled")
+  twoFactorSecret     String?                @map("two_factor_secret")
+  lastLoginAt         DateTime?              @map("last_login_at")
+  refreshTokens       String[]               @default([]) @map("refresh_tokens")
+  isActive            Boolean                @default(true) @map("is_active")
+  emailVerified       Boolean                @default(false) @map("email_verified")
+  emailVerifiedAt     DateTime?              @map("email_verified_at")
+  resetToken          String?                @map("reset_token")
+  resetTokenExpiry    DateTime?              @map("reset_token_expiry")
+  verifyToken         String?                @map("verify_token")
+  createdAt           DateTime               @default(now()) @map("created_at")
+  updatedAt           DateTime               @updatedAt @map("updated_at")
+  deletedAt           DateTime?              @map("deleted_at")
+  auditLogs           AuditLog[]
+  createdDocuments    Document[]             @relation("DocumentCreator")
+  cabinet             Cabinet                @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
   initiatedSignatures SignatureTransaction[] @relation("SignatureInitiator")
   initiatedLrar       LrarShipment[]         @relation("LrarInitiator")
+
+  // Document Builder relations
+  createdBlocks           DocumentBlock[]     @relation("BlockCreator")
+  createdBuilderTemplates BuilderTemplate[]   @relation("TemplateCreator")
+  generatedDocuments      GeneratedDocument[] @relation("GeneratedDocCreator")
+  avocatLegalInfo         AvocatLegalInfo?
 
   @@index([cabinetId])
   @@index([email])
@@ -83,6 +95,9 @@ model Folder {
   parent      Folder?    @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
   children    Folder[]   @relation("FolderHierarchy")
 
+  // Document Builder relation
+  generatedDocuments GeneratedDocument[]
+
   @@index([cabinetId])
   @@index([parentId])
   @@map("folders")
@@ -90,33 +105,33 @@ model Folder {
 
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model Document {
-  id              String            @id @default(uuid())
-  cabinetId       String            @map("cabinet_id")
-  folderId        String?           @map("folder_id")
-  createdById     String            @map("created_by_id")
-  filename        String
-  originalName    String            @map("original_name")
-  mimeType        String            @map("mime_type")
-  size            BigInt
-  minioPath       String            @map("minio_path")
-  minioBucket     String            @default("documents") @map("minio_bucket")
-  type            DocumentType      @default(OTHER)
-  title           String
-  description     String?
-  tags            String[]          @default([])
-  documentDate    DateTime?         @map("document_date")
-  expiresAt       DateTime?         @map("expires_at")
-  version         Int               @default(1)
-  isLatestVersion Boolean           @default(true) @map("is_latest_version")
-  isEncrypted     Boolean           @default(true) @map("is_encrypted")
-  encryptionKey   String?           @map("encryption_key")
-  createdAt       DateTime          @default(now()) @map("created_at")
-  updatedAt       DateTime          @updatedAt @map("updated_at")
-  deletedAt       DateTime?         @map("deleted_at")
-  versions        DocumentVersion[]
-  cabinet         Cabinet           @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
-  createdBy       User              @relation("DocumentCreator", fields: [createdById], references: [id])
-  folder          Folder?           @relation(fields: [folderId], references: [id])
+  id                    String                 @id @default(uuid())
+  cabinetId             String                 @map("cabinet_id")
+  folderId              String?                @map("folder_id")
+  createdById           String                 @map("created_by_id")
+  filename              String
+  originalName          String                 @map("original_name")
+  mimeType              String                 @map("mime_type")
+  size                  BigInt
+  minioPath             String                 @map("minio_path")
+  minioBucket           String                 @default("documents") @map("minio_bucket")
+  type                  DocumentType           @default(OTHER)
+  title                 String
+  description           String?
+  tags                  String[]               @default([])
+  documentDate          DateTime?              @map("document_date")
+  expiresAt             DateTime?              @map("expires_at")
+  version               Int                    @default(1)
+  isLatestVersion       Boolean                @default(true) @map("is_latest_version")
+  isEncrypted           Boolean                @default(true) @map("is_encrypted")
+  encryptionKey         String?                @map("encryption_key")
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+  deletedAt             DateTime?              @map("deleted_at")
+  versions              DocumentVersion[]
+  cabinet               Cabinet                @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  createdBy             User                   @relation("DocumentCreator", fields: [createdById], references: [id])
+  folder                Folder?                @relation(fields: [folderId], references: [id])
   signatureTransactions SignatureTransaction[]
   lrarShipments         LrarShipment[]
 
@@ -246,6 +261,17 @@ enum AuditAction {
   LRAR_UPDATED
   LRAR_DELIVERED
   LRAR_RETURNED
+
+  // Document Builder actions
+  BLOCK_CREATED
+  BLOCK_UPDATED
+  BLOCK_DELETED
+  BUILDER_TEMPLATE_CREATED
+  BUILDER_TEMPLATE_UPDATED
+  BUILDER_TEMPLATE_DELETED
+  DOCUMENT_GENERATED
+  DOCUMENT_FINALIZED
+  AVOCAT_INFO_UPDATED
 }
 
 // ============================================
@@ -254,41 +280,41 @@ enum AuditAction {
 
 /// Signature transaction for electronic signatures via Universign
 model SignatureTransaction {
-  id                    String                    @id @default(uuid())
-  cabinetId             String                    @map("cabinet_id")
-  documentId            String                    @map("document_id")
-  initiatorId           String                    @map("initiator_id")
+  id          String @id @default(uuid())
+  cabinetId   String @map("cabinet_id")
+  documentId  String @map("document_id")
+  initiatorId String @map("initiator_id")
 
   // Universign data
-  universignId          String?                   @unique @map("universign_id")
-  status                SignatureStatus           @default(PENDING)
-  profile               SignatureProfile          @default(DEFAULT)
+  universignId String?          @unique @map("universign_id")
+  status       SignatureStatus  @default(PENDING)
+  profile      SignatureProfile @default(DEFAULT)
 
   // Metadata
-  title                 String
-  description           String?
-  language              String                    @default("fr")
+  title       String
+  description String?
+  language    String  @default("fr")
 
   // Signed document storage
-  signedDocumentPath    String?                   @map("signed_document_path")
-  certificatesPath      String?                   @map("certificates_path")
+  signedDocumentPath String? @map("signed_document_path")
+  certificatesPath   String? @map("certificates_path")
 
   // URLs
-  successUrl            String?                   @map("success_url")
-  cancelUrl             String?                   @map("cancel_url")
+  successUrl String? @map("success_url")
+  cancelUrl  String? @map("cancel_url")
 
   // Timestamps
-  expiresAt             DateTime?                 @map("expires_at")
-  completedAt           DateTime?                 @map("completed_at")
-  createdAt             DateTime                  @default(now()) @map("created_at")
-  updatedAt             DateTime                  @updatedAt @map("updated_at")
-  deletedAt             DateTime?                 @map("deleted_at")
+  expiresAt   DateTime? @map("expires_at")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
 
   // Relations
-  cabinet               Cabinet                   @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
-  document              Document                  @relation(fields: [documentId], references: [id])
-  initiator             User                      @relation("SignatureInitiator", fields: [initiatorId], references: [id])
-  signatories           SignatureSignatory[]
+  cabinet     Cabinet              @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  document    Document             @relation(fields: [documentId], references: [id])
+  initiator   User                 @relation("SignatureInitiator", fields: [initiatorId], references: [id])
+  signatories SignatureSignatory[]
 
   @@index([cabinetId])
   @@index([documentId])
@@ -300,29 +326,29 @@ model SignatureTransaction {
 
 /// Signatory in a signature transaction
 model SignatureSignatory {
-  id                    String                    @id @default(uuid())
-  transactionId         String                    @map("transaction_id")
+  id            String @id @default(uuid())
+  transactionId String @map("transaction_id")
 
   // Signatory info
-  firstName             String                    @map("first_name")
-  lastName              String                    @map("last_name")
-  email                 String
-  phone                 String?
+  firstName String  @map("first_name")
+  lastName  String  @map("last_name")
+  email     String
+  phone     String?
 
   // Signature status
-  status                SignatoryStatus           @default(PENDING)
-  signOrder             Int                       @default(1) @map("sign_order")
-  signUrl               String?                   @map("sign_url")
-  signedAt              DateTime?                 @map("signed_at")
-  refusedAt             DateTime?                 @map("refused_at")
-  refusedReason         String?                   @map("refused_reason")
+  status        SignatoryStatus @default(PENDING)
+  signOrder     Int             @default(1) @map("sign_order")
+  signUrl       String?         @map("sign_url")
+  signedAt      DateTime?       @map("signed_at")
+  refusedAt     DateTime?       @map("refused_at")
+  refusedReason String?         @map("refused_reason")
 
   // Timestamps
-  createdAt             DateTime                  @default(now()) @map("created_at")
-  updatedAt             DateTime                  @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  transaction           SignatureTransaction      @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  transaction SignatureTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
 
   @@index([transactionId])
   @@index([email])
@@ -331,61 +357,61 @@ model SignatureSignatory {
 
 /// LRAR shipment for registered mail via SendingBox
 model LrarShipment {
-  id                    String                    @id @default(uuid())
-  cabinetId             String                    @map("cabinet_id")
-  documentId            String                    @map("document_id")
-  initiatorId           String                    @map("initiator_id")
+  id          String @id @default(uuid())
+  cabinetId   String @map("cabinet_id")
+  documentId  String @map("document_id")
+  initiatorId String @map("initiator_id")
 
   // SendingBox data
-  sendingboxId          String?                   @unique @map("sendingbox_id")
-  trackingNumber        String?                   @map("tracking_number")
-  status                LrarStatus                @default(PENDING)
+  sendingboxId   String?    @unique @map("sendingbox_id")
+  trackingNumber String?    @map("tracking_number")
+  status         LrarStatus @default(PENDING)
 
   // Metadata
-  subject               String
-  reference             String?
+  subject   String
+  reference String?
 
   // Recipient info
-  recipientFirstName    String                    @map("recipient_first_name")
-  recipientLastName     String                    @map("recipient_last_name")
-  recipientAddress      String                    @map("recipient_address")
-  recipientPostalCode   String                    @map("recipient_postal_code")
-  recipientCity         String                    @map("recipient_city")
-  recipientCountry      String                    @default("FR") @map("recipient_country")
+  recipientFirstName  String @map("recipient_first_name")
+  recipientLastName   String @map("recipient_last_name")
+  recipientAddress    String @map("recipient_address")
+  recipientPostalCode String @map("recipient_postal_code")
+  recipientCity       String @map("recipient_city")
+  recipientCountry    String @default("FR") @map("recipient_country")
 
   // Sender info
-  senderFirstName       String                    @map("sender_first_name")
-  senderLastName        String                    @map("sender_last_name")
-  senderAddress         String                    @map("sender_address")
-  senderPostalCode      String                    @map("sender_postal_code")
-  senderCity            String                    @map("sender_city")
-  senderCountry         String                    @default("FR") @map("sender_country")
+  senderFirstName  String @map("sender_first_name")
+  senderLastName   String @map("sender_last_name")
+  senderAddress    String @map("sender_address")
+  senderPostalCode String @map("sender_postal_code")
+  senderCity       String @map("sender_city")
+  senderCountry    String @default("FR") @map("sender_country")
 
   // Options
-  color                 Boolean                   @default(false)
-  duplexPrinting        Boolean                   @default(true) @map("duplex_printing")
-  registeredMail        Boolean                   @default(true) @map("registered_mail")
+  color          Boolean @default(false)
+  duplexPrinting Boolean @default(true) @map("duplex_printing")
+  registeredMail Boolean @default(true) @map("registered_mail")
 
   // Proof storage
-  proofPath             String?                   @map("proof_path")
+  proofPath String? @map("proof_path")
 
   // Cost tracking
-  cost                  Decimal?                  @db.Decimal(10, 2)
+  cost Decimal? @db.Decimal(10, 2)
 
   // Timestamps
-  sentAt                DateTime?                 @map("sent_at")
-  deliveredAt           DateTime?                 @map("delivered_at")
-  returnedAt            DateTime?                 @map("returned_at")
-  estimatedDeliveryAt   DateTime?                 @map("estimated_delivery_at")
-  createdAt             DateTime                  @default(now()) @map("created_at")
-  updatedAt             DateTime                  @updatedAt @map("updated_at")
-  deletedAt             DateTime?                 @map("deleted_at")
+  sentAt              DateTime? @map("sent_at")
+  deliveredAt         DateTime? @map("delivered_at")
+  returnedAt          DateTime? @map("returned_at")
+  estimatedDeliveryAt DateTime? @map("estimated_delivery_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  deletedAt           DateTime? @map("deleted_at")
 
   // Relations
-  cabinet               Cabinet                   @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
-  document              Document                  @relation(fields: [documentId], references: [id])
-  initiator             User                      @relation("LrarInitiator", fields: [initiatorId], references: [id])
-  trackingEvents        LrarTrackingEvent[]
+  cabinet        Cabinet             @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  document       Document            @relation(fields: [documentId], references: [id])
+  initiator      User                @relation("LrarInitiator", fields: [initiatorId], references: [id])
+  trackingEvents LrarTrackingEvent[]
 
   @@index([cabinetId])
   @@index([documentId])
@@ -398,20 +424,20 @@ model LrarShipment {
 
 /// Tracking event for LRAR shipment
 model LrarTrackingEvent {
-  id                    String                    @id @default(uuid())
-  shipmentId            String                    @map("shipment_id")
+  id         String @id @default(uuid())
+  shipmentId String @map("shipment_id")
 
   // Event info
-  status                String
-  description           String?
-  location              String?
+  status      String
+  description String?
+  location    String?
 
   // Timestamps
-  eventAt               DateTime                  @map("event_at")
-  createdAt             DateTime                  @default(now()) @map("created_at")
+  eventAt   DateTime @map("event_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
   // Relations
-  shipment              LrarShipment              @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  shipment LrarShipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
 
   @@index([shipmentId])
   @@map("lrar_tracking_events")
@@ -448,4 +474,224 @@ enum LrarStatus {
   RETURNED
   ERROR
   CANCELLED
+}
+
+// ============================================
+// PHASE 7: DOCUMENT BUILDER MODELS
+// ============================================
+
+/// Bloc de contenu réutilisable pour la génération de documents
+model DocumentBlock {
+  id            String        @id @default(uuid())
+  cabinetId     String        @map("cabinet_id")
+  category      BlockCategory
+  title         String
+  content       String        @db.Text // Template avec syntaxe Handlebars {{variable}}
+  variables     Json          @default("[]") // Liste variables [{name, type, required}]
+  tags          String[]      @default([])
+  isMandatory   Boolean       @default(false) @map("is_mandatory")
+  isSystemBlock Boolean       @default(false) @map("is_system_block")
+  displayOrder  Int           @default(0) @map("display_order")
+  usageCount    Int           @default(0) @map("usage_count")
+  createdById   String        @map("created_by_id")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  deletedAt     DateTime?     @map("deleted_at")
+
+  // Relations
+  cabinet   Cabinet @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  createdBy User    @relation("BlockCreator", fields: [createdById], references: [id])
+
+  @@index([cabinetId, category])
+  @@index([tags])
+  @@index([isSystemBlock])
+  @@map("document_blocks")
+}
+
+/// Template complet pour génération de documents juridiques
+model BuilderTemplate {
+  id                String              @id @default(uuid())
+  cabinetId         String              @map("cabinet_id")
+  name              String
+  documentType      BuilderDocumentType @map("document_type")
+  juridiction       Juridiction?
+  blocksStructure   Json                @default("[]") @map("blocks_structure") // [{blockId, order, isOptional}]
+  requiredVariables Json                @default("[]") @map("required_variables")
+  outputFormat      OutputFormat        @default(DOCX) @map("output_format")
+  workflowConfig    Json                @default("{}") @map("workflow_config") // {signature, lrar, autoStore}
+  legalMentions     Json                @default("{}") @map("legal_mentions")
+  isSystemTemplate  Boolean             @default(false) @map("is_system_template")
+  usageCount        Int                 @default(0) @map("usage_count")
+  createdById       String              @map("created_by_id")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  deletedAt         DateTime?           @map("deleted_at")
+
+  // Relations
+  cabinet            Cabinet             @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  createdBy          User                @relation("TemplateCreator", fields: [createdById], references: [id])
+  generatedDocuments GeneratedDocument[]
+
+  @@index([cabinetId, documentType])
+  @@index([isSystemTemplate])
+  @@map("builder_templates")
+}
+
+/// Document généré à partir d'un template
+model GeneratedDocument {
+  id               String                  @id @default(uuid())
+  cabinetId        String                  @map("cabinet_id")
+  templateId       String?                 @map("template_id")
+  folderId         String                  @map("folder_id")
+  affaireId        String?                 @map("affaire_id")
+  clientId         String?                 @map("client_id")
+  title            String
+  filledVariables  Json                    @default("{}") @map("filled_variables")
+  generatedContent String?                 @map("generated_content") @db.Text
+  outputFilePath   String?                 @map("output_file_path")
+  status           GeneratedDocumentStatus @default(DRAFT)
+  workflowStatus   Json                    @default("{}") @map("workflow_status")
+  sentAt           DateTime?               @map("sent_at")
+  signedAt         DateTime?               @map("signed_at")
+  createdById      String                  @map("created_by_id")
+  createdAt        DateTime                @default(now()) @map("created_at")
+  updatedAt        DateTime                @updatedAt @map("updated_at")
+  deletedAt        DateTime?               @map("deleted_at")
+
+  // Relations
+  cabinet   Cabinet          @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  template  BuilderTemplate? @relation(fields: [templateId], references: [id])
+  folder    Folder           @relation(fields: [folderId], references: [id])
+  createdBy User             @relation("GeneratedDocCreator", fields: [createdById], references: [id])
+
+  @@index([folderId, createdAt])
+  @@index([status])
+  @@index([affaireId])
+  @@index([cabinetId])
+  @@map("generated_documents")
+}
+
+/// Informations légales de l'avocat pour génération de documents
+model AvocatLegalInfo {
+  id                    String   @id @default(uuid())
+  userId                String   @unique @map("user_id")
+  cabinetId             String   @map("cabinet_id")
+  civilite              Civilite @default(MAITRE)
+  nom                   String
+  prenom                String
+  barreau               String // Ex: "Barreau du Mans"
+  numeroToque           String?  @map("numero_toque")
+  adresseCabinet        String   @map("adresse_cabinet") @db.Text
+  codePostal            String   @map("code_postal")
+  ville                 String
+  telephone             String
+  fax                   String?
+  email                 String
+  siteWeb               String?  @map("site_web")
+  mentionsLegalesDefaut Json     @default("{}") @map("mentions_legales_defaut")
+  signatureImage        String?  @map("signature_image") // Path vers image signature
+  cachetCabinet         String?  @map("cachet_cabinet") // Path vers cachet/logo
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cabinet Cabinet @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([cabinetId])
+  @@map("avocat_legal_info")
+}
+
+// ============================================
+// DOCUMENT BUILDER ENUMS
+// ============================================
+
+enum BlockCategory {
+  INTRO
+  FAITS
+  MOYENS
+  DISPOSITIF
+  SIGNATURE
+  CLAUSE
+  MENTION_LEGALE
+  CUSTOM
+}
+
+enum BuilderDocumentType {
+  // Actes de procédure
+  ASSIGNATION_FOND
+  ASSIGNATION_REFERE
+  REQUETE
+  CITATION_DIRECTE
+  DECLARATION_APPEL
+  POURVOI_CASSATION
+  CONCLUSIONS_DEFENSE
+  CONCLUSIONS_RECAPITULATIVES
+  MEMOIRE
+  OBSERVATIONS_ECRITES
+  NOTE_DELIBERE
+
+  // Correspondance
+  MISE_EN_DEMEURE
+  SOMMATION
+  LETTRE_RECLAMATION
+  CONVOCATION_AUDIENCE
+  ALERTE_AUDIENCE
+  CONVOCATION_RDV
+  DEMANDE_PIECES
+  COMPTE_RENDU_AUDIENCE
+  NOTIFICATION_DECISION
+
+  // Actes contractuels
+  STATUTS_SOCIETE
+  PACTE_ASSOCIES
+  CESSION_PARTS
+  PROTOCOLE_TRANSACTION
+  CONTRAT_PRESTATION
+  CONTRAT_TRAVAIL
+  RUPTURE_CONVENTIONNELLE
+  TRANSACTION_PRUDHOMALE
+  CONVENTION_DIVORCE
+
+  // Documents administratifs
+  PROCURATION
+  ATTESTATION_HONNEUR
+  CERTIFICAT_NON_APPEL
+
+  // Autres
+  CUSTOM
+}
+
+enum Juridiction {
+  TRIBUNAL_JUDICIAIRE
+  TRIBUNAL_COMMERCE
+  COUR_APPEL
+  CONSEIL_PRUDHOMMES
+  TRIBUNAL_ADMINISTRATIF
+  COUR_ADMINISTRATIVE_APPEL
+  CONSEIL_ETAT
+  COUR_CASSATION
+  JUGE_EXECUTION
+  JUGE_CONTENTIEUX_PROTECTION
+  JUGE_AFFAIRES_FAMILIALES
+  TRIBUNAL_PARITAIRE_BAUX_RURAUX
+}
+
+enum GeneratedDocumentStatus {
+  DRAFT
+  FINALIZED
+  SENT
+  SIGNED
+}
+
+enum OutputFormat {
+  DOCX
+  PDF
+}
+
+enum Civilite {
+  MAITRE
+  MONSIEUR
+  MADAME
 }
