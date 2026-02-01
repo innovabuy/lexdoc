@@ -1,8 +1,9 @@
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { authController } from './auth.controller';
 import { validateBody } from '@/middlewares/validation';
 import { authenticate } from '@/middlewares/auth';
 import { authLimiter, passwordResetLimiter } from '@/middlewares/rateLimit';
+import { usersController } from '@/modules/users/users.controller';
 import {
   registerSchema,
   loginSchema,
@@ -192,5 +193,19 @@ router.post(
   validateBody(disable2FASchema),
   authController.disable2FA.bind(authController)
 );
+
+/**
+ * @swagger
+ * /api/auth/profile:
+ *   get:
+ *     summary: Get current user profile
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User profile
+ */
+router.get('/profile', authenticate, usersController.getCurrentUser.bind(usersController));
 
 export default router;

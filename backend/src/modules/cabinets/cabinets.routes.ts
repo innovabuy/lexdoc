@@ -25,6 +25,17 @@ router.get('/me', cabinetsController.getCabinet.bind(cabinetsController));
 
 /**
  * @swagger
+ * /api/cabinets/current:
+ *   get:
+ *     summary: Get current cabinet info (alias for /me)
+ *     tags: [Cabinets]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get('/current', cabinetsController.getCabinet.bind(cabinetsController));
+
+/**
+ * @swagger
  * /api/cabinets/me:
  *   patch:
  *     summary: Update cabinet info (Admin only)
@@ -49,5 +60,16 @@ router.patch(
  *       - bearerAuth: []
  */
 router.get('/me/stats', requireAdmin, cabinetsController.getCabinetStats.bind(cabinetsController));
+
+/**
+ * @swagger
+ * /api/cabinets/current/stats:
+ *   get:
+ *     summary: Get cabinet statistics (alias for /me/stats)
+ *     tags: [Cabinets]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get('/current/stats', cabinetsController.getCabinetStats.bind(cabinetsController));
 
 export default router;
