@@ -19,26 +19,22 @@ beforeAll(async () => {
   await prisma.$connect();
 
   // Clean up any existing test data to start fresh
+  // Order matters due to foreign key constraints
   await prisma.auditLog.deleteMany();
   await prisma.documentVersion.deleteMany();
   await prisma.document.deleteMany();
   await prisma.folder.deleteMany();
   await prisma.template.deleteMany();
+  await prisma.generatedDocument.deleteMany();
+  await prisma.builderTemplate.deleteMany();
+  await prisma.documentBlock.deleteMany();
   await prisma.user.deleteMany();
   await prisma.cabinet.deleteMany();
 });
 
-// Cleanup after each test
-afterEach(async () => {
-  // Clean up test data in reverse order of dependencies
-  await prisma.auditLog.deleteMany();
-  await prisma.documentVersion.deleteMany();
-  await prisma.document.deleteMany();
-  await prisma.folder.deleteMany();
-  await prisma.template.deleteMany();
-  await prisma.user.deleteMany();
-  await prisma.cabinet.deleteMany();
-});
+// Note: Individual test files should handle their own cleanup in afterAll
+// to avoid interfering with test data created in beforeAll.
+// The beforeAll above ensures a clean slate at the start of the test suite.
 
 // Global teardown after all tests
 afterAll(async () => {

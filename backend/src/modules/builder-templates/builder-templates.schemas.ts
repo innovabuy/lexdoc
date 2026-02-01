@@ -92,6 +92,11 @@ export const templateIdParamSchema = z.object({
   id: z.string().uuid(),
 });
 
+// Document type param schema
+export const documentTypeParamSchema = z.object({
+  documentType: z.nativeEnum(BuilderDocumentType),
+});
+
 // Preview generation schema
 export const previewGenerationSchema = z.object({
   variables: z.record(z.any()).optional().default({}),
@@ -102,4 +107,5 @@ export type CreateBuilderTemplateInput = z.infer<typeof createBuilderTemplateSch
 export type UpdateBuilderTemplateInput = z.infer<typeof updateBuilderTemplateSchema>;
 export type BuilderTemplateQuery = z.infer<typeof builderTemplateQuerySchema>;
 export type TemplateIdParam = z.infer<typeof templateIdParamSchema>;
+export type DocumentTypeParam = z.infer<typeof documentTypeParamSchema>;
 export type PreviewGenerationInput = z.infer<typeof previewGenerationSchema>;

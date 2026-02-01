@@ -7,6 +7,7 @@ import {
   updateBuilderTemplateSchema,
   builderTemplateQuerySchema,
   templateIdParamSchema,
+  documentTypeParamSchema,
   previewGenerationSchema,
 } from './builder-templates.schemas';
 
@@ -92,6 +93,31 @@ router.get(
 router.get(
   '/juridictions',
   builderTemplatesController.getJuridictions.bind(builderTemplatesController)
+);
+
+/**
+ * @swagger
+ * /api/builder-templates/by-type/{documentType}:
+ *   get:
+ *     summary: Get all templates for a specific document type
+ *     tags: [Builder Templates]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: documentType
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The document type (e.g., ASSIGNATION_FOND, CONCLUSIONS_DEFENSE)
+ *     responses:
+ *       200:
+ *         description: List of templates for the document type with previews
+ */
+router.get(
+  '/by-type/:documentType',
+  validateParams(documentTypeParamSchema),
+  builderTemplatesController.getByDocumentType.bind(builderTemplatesController)
 );
 
 /**

@@ -24,6 +24,28 @@ export class BuilderTemplatesController {
   }
 
   /**
+   * GET /api/builder-templates/by-type/:documentType
+   * Get all templates for a specific document type
+   */
+  async getByDocumentType(req: Request, res: Response, next: NextFunction) {
+    try {
+      const templates = await builderTemplatesService.getByDocumentType(
+        req.cabinetId!,
+        req.params.documentType as any
+      );
+
+      const response: ApiResponse = {
+        success: true,
+        data: templates,
+      };
+
+      res.json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * GET /api/builder-templates/document-types
    * Get all document types with counts
    */

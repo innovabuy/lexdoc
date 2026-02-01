@@ -437,6 +437,65 @@ export class BuilderTemplatesService {
   }
 
   /**
+   * Get templates by document type
+   */
+  async getByDocumentType(cabinetId: string, documentType: BuilderDocumentType) {
+    const templates = await prisma.builderTemplate.findMany({
+      where: {
+        documentType,
+        deletedAt: null,
+        OR: [{ cabinetId }, { isSystemTemplate: true }],
+      },
+      orderBy: [
+        { isSystemTemplate: 'desc' }, // System templates first
+        { usageCount: 'desc' },       // Then by popularity
+        { name: 'asc' },              // Then alphabetically
+      ],
+      include: {
+        createdBy: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+
+    // Add preview (first block content) for each template
+    const templatesWithPreview = await Promise.all(
+      templates.map(async (template) => {
+        const blocksStructure = (template.blocksStructure || []) as unknown as BlockReference[];
+        let preview: string | null = null;
+
+        if (blocksStructure.length > 0) {
+          const firstBlockId = blocksStructure[0].blockId;
+          const firstBlock = await prisma.documentBlock.findUnique({
+            where: { id: firstBlockId },
+            select: { content: true, title: true },
+          });
+
+          if (firstBlock) {
+            // Truncate content for preview
+            preview = firstBlock.content.substring(0, 200);
+            if (firstBlock.content.length > 200) {
+              preview += '...';
+            }
+          }
+        }
+
+        return {
+          ...template,
+          preview,
+          blockCount: blocksStructure.length,
+        };
+      })
+    );
+
+    return templatesWithPreview;
+  }
+
+  /**
    * Get all available document types with counts
    */
   async getDocumentTypes(cabinetId: string) {
