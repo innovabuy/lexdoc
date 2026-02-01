@@ -25,6 +25,7 @@ import documentBlocksRoutes from '@/modules/document-blocks/document-blocks.rout
 import builderTemplatesRoutes from '@/modules/builder-templates/builder-templates.routes';
 import generatedDocumentsRoutes from '@/modules/generated-documents/generated-documents.routes';
 import avocatLegalInfoRoutes from '@/modules/avocat-legal-info/avocat-legal-info.routes';
+import documentGenerationRoutes from '@/modules/document-generation/document-generation.routes';
 
 const app = express();
 
@@ -118,6 +119,7 @@ app.use('/api/document-blocks', apiLimiter, documentBlocksRoutes);
 app.use('/api/builder-templates', apiLimiter, builderTemplatesRoutes);
 app.use('/api/generated-documents', apiLimiter, generatedDocumentsRoutes);
 app.use('/api/avocat-legal-info', apiLimiter, avocatLegalInfoRoutes);
+app.use('/api/document-generation', apiLimiter, documentGenerationRoutes);
 
 // Webhook routes (public, no rate limiting)
 app.use('/api/webhooks', signatureWebhookRouter);
@@ -143,6 +145,7 @@ app.get('/api', (_req, res) => {
       builderTemplates: '/api/builder-templates',
       generatedDocuments: '/api/generated-documents',
       avocatLegalInfo: '/api/avocat-legal-info',
+      documentGeneration: '/api/document-generation',
       webhooks: '/api/webhooks',
     },
   });
