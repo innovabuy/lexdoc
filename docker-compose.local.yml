@@ -77,7 +77,7 @@ services:
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
       MINIO_BUCKET_DOCUMENTS: ${MINIO_BUCKET_DOCUMENTS:-lexdoc-documents}
       MINIO_BUCKET_TEMPLATES: ${MINIO_BUCKET_TEMPLATES:-lexdoc-templates}
-      CORS_ORIGINS: http://localhost:5173,http://localhost:8081,http://localhost
+      CORS_ORIGINS: http://localhost:5173,http://localhost:8081,http://localhost,http://31.97.57.103:8081,http://31.97.57.103
       FRONTEND_URL: http://localhost:8081
       BACKEND_URL: http://localhost:3005
     ports:
@@ -104,7 +104,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: http://localhost:3005
+        VITE_API_URL: http://31.97.57.103:3005
     container_name: lexdoc-frontend
     restart: unless-stopped
     ports:
