@@ -42,6 +42,11 @@ const DocumentBlocksListPage = lazy(() => import('@/pages/document-blocks/Docume
 const DocumentBlockDetailPage = lazy(() => import('@/pages/document-blocks/DocumentBlockDetailPage'));
 const DocumentBlockFormPage = lazy(() => import('@/pages/document-blocks/DocumentBlockFormPage'));
 
+// Document Templates
+const DocumentTemplatesListPage = lazy(() => import('@/pages/document-templates/DocumentTemplatesListPage'));
+const TemplateBuilderPage = lazy(() => import('@/pages/document-templates/TemplateBuilderPage'));
+const DocumentTemplateDetailPage = lazy(() => import('@/pages/document-templates/TemplateDetailPage'));
+
 const AppRoutes: React.FC = () => {
   return (
     <Suspense fallback={<LoadingOverlay />}>
@@ -240,6 +245,40 @@ const AppRoutes: React.FC = () => {
             element={
               <ProtectedRoute roles={['ADMIN', 'AVOCAT']}>
                 <DocumentBlockFormPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Document Templates */}
+          <Route
+            path="/document-templates"
+            element={
+              <ProtectedRoute roles={['ADMIN', 'AVOCAT']}>
+                <DocumentTemplatesListPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/document-templates/new"
+            element={
+              <ProtectedRoute roles={['ADMIN', 'AVOCAT']}>
+                <TemplateBuilderPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/document-templates/:id"
+            element={
+              <ProtectedRoute roles={['ADMIN', 'AVOCAT']}>
+                <DocumentTemplateDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/document-templates/:id/edit"
+            element={
+              <ProtectedRoute roles={['ADMIN', 'AVOCAT']}>
+                <TemplateBuilderPage />
               </ProtectedRoute>
             }
           />
