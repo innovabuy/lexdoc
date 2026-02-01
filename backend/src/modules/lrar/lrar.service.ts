@@ -759,7 +759,7 @@ export class GeneratedDocumentLrarService {
       });
 
       // 7. Create audit log
-      await this.createAuditLog(cabinetId, userId, generatedDoc.id, 'LRAR_SENT', {
+      await this.createAuditLog(cabinetId, userId, generatedDoc.id, 'LRAR_CREATED', {
         documentTitle: generatedDoc.title,
         letterId: shipment.id,
         recipient: recipient.name,
