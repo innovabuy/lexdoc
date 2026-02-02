@@ -27,6 +27,7 @@ import generatedDocumentsRoutes from '@/modules/generated-documents/generated-do
 import avocatLegalInfoRoutes from '@/modules/avocat-legal-info/avocat-legal-info.routes';
 import documentGenerationRoutes from '@/modules/document-generation/document-generation.routes';
 import freeNotesRoutes, { folderFreeNotesRouter } from '@/modules/free-notes/free-notes.routes';
+import { clientsRouter } from '@/modules/clients';
 
 const app = express();
 
@@ -123,6 +124,7 @@ app.use('/api/avocat-legal-info', apiLimiter, avocatLegalInfoRoutes);
 app.use('/api/document-generation', apiLimiter, documentGenerationRoutes);
 app.use('/api/free-notes', apiLimiter, freeNotesRoutes);
 app.use('/api/folders/:folderId/free-notes', apiLimiter, folderFreeNotesRouter);
+app.use('/api/clients', apiLimiter, clientsRouter);
 
 // Webhook routes (public, no rate limiting)
 app.use('/api/webhooks', signatureWebhookRouter);
@@ -151,6 +153,7 @@ app.get('/api', (_req, res) => {
       documentGeneration: '/api/document-generation',
       freeNotes: '/api/free-notes',
       folderFreeNotes: '/api/folders/:folderId/free-notes',
+      clients: '/api/clients',
       webhooks: '/api/webhooks',
     },
   });

@@ -177,6 +177,53 @@ export class FoldersController {
       next(error);
     }
   }
+
+  /**
+   * PATCH /api/folders/:id/metadata
+   * Update folder metadata only
+   */
+  async updateMetadata(req: Request, res: Response, next: NextFunction) {
+    try {
+      const folder = await foldersService.updateMetadata(
+        req.params.id,
+        req.cabinetId!,
+        req.user!.id,
+        req.body
+      );
+
+      const response: ApiResponse = {
+        success: true,
+        data: folder,
+      };
+
+      res.json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/folders/:id/auto-fill
+   * Get folder data for document generation auto-fill
+   */
+  async getAutoFillData(req: Request, res: Response, next: NextFunction) {
+    try {
+      const data = await foldersService.getFolderForAutoFill(
+        req.params.id,
+        req.cabinetId!,
+        req.user!.id
+      );
+
+      const response: ApiResponse = {
+        success: true,
+        data,
+      };
+
+      res.json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const foldersController = new FoldersController();

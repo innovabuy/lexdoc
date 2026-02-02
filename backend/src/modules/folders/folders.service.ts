@@ -1,5 +1,5 @@
 import { prisma } from '@/config/database';
-import { Prisma } from '@prisma/client';
+import { Prisma, FolderType } from '@prisma/client';
 import { NotFoundError, BadRequestError } from '@/utils/errors';
 import { auditLogService } from '@/modules/audit/audit.service';
 import type {
@@ -8,6 +8,7 @@ import type {
   MoveFolderInput,
   ListFoldersInput,
   GetFolderTreeInput,
+  UpdateFolderMetadataInput,
 } from './folders.schemas';
 
 interface FolderWithStats {
@@ -17,12 +18,22 @@ interface FolderWithStats {
   color: string | null;
   parentId: string | null;
   cabinetId: string;
+  folderType: FolderType;
+  clientId: string | null;
+  metadata: any;
   createdAt: Date;
   updatedAt: Date;
   _count: {
     documents: number;
     children: number;
   };
+  client?: {
+    id: string;
+    nom: string;
+    prenom: string | null;
+    denomination: string | null;
+    type: string;
+  } | null;
 }
 
 interface FolderTreeNode {
@@ -59,12 +70,25 @@ class FoldersService {
       }
     }
 
+    // Verify client exists if provided
+    if (input.clientId) {
+      const client = await prisma.client.findFirst({
+        where: { id: input.clientId, cabinetId, deletedAt: null },
+      });
+      if (!client) {
+        throw new NotFoundError('Client not found');
+      }
+    }
+
     const folder = await prisma.folder.create({
       data: {
         name: input.name,
         description: input.description,
         color: input.color || '#3B82F6',
         parentId: input.parentId,
+        folderType: input.folderType || FolderType.AFFAIRE_GENERALE,
+        clientId: input.clientId,
+        metadata: input.metadata || {},
         cabinetId,
       },
       include: {
@@ -72,6 +96,15 @@ class FoldersService {
           select: {
             documents: true,
             children: true,
+          },
+        },
+        client: {
+          select: {
+            id: true,
+            nom: true,
+            prenom: true,
+            denomination: true,
+            type: true,
           },
         },
       },
@@ -113,12 +146,122 @@ class FoldersService {
             name: true,
           },
         },
+        client: {
+          select: {
+            id: true,
+            nom: true,
+            prenom: true,
+            denomination: true,
+            type: true,
+            email: true,
+            telephone: true,
+            adresse: true,
+            codePostal: true,
+            ville: true,
+            siret: true,
+            rcs: true,
+            formeJuridique: true,
+            capital: true,
+            representant: true,
+          },
+        },
       },
     });
 
     if (!folder) {
       throw new NotFoundError('Folder not found');
     }
+
+    return this.formatFolder(folder as FolderWithStats);
+  }
+
+  /**
+   * Get folder with full data for auto-fill (includes client, metadata, avocat info)
+   */
+  async getFolderForAutoFill(folderId: string, cabinetId: string, userId: string) {
+    const folder = await prisma.folder.findFirst({
+      where: {
+        id: folderId,
+        cabinetId,
+        deletedAt: null,
+      },
+      include: {
+        client: true,
+      },
+    });
+
+    if (!folder) {
+      throw new NotFoundError('Folder not found');
+    }
+
+    // Get avocat legal info for the current user
+    const avocatInfo = await prisma.avocatLegalInfo.findFirst({
+      where: { userId, cabinetId },
+    });
+
+    return {
+      folder: {
+        id: folder.id,
+        name: folder.name,
+        folderType: folder.folderType,
+        metadata: folder.metadata,
+      },
+      client: folder.client,
+      avocatInfo,
+    };
+  }
+
+  /**
+   * Update folder metadata only
+   */
+  async updateMetadata(
+    folderId: string,
+    cabinetId: string,
+    userId: string,
+    input: UpdateFolderMetadataInput
+  ) {
+    const existing = await prisma.folder.findFirst({
+      where: { id: folderId, cabinetId, deletedAt: null },
+    });
+
+    if (!existing) {
+      throw new NotFoundError('Folder not found');
+    }
+
+    // Merge existing metadata with new metadata
+    const currentMetadata = (existing.metadata as object) || {};
+    const newMetadata = { ...currentMetadata, ...input.metadata };
+
+    const folder = await prisma.folder.update({
+      where: { id: folderId },
+      data: { metadata: newMetadata },
+      include: {
+        _count: {
+          select: {
+            documents: true,
+            children: true,
+          },
+        },
+        client: {
+          select: {
+            id: true,
+            nom: true,
+            prenom: true,
+            denomination: true,
+            type: true,
+          },
+        },
+      },
+    });
+
+    await auditLogService.log({
+      action: 'FOLDER_UPDATED',
+      entity: 'Folder',
+      entityId: folder.id,
+      userId,
+      cabinetId,
+      details: { metadataUpdated: true },
+    });
 
     return this.formatFolder(folder as FolderWithStats);
   }
@@ -160,6 +303,15 @@ class FoldersService {
             select: {
               documents: true,
               children: true,
+            },
+          },
+          client: {
+            select: {
+              id: true,
+              nom: true,
+              prenom: true,
+              denomination: true,
+              type: true,
             },
           },
         },
@@ -490,6 +642,10 @@ class FoldersService {
       color: folder.color,
       parentId: folder.parentId,
       cabinetId: folder.cabinetId,
+      folderType: folder.folderType,
+      clientId: folder.clientId,
+      metadata: folder.metadata,
+      client: folder.client,
       documentCount: folder._count.documents,
       childrenCount: folder._count.children,
       createdAt: folder.createdAt,

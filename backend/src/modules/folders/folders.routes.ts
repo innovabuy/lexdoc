@@ -8,6 +8,7 @@ import {
   moveFolderSchema,
   listFoldersSchema,
   getFolderTreeSchema,
+  updateFolderMetadataSchema,
 } from './folders.schemas';
 
 const router = Router();
@@ -66,6 +67,19 @@ router.patch(
 router.delete(
   '/:id',
   foldersController.delete.bind(foldersController)
+);
+
+// Update folder metadata
+router.patch(
+  '/:id/metadata',
+  validateBody(updateFolderMetadataSchema),
+  foldersController.updateMetadata.bind(foldersController)
+);
+
+// Get auto-fill data for document generation
+router.get(
+  '/:id/auto-fill',
+  foldersController.getAutoFillData.bind(foldersController)
 );
 
 export default router;

@@ -8,3 +8,5 @@ export * from './useSignatures';
 export * from './useLrar';
 export * from './useFolders';
 export * from './useDocumentBuilder';
+export * from './useClients';
+export * from './useAutoFill';

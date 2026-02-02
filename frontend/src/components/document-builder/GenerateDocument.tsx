@@ -1,5 +1,5 @@
-import React, { useState, useEffect, ChangeEvent } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useState, useEffect, ChangeEvent, useMemo } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   FileText,
   ChevronLeft,
@@ -9,6 +9,9 @@ import {
   AlertCircle,
   Save,
   Download,
+  FolderOpen,
+  Sparkles,
+  Info,
 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -22,6 +25,7 @@ import {
   useFinalizeDocument,
 } from '@/hooks/useDocumentBuilder';
 import { useFolders } from '@/hooks/useFolders';
+import { useAutoFilledVariables } from '@/hooks/useAutoFill';
 import type { BlockVariable } from '@/lib/types/documentBuilder';
 import {
   DOCUMENT_TYPE_LABELS,
@@ -35,19 +39,23 @@ interface Step {
 }
 
 const steps: Step[] = [
-  { id: 1, name: 'Variables', icon: FileText },
-  { id: 2, name: 'Apercu', icon: Eye },
-  { id: 3, name: 'Enregistrement', icon: Save },
+  { id: 1, name: 'Dossier', icon: FolderOpen },
+  { id: 2, name: 'Variables', icon: FileText },
+  { id: 3, name: 'Apercu', icon: Eye },
+  { id: 4, name: 'Enregistrement', icon: Save },
 ];
 
 export const GenerateDocument: React.FC = () => {
   const navigate = useNavigate();
   const { templateId } = useParams<{ templateId: string }>();
+  const [searchParams] = useSearchParams();
+  const initialFolderId = searchParams.get('folderId') || '';
 
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(initialFolderId ? 2 : 1);
   const [variables, setVariables] = useState<Record<string, any>>({});
+  const [manuallyEditedFields, setManuallyEditedFields] = useState<Set<string>>(new Set());
   const [title, setTitle] = useState('');
-  const [folderId, setFolderId] = useState('');
+  const [folderId, setFolderId] = useState(initialFolderId);
   const [preview, setPreview] = useState('');
   const [missingVariables, setMissingVariables] = useState<string[]>([]);
 
@@ -56,6 +64,34 @@ export const GenerateDocument: React.FC = () => {
   const { data: folders } = useFolders();
   const createDocumentMutation = useCreateGeneratedDocument();
   const finalizeMutation = useFinalizeDocument();
+
+  // Auto-fill data from folder, client, and avocat
+  const {
+    autoFilledVariables,
+    autoFilledCount,
+    isLoading: loadingAutoFill,
+  } = useAutoFilledVariables(folderId || undefined);
+
+  // Track which variables are auto-filled vs manually edited
+  const autoFilledFieldNames = useMemo(() => {
+    return new Set(Object.keys(autoFilledVariables).filter(key => autoFilledVariables[key] != null));
+  }, [autoFilledVariables]);
+
+  // Merge auto-filled values with user input (user input takes precedence)
+  useEffect(() => {
+    if (autoFilledVariables && Object.keys(autoFilledVariables).length > 0) {
+      setVariables(prev => {
+        const merged = { ...autoFilledVariables };
+        // Preserve manually edited values
+        manuallyEditedFields.forEach(field => {
+          if (prev[field] !== undefined) {
+            merged[field] = prev[field];
+          }
+        });
+        return merged;
+      });
+    }
+  }, [autoFilledVariables, manuallyEditedFields]);
 
   // Initialize title when template loads
   useEffect(() => {
@@ -70,10 +106,38 @@ export const GenerateDocument: React.FC = () => {
 
   const handleVariableChange = (name: string, value: any) => {
     setVariables((prev) => ({ ...prev, [name]: value }));
+    // Mark field as manually edited
+    setManuallyEditedFields((prev) => new Set([...prev, name]));
+  };
+
+  // Get field status for visual indicators
+  const getFieldStatus = (fieldName: string): 'auto-filled' | 'manual' | 'missing' | 'empty' => {
+    const value = variables[fieldName];
+    const isAutoFilled = autoFilledFieldNames.has(fieldName) && !manuallyEditedFields.has(fieldName);
+    const hasValue = value !== undefined && value !== null && value !== '';
+
+    if (hasValue && isAutoFilled) return 'auto-filled';
+    if (hasValue) return 'manual';
+    const isRequired = requiredVariables.some(v => v.name === fieldName);
+    if (isRequired) return 'missing';
+    return 'empty';
+  };
+
+  const getFieldClassName = (fieldName: string) => {
+    const status = getFieldStatus(fieldName);
+    switch (status) {
+      case 'auto-filled':
+        return 'ring-2 ring-green-500 bg-green-50';
+      case 'missing':
+        return 'ring-2 ring-amber-500 bg-amber-50';
+      default:
+        return '';
+    }
   };
 
   const renderVariableInput = (variable: BlockVariable) => {
     const value = variables[variable.name] || '';
+    const fieldClass = getFieldClassName(variable.name);
 
     switch (variable.type) {
       case 'date':
@@ -82,6 +146,7 @@ export const GenerateDocument: React.FC = () => {
             type="date"
             value={value}
             onChange={(e: ChangeEvent<HTMLInputElement>) => handleVariableChange(variable.name, e.target.value)}
+            className={fieldClass}
           />
         );
       case 'number':
@@ -90,6 +155,7 @@ export const GenerateDocument: React.FC = () => {
             type="number"
             value={value}
             onChange={(e: ChangeEvent<HTMLInputElement>) => handleVariableChange(variable.name, e.target.value)}
+            className={fieldClass}
           />
         );
       case 'boolean':
@@ -104,6 +170,7 @@ export const GenerateDocument: React.FC = () => {
               { value: 'true', label: 'Oui' },
               { value: 'false', label: 'Non' },
             ]}
+            className={fieldClass}
           />
         );
       case 'text':
@@ -111,7 +178,7 @@ export const GenerateDocument: React.FC = () => {
           <textarea
             value={value}
             onChange={(e: ChangeEvent<HTMLTextAreaElement>) => handleVariableChange(variable.name, e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[100px]"
+            className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[100px] ${fieldClass}`}
             placeholder={variable.description || `Entrez ${variable.name}...`}
           />
         );
@@ -122,6 +189,7 @@ export const GenerateDocument: React.FC = () => {
             value={value}
             onChange={(e: ChangeEvent<HTMLInputElement>) => handleVariableChange(variable.name, e.target.value)}
             placeholder={variable.description || `Entrez ${variable.name}...`}
+            className={fieldClass}
           />
         );
     }
@@ -165,10 +233,12 @@ export const GenerateDocument: React.FC = () => {
   const canProceed = () => {
     switch (currentStep) {
       case 1:
-        return requiredVariables.every((v) => variables[v.name]);
+        return !!folderId;
       case 2:
-        return missingVariables.length === 0;
+        return requiredVariables.every((v) => variables[v.name]);
       case 3:
+        return missingVariables.length === 0;
+      case 4:
         return title && folderId;
       default:
         return false;
@@ -176,7 +246,7 @@ export const GenerateDocument: React.FC = () => {
   };
 
   const handleNext = () => {
-    if (currentStep === 1) {
+    if (currentStep === 2) {
       generatePreview();
     }
     setCurrentStep((prev) => Math.min(prev + 1, steps.length));
@@ -271,9 +341,79 @@ export const GenerateDocument: React.FC = () => {
 
       {/* Step Content */}
       <Card className="p-6">
+        {/* Step 1: Folder Selection */}
         {currentStep === 1 && (
           <div className="space-y-6">
+            <h2 className="text-lg font-semibold">Selectionner le dossier</h2>
+            <p className="text-sm text-gray-600">
+              Choisissez le dossier pour lequel vous souhaitez generer ce document.
+              Les informations du dossier et du client seront utilisees pour pre-remplir les variables.
+            </p>
+
+            <Select
+              label="Dossier"
+              value={folderId}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) => {
+                setFolderId(e.target.value);
+                // Reset manually edited fields when folder changes
+                setManuallyEditedFields(new Set());
+              }}
+              options={[
+                { value: '', label: 'Selectionner un dossier...' },
+                ...(folders?.data?.map((f) => ({
+                  value: f.id,
+                  label: f.name,
+                })) || []),
+              ]}
+            />
+
+            {folderId && loadingAutoFill && (
+              <div className="flex items-center gap-2 text-gray-500">
+                <div className="animate-spin h-4 w-4 border-2 border-primary-500 border-t-transparent rounded-full" />
+                <span className="text-sm">Chargement des donnees...</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 2: Variables */}
+        {currentStep === 2 && (
+          <div className="space-y-6">
             <h2 className="text-lg font-semibold">Remplir les variables</h2>
+
+            {/* Auto-fill alert */}
+            {autoFilledCount > 0 && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <Sparkles className="h-5 w-5 text-green-600 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-green-800">
+                      Auto-remplissage active
+                    </p>
+                    <p className="text-sm text-green-700 mt-1">
+                      {autoFilledCount} variable(s) ont ete pre-remplies automatiquement
+                      a partir des informations du dossier et du client.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Legend */}
+            <div className="flex items-center gap-4 text-xs text-gray-600 bg-gray-50 rounded-lg p-3">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded ring-2 ring-green-500 bg-green-50" />
+                <span>Pre-rempli automatiquement</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded ring-2 ring-amber-500 bg-amber-50" />
+                <span>Obligatoire non rempli</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Info className="h-4 w-4 text-gray-400" />
+                <span>Vous pouvez modifier les valeurs pre-remplies</span>
+              </div>
+            </div>
 
             {requiredVariables.length > 0 && (
               <div className="space-y-4">
@@ -289,6 +429,11 @@ export const GenerateDocument: React.FC = () => {
                         <span className="text-xs text-gray-500 ml-2">
                           ({VARIABLE_TYPE_LABELS[variable.type]})
                         </span>
+                        {getFieldStatus(variable.name) === 'auto-filled' && (
+                          <span className="text-xs text-green-600 ml-2">
+                            (auto)
+                          </span>
+                        )}
                       </label>
                       {renderVariableInput(variable)}
                       {variable.description && (
@@ -313,6 +458,11 @@ export const GenerateDocument: React.FC = () => {
                         <span className="text-xs text-gray-500 ml-2">
                           ({VARIABLE_TYPE_LABELS[variable.type]})
                         </span>
+                        {getFieldStatus(variable.name) === 'auto-filled' && (
+                          <span className="text-xs text-green-600 ml-2">
+                            (auto)
+                          </span>
+                        )}
                       </label>
                       {renderVariableInput(variable)}
                     </div>
@@ -329,7 +479,8 @@ export const GenerateDocument: React.FC = () => {
           </div>
         )}
 
-        {currentStep === 2 && (
+        {/* Step 3: Preview */}
+        {currentStep === 3 && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Apercu du document</h2>
@@ -351,7 +502,8 @@ export const GenerateDocument: React.FC = () => {
           </div>
         )}
 
-        {currentStep === 3 && (
+        {/* Step 4: Save */}
+        {currentStep === 4 && (
           <div className="space-y-6">
             <h2 className="text-lg font-semibold">Enregistrer le document</h2>
 
@@ -363,18 +515,12 @@ export const GenerateDocument: React.FC = () => {
                 placeholder="Ex: Assignation - Affaire Dupont"
               />
 
-              <Select
-                label="Dossier de destination"
-                value={folderId}
-                onChange={(e: ChangeEvent<HTMLSelectElement>) => setFolderId(e.target.value)}
-                options={[
-                  { value: '', label: 'Selectionner un dossier...' },
-                  ...(folders?.data?.map((f) => ({
-                    value: f.id,
-                    label: f.name,
-                  })) || []),
-                ]}
-              />
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Dossier de destination:</span>{' '}
+                  {folders?.data?.find((f) => f.id === folderId)?.name || 'Non selectionne'}
+                </p>
+              </div>
             </div>
           </div>
         )}

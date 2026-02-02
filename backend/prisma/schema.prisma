@@ -25,6 +25,7 @@ model Cabinet {
   updatedAt             DateTime               @updatedAt @map("updated_at")
   deletedAt             DateTime?              @map("deleted_at")
   auditLogs             AuditLog[]
+  clients               Client[]
   documents             Document[]
   folders               Folder[]
   templates             Template[]
@@ -80,20 +81,72 @@ model User {
   @@map("users")
 }
 
+model Client {
+  id           String      @id @default(uuid())
+  cabinetId    String      @map("cabinet_id")
+  type         ClientType  @default(PARTICULIER)
+
+  // Identification
+  civilite     Civilite?
+  nom          String
+  prenom       String?
+  denomination String?     // Pour les entreprises
+
+  // Contact
+  email        String?
+  telephone    String?
+  mobile       String?
+
+  // Adresse
+  adresse      String?
+  codePostal   String?     @map("code_postal")
+  ville        String?
+  pays         String?     @default("France")
+
+  // Entreprise (si type = ENTREPRISE)
+  siret        String?
+  rcs          String?
+  formeJuridique String?   @map("forme_juridique")
+  capital      Decimal?    @db.Decimal(15, 2)
+  representant String?     // Nom du représentant légal
+
+  // Métadonnées
+  notes        String?     @db.Text
+  tags         String[]    @default([])
+
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+  deletedAt    DateTime?   @map("deleted_at")
+
+  // Relations
+  cabinet      Cabinet     @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  folders      Folder[]
+
+  @@index([cabinetId])
+  @@index([nom])
+  @@index([email])
+  @@index([siret])
+  @@map("clients")
+}
+
 model Folder {
-  id          String     @id @default(uuid())
-  cabinetId   String     @map("cabinet_id")
+  id          String      @id @default(uuid())
+  cabinetId   String      @map("cabinet_id")
   name        String
   description String?
-  color       String?    @default("#3B82F6")
-  parentId    String?    @map("parent_id")
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-  deletedAt   DateTime?  @map("deleted_at")
+  color       String?     @default("#3B82F6")
+  parentId    String?     @map("parent_id")
+  folderType  FolderType  @default(AFFAIRE_GENERALE) @map("folder_type")
+  clientId    String?     @map("client_id")
+  metadata    Json?       @default("{}") // Métadonnées structurées selon folderType
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  deletedAt   DateTime?   @map("deleted_at")
   documents   Document[]
-  cabinet     Cabinet    @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
-  parent      Folder?    @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
-  children    Folder[]   @relation("FolderHierarchy")
+  cabinet     Cabinet     @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  parent      Folder?     @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children    Folder[]    @relation("FolderHierarchy")
+  client      Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
 
   // Document Builder relations
   generatedDocuments GeneratedDocument[]
@@ -101,6 +154,8 @@ model Folder {
 
   @@index([cabinetId])
   @@index([parentId])
+  @@index([clientId])
+  @@index([folderType])
   @@map("folders")
 }
 
@@ -273,6 +328,35 @@ enum AuditAction {
   DOCUMENT_GENERATED
   DOCUMENT_FINALIZED
   AVOCAT_INFO_UPDATED
+
+  // Client actions
+  CLIENT_CREATED
+  CLIENT_UPDATED
+  CLIENT_DELETED
+}
+
+// ============================================
+// CLIENT & FOLDER TYPES
+// ============================================
+
+enum ClientType {
+  PARTICULIER
+  ENTREPRISE
+  ASSOCIATION
+  COLLECTIVITE
+}
+
+enum FolderType {
+  AFFAIRE_GENERALE
+  CESSION_ENTREPRISE
+  CONTENTIEUX_CIVIL
+  CONTENTIEUX_COMMERCIAL
+  CONTENTIEUX_PRUDHOMMES
+  IMMOBILIER_LOCATIF
+  IMMOBILIER_VENTE
+  DROIT_FAMILLE
+  DROIT_SOCIETES
+  AUTRE
 }
 
 // ============================================
