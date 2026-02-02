@@ -58,6 +58,14 @@ const BackupsPage = lazy(() => import('@/pages/admin/BackupsPage'));
 const GeneratedDocumentsListPage = lazy(() => import('@/pages/document-generation/GeneratedDocumentsListPage'));
 const DocumentGenerationWizard = lazy(() => import('@/pages/document-generation/DocumentGenerationWizard'));
 
+// Extranet (Client Portal)
+const ExtranetLoginPage = lazy(() => import('@/pages/extranet/LoginPage'));
+const ExtranetActivationPage = lazy(() => import('@/pages/extranet/ActivationPage'));
+const ExtranetForgotPasswordPage = lazy(() => import('@/pages/extranet/ForgotPasswordPage'));
+const ExtranetResetPasswordPage = lazy(() => import('@/pages/extranet/ResetPasswordPage'));
+const ExtranetDashboardPage = lazy(() => import('@/pages/extranet/DashboardPage'));
+const ExtranetDocumentsPage = lazy(() => import('@/pages/extranet/DocumentsPage'));
+
 const AppRoutes: React.FC = () => {
   return (
     <Suspense fallback={<LoadingOverlay />}>
@@ -340,6 +348,16 @@ const AppRoutes: React.FC = () => {
 
         {/* Redirect root to dashboard or login */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+        {/* Client Extranet Routes (separate from main app) */}
+        <Route path="/extranet/login" element={<ExtranetLoginPage />} />
+        <Route path="/extranet/activate/:token" element={<ExtranetActivationPage />} />
+        <Route path="/extranet/forgot-password" element={<ExtranetForgotPasswordPage />} />
+        <Route path="/extranet/reset-password/:token" element={<ExtranetResetPasswordPage />} />
+        <Route path="/extranet/dashboard" element={<ExtranetDashboardPage />} />
+        <Route path="/extranet/documents" element={<ExtranetDocumentsPage />} />
+        <Route path="/extranet/documents/:id" element={<ExtranetDocumentsPage />} />
+        <Route path="/extranet" element={<Navigate to="/extranet/login" replace />} />
 
         {/* Error pages */}
         <Route path="/unauthorized" element={<UnauthorizedPage />} />

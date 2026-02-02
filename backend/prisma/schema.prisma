@@ -39,6 +39,9 @@ model Cabinet {
   generatedDocuments GeneratedDocument[]
   avocatLegalInfos   AvocatLegalInfo[]
 
+  // Client Extranet relations
+  clientAccesses     ClientAccess[]
+
   @@map("cabinets")
 }
 
@@ -137,6 +140,9 @@ model Client {
   rgpdConsents     RgpdConsent[]
   rgpdDataRequests RgpdDataRequest[]
 
+  // Client Extranet relations
+  clientAccesses   ClientAccess[]
+
   @@index([cabinetId])
   @@index([nom])
   @@index([email])
@@ -166,6 +172,9 @@ model Folder {
   // Document Builder relations
   generatedDocuments GeneratedDocument[]
   freeNotes          DocumentBlock[]     @relation("FolderFreeNotes") // Notes libres du dossier
+
+  // Client Extranet relations
+  clientAccesses     ClientAccess[]
 
   @@index([cabinetId])
   @@index([parentId])
@@ -1143,6 +1152,9 @@ model DocumentTracking {
   createdAt            DateTime              @default(now()) @map("created_at")
   updatedAt            DateTime              @updatedAt @map("updated_at")
 
+  // Reminder logs
+  reminderLogs         ReminderLog[]
+
   @@index([status])
   @@index([signatureRequestId])
   @@index([lrarRequestId])
@@ -1191,4 +1203,108 @@ enum ReminderFrequency {
   EVERY_2_DAYS
   EVERY_3_DAYS
   WEEKLY
+}
+
+// ============================================
+// CLIENT EXTRANET SYSTEM
+// ============================================
+
+/// Client portal access for external clients
+model ClientAccess {
+  id                String            @id @default(cuid())
+  email             String            @unique
+  firstName         String?           @map("first_name")
+  lastName          String?           @map("last_name")
+  companyName       String?           @map("company_name")
+
+  // Authentication
+  passwordHash      String?           @map("password_hash")
+  isActivated       Boolean           @default(false) @map("is_activated")
+  activationToken   String?           @unique @map("activation_token")
+  activationExpires DateTime?         @map("activation_expires")
+  resetToken        String?           @unique @map("reset_token")
+  resetExpires      DateTime?         @map("reset_expires")
+
+  // Links
+  cabinetId         String            @map("cabinet_id")
+  cabinet           Cabinet           @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  folderId          String?           @map("folder_id")
+  folder            Folder?           @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  clientId          String?           @map("client_id")
+  client            Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  // Permissions
+  allowedFolders    String[]          @default([]) @map("allowed_folders")
+  permissions       Json              @default("{\"canSign\":true,\"canDownload\":true,\"canComment\":false}")
+
+  // Tracking
+  lastLoginAt       DateTime?         @map("last_login_at")
+  loginCount        Int               @default(0) @map("login_count")
+  accessLogs        ClientAccessLog[]
+
+  // Metadata
+  invitedBy         String            @map("invited_by")
+  invitedAt         DateTime          @default(now()) @map("invited_at")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+
+  @@index([cabinetId])
+  @@index([email])
+  @@index([activationToken])
+  @@index([resetToken])
+  @@index([clientId])
+  @@map("client_accesses")
+}
+
+/// Log of client portal access actions
+model ClientAccessLog {
+  id              String        @id @default(cuid())
+  clientAccessId  String        @map("client_access_id")
+  clientAccess    ClientAccess  @relation(fields: [clientAccessId], references: [id], onDelete: Cascade)
+
+  action          ClientAccessAction
+  documentId      String?       @map("document_id")
+  folderId        String?       @map("folder_id")
+  ipAddress       String?       @map("ip_address")
+  userAgent       String?       @map("user_agent")
+  details         Json?
+
+  timestamp       DateTime      @default(now())
+
+  @@index([clientAccessId])
+  @@index([timestamp])
+  @@index([action])
+  @@map("client_access_logs")
+}
+
+/// Log of reminder emails sent for document tracking
+model ReminderLog {
+  id                String           @id @default(cuid())
+  trackingId        String           @map("tracking_id")
+  tracking          DocumentTracking @relation(fields: [trackingId], references: [id], onDelete: Cascade)
+
+  reminderNumber    Int              @map("reminder_number")
+  sentTo            String           @map("sent_to")
+  sentAt            DateTime         @default(now()) @map("sent_at")
+  emailSubject      String           @map("email_subject")
+  emailBody         String           @map("email_body") @db.Text
+
+  opened            Boolean          @default(false)
+  openedAt          DateTime?        @map("opened_at")
+  clicked           Boolean          @default(false)
+  clickedAt         DateTime?        @map("clicked_at")
+
+  @@index([trackingId])
+  @@index([sentAt])
+  @@map("reminder_logs")
+}
+
+enum ClientAccessAction {
+  LOGIN
+  LOGOUT
+  VIEW_DOCUMENT
+  DOWNLOAD_DOCUMENT
+  SIGN_DOCUMENT
+  VIEW_FOLDER
+  PASSWORD_RESET
 }
