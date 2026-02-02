@@ -625,6 +625,7 @@ model BuilderTemplate {
   id                String              @id @default(uuid())
   cabinetId         String              @map("cabinet_id")
   name              String
+  description       String?             @db.Text
   documentType      BuilderDocumentType @map("document_type")
   juridiction       Juridiction?
   blocksStructure   Json                @default("[]") @map("blocks_structure") // [{blockId, order, isOptional}]
@@ -639,13 +640,31 @@ model BuilderTemplate {
   updatedAt         DateTime            @updatedAt @map("updated_at")
   deletedAt         DateTime?           @map("deleted_at")
 
+  // Tree structure fields
+  category          BuilderTemplateCategory @default(CUSTOM)
+  subcategory       String?
+  icon              String?             // Nom de l'icône (heroicons)
+  color             String?             @default("#3B82F6") // Couleur hex
+  tags              String[]            @default([])
+  isFavorite        Boolean             @default(false) @map("is_favorite")
+  lastUsedAt        DateTime?           @map("last_used_at")
+
+  // Template hierarchy (for derived templates)
+  basedOnTemplateId String?             @map("based_on_template_id")
+  basedOnTemplate   BuilderTemplate?    @relation("TemplateDerived", fields: [basedOnTemplateId], references: [id], onDelete: SetNull)
+  derivedTemplates  BuilderTemplate[]   @relation("TemplateDerived")
+
   // Relations
   cabinet            Cabinet             @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
   createdBy          User                @relation("TemplateCreator", fields: [createdById], references: [id])
   generatedDocuments GeneratedDocument[]
 
   @@index([cabinetId, documentType])
+  @@index([cabinetId, category])
   @@index([isSystemTemplate])
+  @@index([isFavorite])
+  @@index([lastUsedAt])
+  @@index([basedOnTemplateId])
   @@map("builder_templates")
 }
 
@@ -801,6 +820,32 @@ enum GeneratedDocumentStatus {
 enum OutputFormat {
   DOCX
   PDF
+}
+
+enum BuilderTemplateCategory {
+  // Actes de procédure
+  PROCEDURE_CIVILE
+  PROCEDURE_COMMERCIALE
+  PROCEDURE_PRUDHOMALE
+  PROCEDURE_ADMINISTRATIVE
+  PROCEDURE_PENALE
+  VOIES_EXECUTION
+
+  // Contrats et actes
+  CONTRATS_AFFAIRES
+  CONTRATS_TRAVAIL
+  DROIT_SOCIETES
+  DROIT_IMMOBILIER
+  DROIT_FAMILLE
+
+  // Correspondance
+  COURRIERS_CLIENTS
+  COURRIERS_ADVERSAIRES
+  COURRIERS_JURIDICTIONS
+  RELANCES
+
+  // Autres
+  CUSTOM
 }
 
 enum Civilite {

@@ -238,6 +238,174 @@ export class BuilderTemplatesController {
       next(error);
     }
   }
+
+  // ============================================
+  // TREE STRUCTURE ENDPOINTS
+  // ============================================
+
+  /**
+   * GET /api/builder-templates/tree
+   * Get templates organized in tree structure by category
+   */
+  async getTreeStructure(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await builderTemplatesService.getTreeStructure(
+        req.cabinetId!,
+        req.query as any
+      );
+
+      const response: ApiResponse = {
+        success: true,
+        data: result,
+      };
+
+      res.json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/builder-templates/favorites
+   * Get favorite templates for a cabinet
+   */
+  async getFavorites(req: Request, res: Response, next: NextFunction) {
+    try {
+      const limit = parseInt(req.query.limit as string, 10) || 10;
+      const templates = await builderTemplatesService.getFavorites(req.cabinetId!, limit);
+
+      const response: ApiResponse = {
+        success: true,
+        data: templates,
+      };
+
+      res.json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/builder-templates/recent
+   * Get recently used templates for a cabinet
+   */
+  async getRecent(req: Request, res: Response, next: NextFunction) {
+    try {
+      const limit = parseInt(req.query.limit as string, 10) || 10;
+      const templates = await builderTemplatesService.getRecent(req.cabinetId!, limit);
+
+      const response: ApiResponse = {
+        success: true,
+        data: templates,
+      };
+
+      res.json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/builder-templates/:id/favorite
+   * Toggle favorite status for a template
+   */
+  async toggleFavorite(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await builderTemplatesService.toggleFavorite(
+        req.params.id,
+        req.cabinetId!
+      );
+
+      const response: ApiResponse = {
+        success: true,
+        data: result,
+        message: result.isFavorite ? 'Template ajouté aux favoris' : 'Template retiré des favoris',
+      };
+
+      res.json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/builder-templates/:id/record-usage
+   * Record template usage (update lastUsedAt and increment usageCount)
+   */
+  async recordUsage(req: Request, res: Response, next: NextFunction) {
+    try {
+      await builderTemplatesService.recordUsage(req.params.id, req.cabinetId!);
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Usage recorded',
+      };
+
+      res.json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/builder-templates/categories
+   * Get all categories with template counts
+   */
+  async getCategories(req: Request, res: Response, next: NextFunction) {
+    try {
+      const categories = await builderTemplatesService.getCategories(req.cabinetId!);
+
+      const response: ApiResponse = {
+        success: true,
+        data: categories,
+      };
+
+      res.json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/builder-templates/tags
+   * Get all unique tags used in templates
+   */
+  async getTags(req: Request, res: Response, next: NextFunction) {
+    try {
+      const tags = await builderTemplatesService.getTags(req.cabinetId!);
+
+      const response: ApiResponse = {
+        success: true,
+        data: tags,
+      };
+
+      res.json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/builder-templates/:id/derived
+   * Get templates derived from a specific template
+   */
+  async getDerivedTemplates(req: Request, res: Response, next: NextFunction) {
+    try {
+      const templates = await builderTemplatesService.getDerivedTemplates(
+        req.params.id,
+        req.cabinetId!
+      );
+
+      const response: ApiResponse = {
+        success: true,
+        data: templates,
+      };
+
+      res.json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const builderTemplatesController = new BuilderTemplatesController();

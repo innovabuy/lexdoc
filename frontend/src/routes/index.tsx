@@ -46,6 +46,7 @@ const DocumentBlockFormPage = lazy(() => import('@/pages/document-blocks/Documen
 const DocumentTemplatesListPage = lazy(() => import('@/pages/document-templates/DocumentTemplatesListPage'));
 const TemplateBuilderPage = lazy(() => import('@/pages/document-templates/TemplateBuilderPage'));
 const DocumentTemplateDetailPage = lazy(() => import('@/pages/document-templates/TemplateDetailPage'));
+const TemplatesTreeViewPage = lazy(() => import('@/pages/templates/TemplatesTreeViewPage'));
 
 // Profile
 const AvocatLegalInfoPage = lazy(() => import('@/pages/profile/AvocatLegalInfoPage'));
@@ -274,6 +275,14 @@ const AppRoutes: React.FC = () => {
             element={
               <ProtectedRoute roles={['ADMIN', 'AVOCAT']}>
                 <DocumentTemplatesListPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/templates-library"
+            element={
+              <ProtectedRoute roles={['ADMIN', 'AVOCAT', 'COLLABORATEUR']}>
+                <TemplatesTreeViewPage />
               </ProtectedRoute>
             }
           />

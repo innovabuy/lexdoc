@@ -9,6 +9,7 @@ import {
   templateIdParamSchema,
   documentTypeParamSchema,
   previewGenerationSchema,
+  treeQuerySchema,
 } from './builder-templates.schemas';
 
 const router = Router();
@@ -93,6 +94,115 @@ router.get(
 router.get(
   '/juridictions',
   builderTemplatesController.getJuridictions.bind(builderTemplatesController)
+);
+
+// ============================================
+// TREE STRUCTURE ROUTES
+// ============================================
+
+/**
+ * @swagger
+ * /api/builder-templates/tree:
+ *   get:
+ *     summary: Get templates organized in tree structure by category
+ *     tags: [Builder Templates]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: includeEmpty
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *         description: Include categories with no templates
+ *     responses:
+ *       200:
+ *         description: Tree structure of templates by category
+ */
+router.get(
+  '/tree',
+  validateQuery(treeQuerySchema),
+  builderTemplatesController.getTreeStructure.bind(builderTemplatesController)
+);
+
+/**
+ * @swagger
+ * /api/builder-templates/favorites:
+ *   get:
+ *     summary: Get favorite templates
+ *     tags: [Builder Templates]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *     responses:
+ *       200:
+ *         description: List of favorite templates
+ */
+router.get(
+  '/favorites',
+  builderTemplatesController.getFavorites.bind(builderTemplatesController)
+);
+
+/**
+ * @swagger
+ * /api/builder-templates/recent:
+ *   get:
+ *     summary: Get recently used templates
+ *     tags: [Builder Templates]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *     responses:
+ *       200:
+ *         description: List of recently used templates
+ */
+router.get(
+  '/recent',
+  builderTemplatesController.getRecent.bind(builderTemplatesController)
+);
+
+/**
+ * @swagger
+ * /api/builder-templates/categories:
+ *   get:
+ *     summary: Get all categories with template counts
+ *     tags: [Builder Templates]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of categories with counts
+ */
+router.get(
+  '/categories',
+  builderTemplatesController.getCategories.bind(builderTemplatesController)
+);
+
+/**
+ * @swagger
+ * /api/builder-templates/tags:
+ *   get:
+ *     summary: Get all unique tags used in templates
+ *     tags: [Builder Templates]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of tags with usage counts
+ */
+router.get(
+  '/tags',
+  builderTemplatesController.getTags.bind(builderTemplatesController)
 );
 
 /**
@@ -341,6 +451,87 @@ router.post(
   validateParams(templateIdParamSchema),
   validateBody(previewGenerationSchema),
   builderTemplatesController.generatePreview.bind(builderTemplatesController)
+);
+
+/**
+ * @swagger
+ * /api/builder-templates/{id}/favorite:
+ *   post:
+ *     summary: Toggle favorite status for a template
+ *     tags: [Builder Templates]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Favorite status toggled
+ *       404:
+ *         description: Builder template not found
+ */
+router.post(
+  '/:id/favorite',
+  validateParams(templateIdParamSchema),
+  builderTemplatesController.toggleFavorite.bind(builderTemplatesController)
+);
+
+/**
+ * @swagger
+ * /api/builder-templates/{id}/record-usage:
+ *   post:
+ *     summary: Record template usage
+ *     tags: [Builder Templates]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Usage recorded
+ *       404:
+ *         description: Builder template not found
+ */
+router.post(
+  '/:id/record-usage',
+  validateParams(templateIdParamSchema),
+  builderTemplatesController.recordUsage.bind(builderTemplatesController)
+);
+
+/**
+ * @swagger
+ * /api/builder-templates/{id}/derived:
+ *   get:
+ *     summary: Get templates derived from this template
+ *     tags: [Builder Templates]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: List of derived templates
+ *       404:
+ *         description: Builder template not found
+ */
+router.get(
+  '/:id/derived',
+  validateParams(templateIdParamSchema),
+  builderTemplatesController.getDerivedTemplates.bind(builderTemplatesController)
 );
 
 export default router;

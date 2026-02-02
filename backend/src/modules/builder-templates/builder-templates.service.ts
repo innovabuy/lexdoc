@@ -1,11 +1,12 @@
 import { prisma } from '@/config/database';
-import { BuilderDocumentType, Juridiction, Prisma } from '@prisma/client';
+import { BuilderDocumentType, BuilderTemplateCategory, Juridiction, Prisma } from '@prisma/client';
 import { NotFoundError, ForbiddenError, BadRequestError } from '@/utils/errors';
 import Handlebars from 'handlebars';
 import type {
   CreateBuilderTemplateInput,
   UpdateBuilderTemplateInput,
   BuilderTemplateQuery,
+  TreeQuery,
 } from './builder-templates.schemas';
 
 interface BlockReference {
@@ -27,7 +28,7 @@ export class BuilderTemplatesService {
    * List builder templates with filters
    */
   async list(cabinetId: string, query: BuilderTemplateQuery) {
-    const { documentType, juridiction, isSystemTemplate, search, page, limit, sortBy, sortOrder } = query;
+    const { documentType, juridiction, category, isSystemTemplate, isFavorite, search, tags, page, limit, sortBy, sortOrder } = query;
 
     const where: Prisma.BuilderTemplateWhereInput = {
       deletedAt: null,
@@ -42,8 +43,20 @@ export class BuilderTemplatesService {
       where.juridiction = juridiction;
     }
 
+    if (category) {
+      where.category = category;
+    }
+
     if (typeof isSystemTemplate === 'boolean') {
       where.isSystemTemplate = isSystemTemplate;
+    }
+
+    if (typeof isFavorite === 'boolean') {
+      where.isFavorite = isFavorite;
+    }
+
+    if (tags && tags.length > 0) {
+      where.tags = { hasSome: tags };
     }
 
     if (search) {
@@ -51,6 +64,8 @@ export class BuilderTemplatesService {
         {
           OR: [
             { name: { contains: search, mode: 'insensitive' } },
+            { description: { contains: search, mode: 'insensitive' } },
+            { subcategory: { contains: search, mode: 'insensitive' } },
           ],
         },
       ];
@@ -68,6 +83,12 @@ export class BuilderTemplatesService {
               id: true,
               firstName: true,
               lastName: true,
+            },
+          },
+          basedOnTemplate: {
+            select: {
+              id: true,
+              name: true,
             },
           },
         },
@@ -580,6 +601,359 @@ export class BuilderTemplatesService {
       if (a.required !== b.required) return a.required ? -1 : 1;
       return a.name.localeCompare(b.name);
     });
+  }
+
+  // ============================================
+  // TREE STRUCTURE METHODS
+  // ============================================
+
+  /**
+   * Get templates organized in tree structure by category
+   */
+  async getTreeStructure(cabinetId: string, query: TreeQuery) {
+    const { includeEmpty } = query;
+
+    // Get all templates accessible to the cabinet
+    const templates = await prisma.builderTemplate.findMany({
+      where: {
+        deletedAt: null,
+        OR: [{ cabinetId }, { isSystemTemplate: true }],
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        documentType: true,
+        category: true,
+        subcategory: true,
+        icon: true,
+        color: true,
+        tags: true,
+        isFavorite: true,
+        isSystemTemplate: true,
+        usageCount: true,
+        lastUsedAt: true,
+        juridiction: true,
+      },
+      orderBy: [
+        { category: 'asc' },
+        { subcategory: 'asc' },
+        { name: 'asc' },
+      ],
+    });
+
+    // Define category labels in French
+    const categoryLabels: Record<BuilderTemplateCategory, string> = {
+      PROCEDURE_CIVILE: 'Procédure Civile',
+      PROCEDURE_COMMERCIALE: 'Procédure Commerciale',
+      PROCEDURE_PRUDHOMALE: "Procédure Prud'homale",
+      PROCEDURE_ADMINISTRATIVE: 'Procédure Administrative',
+      PROCEDURE_PENALE: 'Procédure Pénale',
+      VOIES_EXECUTION: "Voies d'Exécution",
+      CONTRATS_AFFAIRES: "Contrats d'Affaires",
+      CONTRATS_TRAVAIL: 'Contrats de Travail',
+      DROIT_SOCIETES: 'Droit des Sociétés',
+      DROIT_IMMOBILIER: 'Droit Immobilier',
+      DROIT_FAMILLE: 'Droit de la Famille',
+      COURRIERS_CLIENTS: 'Courriers Clients',
+      COURRIERS_ADVERSAIRES: 'Courriers Adversaires',
+      COURRIERS_JURIDICTIONS: 'Courriers Juridictions',
+      RELANCES: 'Relances',
+      CUSTOM: 'Personnalisés',
+    };
+
+    // Define category icons
+    const categoryIcons: Record<BuilderTemplateCategory, string> = {
+      PROCEDURE_CIVILE: 'ScaleIcon',
+      PROCEDURE_COMMERCIALE: 'BuildingOfficeIcon',
+      PROCEDURE_PRUDHOMALE: 'UserGroupIcon',
+      PROCEDURE_ADMINISTRATIVE: 'BuildingLibraryIcon',
+      PROCEDURE_PENALE: 'ShieldExclamationIcon',
+      VOIES_EXECUTION: 'DocumentTextIcon',
+      CONTRATS_AFFAIRES: 'DocumentDuplicateIcon',
+      CONTRATS_TRAVAIL: 'BriefcaseIcon',
+      DROIT_SOCIETES: 'BuildingOffice2Icon',
+      DROIT_IMMOBILIER: 'HomeModernIcon',
+      DROIT_FAMILLE: 'UsersIcon',
+      COURRIERS_CLIENTS: 'EnvelopeIcon',
+      COURRIERS_ADVERSAIRES: 'EnvelopeOpenIcon',
+      COURRIERS_JURIDICTIONS: 'InboxIcon',
+      RELANCES: 'ClockIcon',
+      CUSTOM: 'PuzzlePieceIcon',
+    };
+
+    // Group templates by category
+    const categoriesMap = new Map<string, {
+      category: BuilderTemplateCategory;
+      label: string;
+      icon: string;
+      subcategories: Map<string, typeof templates>;
+    }>();
+
+    // Initialize all categories if includeEmpty is true
+    if (includeEmpty) {
+      for (const cat of Object.values(BuilderTemplateCategory)) {
+        categoriesMap.set(cat, {
+          category: cat,
+          label: categoryLabels[cat],
+          icon: categoryIcons[cat],
+          subcategories: new Map(),
+        });
+      }
+    }
+
+    // Populate with templates
+    for (const template of templates) {
+      const catKey = template.category;
+      if (!categoriesMap.has(catKey)) {
+        categoriesMap.set(catKey, {
+          category: catKey,
+          label: categoryLabels[catKey],
+          icon: categoryIcons[catKey],
+          subcategories: new Map(),
+        });
+      }
+
+      const categoryData = categoriesMap.get(catKey)!;
+      const subcatKey = template.subcategory || '__root__';
+
+      if (!categoryData.subcategories.has(subcatKey)) {
+        categoryData.subcategories.set(subcatKey, []);
+      }
+      categoryData.subcategories.get(subcatKey)!.push(template);
+    }
+
+    // Convert to array structure
+    const tree = Array.from(categoriesMap.values()).map((cat) => ({
+      category: cat.category,
+      label: cat.label,
+      icon: cat.icon,
+      templateCount: Array.from(cat.subcategories.values()).reduce((sum, arr) => sum + arr.length, 0),
+      subcategories: Array.from(cat.subcategories.entries())
+        .filter(([key]) => key !== '__root__')
+        .map(([key, tpls]) => ({
+          name: key,
+          templates: tpls,
+        })),
+      templates: cat.subcategories.get('__root__') || [],
+    }));
+
+    // Filter out empty categories if not includeEmpty
+    const filteredTree = includeEmpty
+      ? tree
+      : tree.filter((cat) => cat.templateCount > 0);
+
+    return {
+      tree: filteredTree,
+      totalTemplates: templates.length,
+    };
+  }
+
+  /**
+   * Get favorite templates for a cabinet
+   */
+  async getFavorites(cabinetId: string, limit: number = 10) {
+    const templates = await prisma.builderTemplate.findMany({
+      where: {
+        deletedAt: null,
+        isFavorite: true,
+        OR: [{ cabinetId }, { isSystemTemplate: true }],
+      },
+      orderBy: [
+        { lastUsedAt: 'desc' },
+        { usageCount: 'desc' },
+      ],
+      take: limit,
+      include: {
+        createdBy: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+
+    return templates;
+  }
+
+  /**
+   * Get recently used templates for a cabinet
+   */
+  async getRecent(cabinetId: string, limit: number = 10) {
+    const templates = await prisma.builderTemplate.findMany({
+      where: {
+        deletedAt: null,
+        lastUsedAt: { not: null },
+        OR: [{ cabinetId }, { isSystemTemplate: true }],
+      },
+      orderBy: {
+        lastUsedAt: 'desc',
+      },
+      take: limit,
+      include: {
+        createdBy: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+
+    return templates;
+  }
+
+  /**
+   * Toggle favorite status for a template
+   */
+  async toggleFavorite(id: string, cabinetId: string) {
+    const template = await prisma.builderTemplate.findFirst({
+      where: {
+        id,
+        deletedAt: null,
+        OR: [{ cabinetId }, { isSystemTemplate: true }],
+      },
+    });
+
+    if (!template) {
+      throw new NotFoundError('Builder template not found');
+    }
+
+    const updated = await prisma.builderTemplate.update({
+      where: { id },
+      data: {
+        isFavorite: !template.isFavorite,
+      },
+      select: {
+        id: true,
+        isFavorite: true,
+      },
+    });
+
+    return updated;
+  }
+
+  /**
+   * Record template usage (update lastUsedAt and increment usageCount)
+   */
+  async recordUsage(id: string, cabinetId: string) {
+    const template = await prisma.builderTemplate.findFirst({
+      where: {
+        id,
+        deletedAt: null,
+        OR: [{ cabinetId }, { isSystemTemplate: true }],
+      },
+    });
+
+    if (!template) {
+      throw new NotFoundError('Builder template not found');
+    }
+
+    await prisma.builderTemplate.update({
+      where: { id },
+      data: {
+        lastUsedAt: new Date(),
+        usageCount: { increment: 1 },
+      },
+    });
+
+    return { success: true };
+  }
+
+  /**
+   * Get all categories with template counts
+   */
+  async getCategories(cabinetId: string) {
+    const categories = await prisma.builderTemplate.groupBy({
+      by: ['category'],
+      where: {
+        deletedAt: null,
+        OR: [{ cabinetId }, { isSystemTemplate: true }],
+      },
+      _count: {
+        category: true,
+      },
+    });
+
+    const categoryLabels: Record<BuilderTemplateCategory, string> = {
+      PROCEDURE_CIVILE: 'Procédure Civile',
+      PROCEDURE_COMMERCIALE: 'Procédure Commerciale',
+      PROCEDURE_PRUDHOMALE: "Procédure Prud'homale",
+      PROCEDURE_ADMINISTRATIVE: 'Procédure Administrative',
+      PROCEDURE_PENALE: 'Procédure Pénale',
+      VOIES_EXECUTION: "Voies d'Exécution",
+      CONTRATS_AFFAIRES: "Contrats d'Affaires",
+      CONTRATS_TRAVAIL: 'Contrats de Travail',
+      DROIT_SOCIETES: 'Droit des Sociétés',
+      DROIT_IMMOBILIER: 'Droit Immobilier',
+      DROIT_FAMILLE: 'Droit de la Famille',
+      COURRIERS_CLIENTS: 'Courriers Clients',
+      COURRIERS_ADVERSAIRES: 'Courriers Adversaires',
+      COURRIERS_JURIDICTIONS: 'Courriers Juridictions',
+      RELANCES: 'Relances',
+      CUSTOM: 'Personnalisés',
+    };
+
+    return categories.map((c) => ({
+      category: c.category,
+      label: categoryLabels[c.category],
+      count: c._count.category,
+    }));
+  }
+
+  /**
+   * Get all unique tags used in templates
+   */
+  async getTags(cabinetId: string) {
+    const templates = await prisma.builderTemplate.findMany({
+      where: {
+        deletedAt: null,
+        OR: [{ cabinetId }, { isSystemTemplate: true }],
+      },
+      select: {
+        tags: true,
+      },
+    });
+
+    // Collect all unique tags
+    const tagCounts = new Map<string, number>();
+    for (const template of templates) {
+      for (const tag of template.tags) {
+        tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+      }
+    }
+
+    // Convert to array sorted by count
+    return Array.from(tagCounts.entries())
+      .map(([tag, count]) => ({ tag, count }))
+      .sort((a, b) => b.count - a.count);
+  }
+
+  /**
+   * Get templates derived from a specific template
+   */
+  async getDerivedTemplates(id: string, cabinetId: string) {
+    const templates = await prisma.builderTemplate.findMany({
+      where: {
+        basedOnTemplateId: id,
+        deletedAt: null,
+        OR: [{ cabinetId }, { isSystemTemplate: true }],
+      },
+      include: {
+        createdBy: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+
+    return templates;
   }
 }
 

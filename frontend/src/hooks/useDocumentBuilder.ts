@@ -235,6 +235,85 @@ export function usePreviewBuilderTemplate() {
 }
 
 // ============================================
+// TEMPLATE TREE STRUCTURE HOOKS
+// ============================================
+
+export function useTemplateTreeStructure(includeEmpty: boolean = false) {
+  return useQuery({
+    queryKey: ['builder-templates', 'tree', { includeEmpty }],
+    queryFn: () => documentBuilderApi.getTemplateTreeStructure(includeEmpty),
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useFavoriteTemplates(limit: number = 10) {
+  return useQuery({
+    queryKey: ['builder-templates', 'favorites', { limit }],
+    queryFn: () => documentBuilderApi.getFavoriteTemplates(limit),
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useRecentTemplates(limit: number = 10) {
+  return useQuery({
+    queryKey: ['builder-templates', 'recent', { limit }],
+    queryFn: () => documentBuilderApi.getRecentTemplates(limit),
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useToggleTemplateFavorite() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => documentBuilderApi.toggleTemplateFavorite(id),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['builder-templates'] });
+      toast.success(result.isFavorite ? 'Ajouté aux favoris' : 'Retiré des favoris');
+    },
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Erreur lors de la modification des favoris'));
+    },
+  });
+}
+
+export function useRecordTemplateUsage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => documentBuilderApi.recordTemplateUsage(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['builder-templates', 'recent'] });
+    },
+  });
+}
+
+export function useBuilderTemplateCategories() {
+  return useQuery({
+    queryKey: ['builder-templates', 'categories'],
+    queryFn: () => documentBuilderApi.getTemplateCategories(),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useTemplateTags() {
+  return useQuery({
+    queryKey: ['builder-templates', 'tags'],
+    queryFn: () => documentBuilderApi.getTemplateTags(),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useDerivedTemplates(id: string | undefined) {
+  return useQuery({
+    queryKey: ['builder-templates', id, 'derived'],
+    queryFn: () => documentBuilderApi.getDerivedTemplates(id!),
+    enabled: !!id,
+    staleTime: 60 * 1000,
+  });
+}
+
+// ============================================
 // GENERATED DOCUMENTS HOOKS
 // ============================================
 

@@ -65,6 +65,25 @@ export type OutputFormat = 'DOCX' | 'PDF';
 // Generated Document Status
 export type GeneratedDocumentStatus = 'DRAFT' | 'FINALIZED' | 'SENT' | 'SIGNED';
 
+// Builder Template Category
+export type BuilderTemplateCategory =
+  | 'PROCEDURE_CIVILE'
+  | 'PROCEDURE_COMMERCIALE'
+  | 'PROCEDURE_PRUDHOMALE'
+  | 'PROCEDURE_ADMINISTRATIVE'
+  | 'PROCEDURE_PENALE'
+  | 'VOIES_EXECUTION'
+  | 'CONTRATS_AFFAIRES'
+  | 'CONTRATS_TRAVAIL'
+  | 'DROIT_SOCIETES'
+  | 'DROIT_IMMOBILIER'
+  | 'DROIT_FAMILLE'
+  | 'COURRIERS_CLIENTS'
+  | 'COURRIERS_ADVERSAIRES'
+  | 'COURRIERS_JURIDICTIONS'
+  | 'RELANCES'
+  | 'CUSTOM';
+
 // ============================================
 // DOCUMENT BLOCK
 // ============================================
@@ -216,16 +235,32 @@ export interface BuilderTemplate {
   createdAt: string;
   updatedAt: string;
   expandedBlocks?: ExpandedBlockReference[];
+  // Tree structure fields
+  category: BuilderTemplateCategory;
+  subcategory?: string;
+  icon?: string;
+  color?: string;
+  tags: string[];
+  isFavorite: boolean;
+  lastUsedAt?: string;
+  basedOnTemplateId?: string;
+  basedOnTemplate?: {
+    id: string;
+    name: string;
+  };
 }
 
 export interface BuilderTemplateFilters {
   documentType?: BuilderDocumentType;
   juridiction?: Juridiction;
+  category?: BuilderTemplateCategory;
   isSystemTemplate?: boolean;
+  isFavorite?: boolean;
+  tags?: string[];
   search?: string;
   page?: number;
   limit?: number;
-  sortBy?: 'name' | 'documentType' | 'createdAt' | 'usageCount';
+  sortBy?: 'name' | 'documentType' | 'createdAt' | 'usageCount' | 'lastUsedAt';
   sortOrder?: 'asc' | 'desc';
 }
 
@@ -240,6 +275,13 @@ export interface CreateBuilderTemplateInput {
   outputFormat?: OutputFormat;
   workflowConfig?: WorkflowConfig;
   legalMentions?: LegalMentions;
+  // Tree structure fields
+  category?: BuilderTemplateCategory;
+  subcategory?: string;
+  icon?: string;
+  color?: string;
+  tags?: string[];
+  basedOnTemplateId?: string;
 }
 
 export interface UpdateBuilderTemplateInput {
@@ -253,6 +295,13 @@ export interface UpdateBuilderTemplateInput {
   outputFormat?: OutputFormat;
   workflowConfig?: WorkflowConfig;
   legalMentions?: LegalMentions;
+  // Tree structure fields
+  category?: BuilderTemplateCategory;
+  subcategory?: string | null;
+  icon?: string | null;
+  color?: string | null;
+  tags?: string[];
+  basedOnTemplateId?: string | null;
 }
 
 // Alias for template block reference (used in template editor)
@@ -453,4 +502,88 @@ export const VARIABLE_TYPE_LABELS: Record<VariableType, string> = {
   boolean: 'Oui/Non',
   text: 'Texte long',
   array: 'Liste',
+};
+
+// ============================================
+// TREE STRUCTURE TYPES
+// ============================================
+
+export interface TemplateTreeItem {
+  id: string;
+  name: string;
+  description?: string;
+  documentType: BuilderDocumentType;
+  category: BuilderTemplateCategory;
+  subcategory?: string;
+  icon?: string;
+  color?: string;
+  tags: string[];
+  isFavorite: boolean;
+  isSystemTemplate: boolean;
+  usageCount: number;
+  lastUsedAt?: string;
+  juridiction?: Juridiction;
+}
+
+export interface TemplateSubcategory {
+  name: string;
+  templates: TemplateTreeItem[];
+}
+
+export interface TemplateCategoryNode {
+  category: BuilderTemplateCategory;
+  label: string;
+  icon: string;
+  templateCount: number;
+  subcategories: TemplateSubcategory[];
+  templates: TemplateTreeItem[];
+}
+
+export interface TemplateTreeStructure {
+  tree: TemplateCategoryNode[];
+  totalTemplates: number;
+}
+
+export interface TemplateCategoryCount {
+  category: BuilderTemplateCategory;
+  label: string;
+  count: number;
+}
+
+export const TEMPLATE_CATEGORY_LABELS: Record<BuilderTemplateCategory, string> = {
+  PROCEDURE_CIVILE: 'Procédure Civile',
+  PROCEDURE_COMMERCIALE: 'Procédure Commerciale',
+  PROCEDURE_PRUDHOMALE: "Procédure Prud'homale",
+  PROCEDURE_ADMINISTRATIVE: 'Procédure Administrative',
+  PROCEDURE_PENALE: 'Procédure Pénale',
+  VOIES_EXECUTION: "Voies d'Exécution",
+  CONTRATS_AFFAIRES: "Contrats d'Affaires",
+  CONTRATS_TRAVAIL: 'Contrats de Travail',
+  DROIT_SOCIETES: 'Droit des Sociétés',
+  DROIT_IMMOBILIER: 'Droit Immobilier',
+  DROIT_FAMILLE: 'Droit de la Famille',
+  COURRIERS_CLIENTS: 'Courriers Clients',
+  COURRIERS_ADVERSAIRES: 'Courriers Adversaires',
+  COURRIERS_JURIDICTIONS: 'Courriers Juridictions',
+  RELANCES: 'Relances',
+  CUSTOM: 'Personnalisés',
+};
+
+export const TEMPLATE_CATEGORY_ICONS: Record<BuilderTemplateCategory, string> = {
+  PROCEDURE_CIVILE: 'ScaleIcon',
+  PROCEDURE_COMMERCIALE: 'BuildingOfficeIcon',
+  PROCEDURE_PRUDHOMALE: 'UserGroupIcon',
+  PROCEDURE_ADMINISTRATIVE: 'BuildingLibraryIcon',
+  PROCEDURE_PENALE: 'ShieldExclamationIcon',
+  VOIES_EXECUTION: 'DocumentTextIcon',
+  CONTRATS_AFFAIRES: 'DocumentDuplicateIcon',
+  CONTRATS_TRAVAIL: 'BriefcaseIcon',
+  DROIT_SOCIETES: 'BuildingOffice2Icon',
+  DROIT_IMMOBILIER: 'HomeModernIcon',
+  DROIT_FAMILLE: 'UsersIcon',
+  COURRIERS_CLIENTS: 'EnvelopeIcon',
+  COURRIERS_ADVERSAIRES: 'EnvelopeOpenIcon',
+  COURRIERS_JURIDICTIONS: 'InboxIcon',
+  RELANCES: 'ClockIcon',
+  CUSTOM: 'PuzzlePieceIcon',
 };

@@ -22,6 +22,8 @@ import type {
   FinalizeDocumentInput,
   GeneratedDocumentPreview,
   GeneratedDocumentStats,
+  TemplateTreeStructure,
+  TemplateCategoryCount,
 } from '../types/documentBuilder';
 import type { PaginatedResponse } from '../types/api';
 
@@ -123,7 +125,10 @@ export async function getBuilderTemplates(
 
   if (filters?.documentType) params.append('documentType', filters.documentType);
   if (filters?.juridiction) params.append('juridiction', filters.juridiction);
+  if (filters?.category) params.append('category', filters.category);
   if (filters?.isSystemTemplate !== undefined) params.append('isSystemTemplate', String(filters.isSystemTemplate));
+  if (filters?.isFavorite !== undefined) params.append('isFavorite', String(filters.isFavorite));
+  if (filters?.tags?.length) params.append('tags', filters.tags.join(','));
   if (filters?.search) params.append('search', filters.search);
   if (filters?.page) params.append('page', String(filters.page));
   if (filters?.limit) params.append('limit', String(filters.limit));
@@ -205,6 +210,64 @@ export async function getDocumentTypes(): Promise<DocumentTypeCount[]> {
 export async function getJuridictions(): Promise<JuridictionCount[]> {
   const { data } = await apiClient.get<{ success: boolean; data: JuridictionCount[] }>(
     '/builder-templates/juridictions'
+  );
+  return data.data;
+}
+
+// ============================================
+// TEMPLATE TREE STRUCTURE API
+// ============================================
+
+export async function getTemplateTreeStructure(includeEmpty: boolean = false): Promise<TemplateTreeStructure> {
+  const params = includeEmpty ? '?includeEmpty=true' : '';
+  const { data } = await apiClient.get<{ success: boolean; data: TemplateTreeStructure }>(
+    `/builder-templates/tree${params}`
+  );
+  return data.data;
+}
+
+export async function getFavoriteTemplates(limit: number = 10): Promise<BuilderTemplate[]> {
+  const { data } = await apiClient.get<{ success: boolean; data: BuilderTemplate[] }>(
+    `/builder-templates/favorites?limit=${limit}`
+  );
+  return data.data;
+}
+
+export async function getRecentTemplates(limit: number = 10): Promise<BuilderTemplate[]> {
+  const { data } = await apiClient.get<{ success: boolean; data: BuilderTemplate[] }>(
+    `/builder-templates/recent?limit=${limit}`
+  );
+  return data.data;
+}
+
+export async function toggleTemplateFavorite(id: string): Promise<{ id: string; isFavorite: boolean }> {
+  const { data } = await apiClient.post<{ success: boolean; data: { id: string; isFavorite: boolean } }>(
+    `/builder-templates/${id}/favorite`
+  );
+  return data.data;
+}
+
+export async function recordTemplateUsage(id: string): Promise<void> {
+  await apiClient.post(`/builder-templates/${id}/record-usage`);
+}
+
+export async function getTemplateCategories(): Promise<TemplateCategoryCount[]> {
+  const { data } = await apiClient.get<{ success: boolean; data: TemplateCategoryCount[] }>(
+    '/builder-templates/categories'
+  );
+  return data.data;
+}
+
+export async function getTemplateTags(): Promise<TagCount[]> {
+  const { data } = await apiClient.get<{ success: boolean; data: TagCount[] }>(
+    '/builder-templates/tags'
+  );
+  return data.data;
+}
+
+export async function getDerivedTemplates(id: string): Promise<BuilderTemplate[]> {
+  const { data } = await apiClient.get<{ success: boolean; data: BuilderTemplate[] }>(
+    `/builder-templates/${id}/derived`
   );
   return data.data;
 }

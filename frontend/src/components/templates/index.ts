@@ -6,3 +6,5 @@ export { default as TemplateFormBuilder } from './TemplateFormBuilder';
 export { default as TemplateUploadModal } from './TemplateUploadModal';
 export { default as TemplateGenerateModal } from './TemplateGenerateModal';
 export { default as TemplateEditModal } from './TemplateEditModal';
+export { default as TemplateTree } from './TemplateTree';
+export { default as TemplateDetails } from './TemplateDetails';

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BuilderDocumentType, Juridiction, OutputFormat } from '@prisma/client';
+import { BuilderDocumentType, Juridiction, OutputFormat, BuilderTemplateCategory } from '@prisma/client';
 
 // Block reference in template structure
 const blockReferenceSchema = z.object({
@@ -43,6 +43,7 @@ const legalMentionsSchema = z.object({
 // Create template schema
 export const createBuilderTemplateSchema = z.object({
   name: z.string().min(1).max(255),
+  description: z.string().optional(),
   documentType: z.nativeEnum(BuilderDocumentType),
   juridiction: z.nativeEnum(Juridiction).optional(),
   blocksStructure: z.array(blockReferenceSchema).optional().default([]),
@@ -50,11 +51,19 @@ export const createBuilderTemplateSchema = z.object({
   outputFormat: z.nativeEnum(OutputFormat).optional().default(OutputFormat.DOCX),
   workflowConfig: workflowConfigSchema.optional().default({}),
   legalMentions: legalMentionsSchema.optional().default({}),
+  // Tree structure fields
+  category: z.nativeEnum(BuilderTemplateCategory).optional().default(BuilderTemplateCategory.CUSTOM),
+  subcategory: z.string().optional(),
+  icon: z.string().optional(),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  tags: z.array(z.string()).optional().default([]),
+  basedOnTemplateId: z.string().uuid().optional(),
 });
 
 // Update template schema
 export const updateBuilderTemplateSchema = z.object({
   name: z.string().min(1).max(255).optional(),
+  description: z.string().nullable().optional(),
   documentType: z.nativeEnum(BuilderDocumentType).optional(),
   juridiction: z.nativeEnum(Juridiction).nullable().optional(),
   blocksStructure: z.array(blockReferenceSchema).optional(),
@@ -62,17 +71,30 @@ export const updateBuilderTemplateSchema = z.object({
   outputFormat: z.nativeEnum(OutputFormat).optional(),
   workflowConfig: workflowConfigSchema.optional(),
   legalMentions: legalMentionsSchema.optional(),
+  // Tree structure fields
+  category: z.nativeEnum(BuilderTemplateCategory).optional(),
+  subcategory: z.string().nullable().optional(),
+  icon: z.string().nullable().optional(),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).nullable().optional(),
+  tags: z.array(z.string()).optional(),
+  basedOnTemplateId: z.string().uuid().nullable().optional(),
 });
 
 // Query params schema
 export const builderTemplateQuerySchema = z.object({
   documentType: z.nativeEnum(BuilderDocumentType).optional(),
   juridiction: z.nativeEnum(Juridiction).optional(),
+  category: z.nativeEnum(BuilderTemplateCategory).optional(),
   isSystemTemplate: z
     .string()
     .optional()
     .transform((val) => (val === 'true' ? true : val === 'false' ? false : undefined)),
+  isFavorite: z
+    .string()
+    .optional()
+    .transform((val) => (val === 'true' ? true : val === 'false' ? false : undefined)),
   search: z.string().optional(),
+  tags: z.string().optional().transform((val) => val ? val.split(',') : undefined),
   page: z
     .string()
     .optional()
@@ -83,8 +105,17 @@ export const builderTemplateQuerySchema = z.object({
     .optional()
     .default('20')
     .transform((val) => Math.min(parseInt(val, 10), 100)),
-  sortBy: z.enum(['name', 'documentType', 'createdAt', 'usageCount']).optional().default('name'),
+  sortBy: z.enum(['name', 'documentType', 'createdAt', 'usageCount', 'lastUsedAt']).optional().default('name'),
   sortOrder: z.enum(['asc', 'desc']).optional().default('asc'),
+});
+
+// Tree query params schema
+export const treeQuerySchema = z.object({
+  includeEmpty: z
+    .string()
+    .optional()
+    .default('false')
+    .transform((val) => val === 'true'),
 });
 
 // ID param schema
@@ -106,6 +137,7 @@ export const previewGenerationSchema = z.object({
 export type CreateBuilderTemplateInput = z.infer<typeof createBuilderTemplateSchema>;
 export type UpdateBuilderTemplateInput = z.infer<typeof updateBuilderTemplateSchema>;
 export type BuilderTemplateQuery = z.infer<typeof builderTemplateQuerySchema>;
+export type TreeQuery = z.infer<typeof treeQuerySchema>;
 export type TemplateIdParam = z.infer<typeof templateIdParamSchema>;
 export type DocumentTypeParam = z.infer<typeof documentTypeParamSchema>;
 export type PreviewGenerationInput = z.infer<typeof previewGenerationSchema>;
