@@ -52,6 +52,22 @@ router.patch(
 
 /**
  * @swagger
+ * /api/cabinets/current:
+ *   patch:
+ *     summary: Update cabinet info (Admin only, alias for /me)
+ *     tags: [Cabinets]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.patch(
+  '/current',
+  requireAdmin,
+  validateBody(updateCabinetSchema),
+  cabinetsController.updateCabinet.bind(cabinetsController)
+);
+
+/**
+ * @swagger
  * /api/cabinets/me/stats:
  *   get:
  *     summary: Get cabinet statistics

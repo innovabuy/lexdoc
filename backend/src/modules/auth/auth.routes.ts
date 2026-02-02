@@ -208,4 +208,18 @@ router.post(
  */
 router.get('/profile', authenticate, usersController.getCurrentUser.bind(usersController));
 
+/**
+ * @swagger
+ * /api/auth/me:
+ *   get:
+ *     summary: Get current user profile (alias for /profile)
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User profile
+ */
+router.get('/me', authenticate, usersController.getCurrentUser.bind(usersController));
+
 export default router;

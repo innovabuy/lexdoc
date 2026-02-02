@@ -172,16 +172,16 @@ export class DocumentBlocksService {
     }
 
     // Jurisdiction tags
-    const jurisdictions = [
-      'tribunal_judiciaire',
-      'tribunal_commerce',
-      'cour_appel',
-      'prudhommes',
-      'conseil_etat',
-    ];
-    for (const juris of jurisdictions) {
-      if (combined.includes(juris.replace('_', ' '))) {
-        suggestions.push(juris);
+    const jurisdictionPatterns: Record<string, string[]> = {
+      tribunal_judiciaire: ['tribunal judiciaire'],
+      tribunal_commerce: ['tribunal de commerce', 'tribunal commerce'],
+      cour_appel: ['cour d\'appel', 'cour appel'],
+      prudhommes: ['prud\'hommes', 'prudhommes', 'conseil de prud'],
+      conseil_etat: ['conseil d\'état', 'conseil d\'etat', 'conseil etat'],
+    };
+    for (const [tag, patterns] of Object.entries(jurisdictionPatterns)) {
+      if (patterns.some(pattern => combined.includes(pattern))) {
+        suggestions.push(tag);
       }
     }
 

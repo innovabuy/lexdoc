@@ -82,12 +82,11 @@ describe('Cabinets Module', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-      expect(response.body.data).toHaveProperty('users');
-      expect(response.body.data).toHaveProperty('folders');
-      expect(response.body.data).toHaveProperty('documents');
-      expect(response.body.data).toHaveProperty('storage');
-      expect(response.body.data.users).toHaveProperty('count');
-      expect(response.body.data.storage).toHaveProperty('used');
+      expect(response.body.data).toHaveProperty('totalUsers');
+      expect(response.body.data).toHaveProperty('totalFolders');
+      expect(response.body.data).toHaveProperty('totalDocuments');
+      expect(response.body.data).toHaveProperty('storageUsed');
+      expect(response.body.data).toHaveProperty('storageLimit');
     });
 
     it('should reject stats request from secretaire', async () => {

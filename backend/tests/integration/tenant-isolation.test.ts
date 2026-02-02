@@ -20,9 +20,10 @@ describe('Tenant Isolation', () => {
   let avocatA: TestUser;
 
   beforeEach(async () => {
-    // Create two separate cabinets with users
-    cabinetA = await createTestCabinet({ name: 'Cabinet A', email: 'cabinet-a@test.com' });
-    cabinetB = await createTestCabinet({ name: 'Cabinet B', email: 'cabinet-b@test.com' });
+    // Create two separate cabinets with users (using unique emails)
+    const timestamp = Date.now();
+    cabinetA = await createTestCabinet({ name: 'Cabinet A', email: `cabinet-a-${timestamp}@test.com` });
+    cabinetB = await createTestCabinet({ name: 'Cabinet B', email: `cabinet-b-${timestamp}@test.com` });
 
     adminA = await createTestAdmin(cabinetA.id);
     adminB = await createTestAdmin(cabinetB.id);
