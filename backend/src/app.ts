@@ -30,6 +30,7 @@ import freeNotesRoutes, { folderFreeNotesRouter } from '@/modules/free-notes/fre
 import { clientsRouter } from '@/modules/clients';
 import { rgpdRoutes } from '@/modules/rgpd';
 import { wizardsRoutes } from '@/modules/wizards';
+import { backupRoutes } from '@/modules/backups';
 
 const app = express();
 
@@ -129,6 +130,7 @@ app.use('/api/folders/:folderId/free-notes', apiLimiter, folderFreeNotesRouter);
 app.use('/api/clients', apiLimiter, clientsRouter);
 app.use('/api/rgpd', apiLimiter, rgpdRoutes);
 app.use('/api/wizards', apiLimiter, wizardsRoutes);
+app.use('/api/backups', apiLimiter, backupRoutes);
 
 // Webhook routes (public, no rate limiting)
 app.use('/api/webhooks', signatureWebhookRouter);
@@ -160,6 +162,7 @@ app.get('/api', (_req, res) => {
       clients: '/api/clients',
       rgpd: '/api/rgpd',
       wizards: '/api/wizards',
+      backups: '/api/backups',
       webhooks: '/api/webhooks',
     },
   });

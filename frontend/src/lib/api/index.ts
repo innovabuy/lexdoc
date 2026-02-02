@@ -7,3 +7,4 @@ export * from './folders';
 export * from './signatures';
 export * from './lrar';
 export * from './wizards';
+export * from './backups';

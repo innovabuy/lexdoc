@@ -1020,3 +1020,36 @@ enum WizardType {
   DOCUMENT_GENERATION
   CLIENT_CREATION
 }
+
+// ============================================
+// BACKUP SYSTEM MODELS
+// ============================================
+
+/// Track backup operations for audit and restoration
+model BackupLog {
+  id          String       @id @default(uuid())
+  backupId    String       @unique @map("backup_id")
+
+  status      BackupStatus @default(IN_PROGRESS)
+  provider    String       @default("GOOGLE_DRIVE") // GOOGLE_DRIVE, AWS_S3, LOCAL
+
+  duration    Float?       // Duration in seconds
+  error       String?      // Error message if failed
+
+  // Metadata about the backup
+  metadata    Json?        // Sizes, file counts, etc.
+
+  // Timestamps
+  startedAt   DateTime     @default(now()) @map("started_at")
+  completedAt DateTime?    @map("completed_at")
+
+  @@index([status, startedAt])
+  @@index([provider])
+  @@map("backup_logs")
+}
+
+enum BackupStatus {
+  IN_PROGRESS
+  SUCCESS
+  FAILED
+}

@@ -85,6 +85,23 @@ export const config = {
     apiUrl: process.env.SENDINGBOX_API_URL || 'https://api.sendingbox.io/v1',
     webhookSecret: process.env.SENDINGBOX_WEBHOOK_SECRET || '',
   },
+
+  // Backup System (Google Drive)
+  backup: {
+    googleDriveCredentialsPath: process.env.GOOGLE_DRIVE_CREDENTIALS_PATH || '',
+    googleDriveFolderId: process.env.GOOGLE_DRIVE_BACKUP_FOLDER_ID || '',
+    encryptionKey: process.env.BACKUP_ENCRYPTION_KEY || '',
+    retentionDays: parseInt(process.env.BACKUP_RETENTION_DAYS || '30', 10),
+    scheduleCron: process.env.BACKUP_SCHEDULE_CRON || '0 3 * * *',
+    minioDataPath: process.env.MINIO_DATA_PATH || '/opt/lexdoc/data/minio',
+    uploadsPath: process.env.UPLOADS_PATH || '/mnt/user-data/uploads',
+  },
+
+  // App info
+  app: {
+    version: process.env.APP_VERSION || '1.0.0',
+    name: 'LexDoc',
+  },
 } as const;
 
 // Validate required config in production

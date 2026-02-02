@@ -50,6 +50,9 @@ const DocumentTemplateDetailPage = lazy(() => import('@/pages/document-templates
 // Profile
 const AvocatLegalInfoPage = lazy(() => import('@/pages/profile/AvocatLegalInfoPage'));
 
+// Admin
+const BackupsPage = lazy(() => import('@/pages/admin/BackupsPage'));
+
 // Document Generation
 const GeneratedDocumentsListPage = lazy(() => import('@/pages/document-generation/GeneratedDocumentsListPage'));
 const DocumentGenerationWizard = lazy(() => import('@/pages/document-generation/DocumentGenerationWizard'));
@@ -94,6 +97,14 @@ const AppRoutes: React.FC = () => {
             element={
               <ProtectedRoute roles={['ADMIN']}>
                 <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/backups"
+            element={
+              <ProtectedRoute roles={['ADMIN']}>
+                <BackupsPage />
               </ProtectedRoute>
             }
           />
