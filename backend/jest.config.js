@@ -34,4 +34,6 @@ module.exports = {
   maxWorkers: 1, // Run tests sequentially to avoid database conflicts
   verbose: true,
   testTimeout: 30000,
+  forceExit: true,
+  detectOpenHandles: true,
 };
