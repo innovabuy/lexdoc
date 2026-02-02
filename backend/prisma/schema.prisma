@@ -79,8 +79,16 @@ model User {
   // RGPD relations
   processedRgpdRequests   RgpdDataRequest[]   @relation("RgpdRequestProcessor")
 
+  // Onboarding & Wizard
+  onboardingCompleted     Boolean             @default(false) @map("onboarding_completed")
+  onboardingStep          Int?                @default(0) @map("onboarding_step")
+  onboardingData          Json?               @map("onboarding_data")
+  showWizards             Boolean             @default(true) @map("show_wizards")
+  wizardProgress          WizardProgress[]
+
   @@index([cabinetId])
   @@index([email])
+  @@index([onboardingCompleted])
   @@map("users")
 }
 
@@ -977,4 +985,38 @@ enum RgpdAuditAction {
   RETENTION_POLICY_APPLIED
   DATA_BREACH_DETECTED
   DATA_BREACH_NOTIFIED
+}
+
+// ============================================
+// WIZARD & ONBOARDING MODELS
+// ============================================
+
+/// Track wizard progress for users
+model WizardProgress {
+  id          String      @id @default(uuid())
+  userId      String      @map("user_id")
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  wizardType  WizardType
+  currentStep Int         @default(0) @map("current_step")
+  totalSteps  Int         @map("total_steps")
+  data        Json        @default("{}")
+
+  completed   Boolean     @default(false)
+  completedAt DateTime?   @map("completed_at")
+  abandonedAt DateTime?   @map("abandoned_at")
+
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  @@unique([userId, wizardType])
+  @@index([userId, wizardType, completed])
+  @@map("wizard_progress")
+}
+
+enum WizardType {
+  ONBOARDING
+  FOLDER_CREATION
+  DOCUMENT_GENERATION
+  CLIENT_CREATION
 }

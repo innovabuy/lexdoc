@@ -10,3 +10,4 @@ export * from './useFolders';
 export * from './useDocumentBuilder';
 export * from './useClients';
 export * from './useAutoFill';
+export * from './useWizard';
