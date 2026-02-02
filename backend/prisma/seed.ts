@@ -2,6 +2,7 @@ import { PrismaClient, CabinetStatus, UserRole, AuditAction } from '@prisma/clie
 import bcrypt from 'bcryptjs';
 import { seedDocumentBuilder } from './seeds/documentBuilder.seed';
 import { seedExtendedBlocks } from './seeds/extended-blocks.seed';
+import { seedExtendedTemplates } from './seeds/extended-templates.seed';
 
 const prisma = new PrismaClient();
 
@@ -181,6 +182,10 @@ async function main() {
   // Seed Extended Blocks
   const extendedBlocksCount = await seedExtendedBlocks(demoCabinet.id, adminUser.id);
   console.log(`Extended blocks seeding completed: ${extendedBlocksCount} blocks added`);
+
+  // Seed Extended Templates
+  const extendedTemplatesCount = await seedExtendedTemplates(demoCabinet.id, adminUser.id);
+  console.log(`Extended templates seeding completed: ${extendedTemplatesCount} templates added`);
 
   // Summary
   console.log('\n========================================');
