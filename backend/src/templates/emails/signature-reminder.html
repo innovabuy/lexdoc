@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rappel de signature - LexDoc</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      background: white;
+      border-radius: 8px;
+      padding: 40px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .reminder-badge {
+      display: inline-block;
+      background: #ff9800;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    h1 {
+      color: #333;
+      font-size: 22px;
+      margin-bottom: 20px;
+    }
+    .content {
+      margin-bottom: 30px;
+    }
+    .document-info {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    .document-info h3 {
+      margin: 0 0 10px 0;
+      color: #0066ff;
+      font-size: 16px;
+    }
+    .document-info p {
+      margin: 5px 0;
+      color: #666;
+    }
+    .button {
+      display: inline-block;
+      background: linear-gradient(135deg, #0066ff 0%, #00d9ff 100%);
+      color: white !important;
+      text-decoration: none;
+      padding: 14px 32px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 16px;
+      text-align: center;
+    }
+    .button:hover {
+      opacity: 0.9;
+    }
+    .button-container {
+      text-align: center;
+      margin: 30px 0;
+    }
+    .warning-box {
+      background: #fff3cd;
+      border-left: 4px solid #ff9800;
+      padding: 15px 20px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+    }
+    .footer {
+      text-align: center;
+      color: #666;
+      font-size: 12px;
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #eee;
+    }
+    .expiry-date {
+      color: #e74c3c;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <span class="reminder-badge">📧 Rappel #{{reminderNumber}}</span>
+      <h1>Document en attente de votre signature</h1>
+    </div>
+
+    <div class="content">
+      <p>Bonjour {{recipientName}},</p>
+
+      <p>Nous vous rappelons qu'un document nécessite votre signature électronique.</p>
+
+      <div class="document-info">
+        <h3>📄 {{documentTitle}}</h3>
+        <p><strong>Cabinet :</strong> {{cabinetName}}</p>
+        <p><strong>Date limite :</strong> <span class="expiry-date">{{expiresAt}}</span></p>
+      </div>
+
+      <div class="warning-box">
+        <strong>⚠️ Action requise</strong>
+        <p>Ce document attend votre signature. Merci de le signer dans les meilleurs délais pour permettre la poursuite de la procédure.</p>
+      </div>
+
+      <div class="button-container">
+        <a href="{{signUrl}}" class="button">✍️ Signer le document</a>
+      </div>
+
+      <p>La signature électronique est juridiquement valable et équivalente à une signature manuscrite.</p>
+    </div>
+
+    <div class="footer">
+      <p>Ce message a été envoyé automatiquement par LexDoc pour le compte de {{cabinetName}}.</p>
+      <p>Si vous avez des questions, veuillez contacter directement votre avocat.</p>
+      <p>© {{currentYear}} LexDoc - Gestion documentaire juridique</p>
+    </div>
+  </div>
+</body>
+</html>

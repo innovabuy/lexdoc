@@ -160,6 +160,7 @@ model Folder {
   folderType  FolderType  @default(AFFAIRE_GENERALE) @map("folder_type")
   clientId    String?     @map("client_id")
   metadata    Json?       @default("{}") // Métadonnées structurées selon folderType
+  metadataCession Json?   @default("{}") @map("metadata_cession") // Métadonnées spécifiques cession d'entreprise
   createdAt   DateTime    @default(now()) @map("created_at")
   updatedAt   DateTime    @updatedAt @map("updated_at")
   deletedAt   DateTime?   @map("deleted_at")
@@ -1241,6 +1242,7 @@ model ClientAccess {
   lastLoginAt       DateTime?         @map("last_login_at")
   loginCount        Int               @default(0) @map("login_count")
   accessLogs        ClientAccessLog[]
+  pushSubscriptions PushSubscription[]
 
   // Metadata
   invitedBy         String            @map("invited_by")
@@ -1257,6 +1259,21 @@ model ClientAccess {
 }
 
 /// Log of client portal access actions
+/// Push notification subscriptions for PWA clients
+model PushSubscription {
+  id             String       @id @default(cuid())
+  endpoint       String       @unique
+  p256dh         String
+  auth           String
+  clientAccessId String       @map("client_access_id")
+  clientAccess   ClientAccess @relation(fields: [clientAccessId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  @@index([clientAccessId])
+  @@map("push_subscriptions")
+}
+
 model ClientAccessLog {
   id              String        @id @default(cuid())
   clientAccessId  String        @map("client_access_id")

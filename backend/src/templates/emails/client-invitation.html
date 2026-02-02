@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invitation Espace Client - LexDoc</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      background: white;
+      border-radius: 8px;
+      padding: 40px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .logo {
+      width: 120px;
+      height: auto;
+    }
+    h1 {
+      color: #0066ff;
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+    .content {
+      margin-bottom: 30px;
+    }
+    .button {
+      display: inline-block;
+      background: linear-gradient(135deg, #0066ff 0%, #00d9ff 100%);
+      color: white !important;
+      text-decoration: none;
+      padding: 14px 32px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 16px;
+      text-align: center;
+    }
+    .button:hover {
+      opacity: 0.9;
+    }
+    .button-container {
+      text-align: center;
+      margin: 30px 0;
+    }
+    .info-box {
+      background: #f0f7ff;
+      border-left: 4px solid #0066ff;
+      padding: 15px 20px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+    }
+    .footer {
+      text-align: center;
+      color: #666;
+      font-size: 12px;
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #eee;
+    }
+    .expiry-notice {
+      color: #e74c3c;
+      font-size: 14px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🔐 Invitation à votre Espace Client</h1>
+    </div>
+
+    <div class="content">
+      <p>Bonjour {{clientName}},</p>
+
+      <p>Le cabinet <strong>{{cabinetName}}</strong> vous invite à accéder à votre espace client sécurisé.</p>
+
+      <div class="info-box">
+        <strong>Votre espace client vous permet de :</strong>
+        <ul>
+          <li>📄 Consulter vos documents juridiques</li>
+          <li>✍️ Signer électroniquement vos documents</li>
+          <li>📥 Télécharger les documents mis à votre disposition</li>
+          <li>🔔 Recevoir des notifications pour les nouveaux documents</li>
+        </ul>
+      </div>
+
+      <div class="button-container">
+        <a href="{{activationUrl}}" class="button">Activer mon compte</a>
+      </div>
+
+      <p>En cliquant sur ce bouton, vous pourrez créer votre mot de passe et accéder immédiatement à votre espace.</p>
+
+      <p class="expiry-notice">⚠️ Ce lien d'activation expire dans <strong>{{expiresIn}}</strong>.</p>
+
+      <p>Si vous n'avez pas sollicité cet accès, vous pouvez ignorer ce message.</p>
+    </div>
+
+    <div class="footer">
+      <p>Ce message a été envoyé automatiquement par LexDoc.</p>
+      <p>Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br>
+      <a href="{{activationUrl}}" style="color: #0066ff; word-break: break-all;">{{activationUrl}}</a></p>
+      <p>© {{currentYear}} LexDoc - Gestion documentaire juridique</p>
+    </div>
+  </div>
+</body>
+</html>
