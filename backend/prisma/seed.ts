@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs';
 import { seedDocumentBuilder } from './seeds/documentBuilder.seed';
 import { seedExtendedBlocks } from './seeds/extended-blocks.seed';
 import { seedExtendedTemplates } from './seeds/extended-templates.seed';
+import { seedDroitAffairesBlocks } from './seeds/droit-affaires-blocs.seed';
+import { seedDroitAffairesTemplates } from './seeds/droit-affaires-templates.seed';
 
 const prisma = new PrismaClient();
 
@@ -186,6 +188,14 @@ async function main() {
   // Seed Extended Templates
   const extendedTemplatesCount = await seedExtendedTemplates(demoCabinet.id, adminUser.id);
   console.log(`Extended templates seeding completed: ${extendedTemplatesCount} templates added`);
+
+  // Seed Droit des Affaires Blocks
+  const droitAffairesBlocksCount = await seedDroitAffairesBlocks(demoCabinet.id, adminUser.id);
+  console.log(`Droit des affaires blocks seeding completed: ${droitAffairesBlocksCount} blocks added`);
+
+  // Seed Droit des Affaires Templates
+  const droitAffairesTemplatesCount = await seedDroitAffairesTemplates(demoCabinet.id, adminUser.id);
+  console.log(`Droit des affaires templates seeding completed: ${droitAffairesTemplatesCount} templates added`);
 
   // Summary
   console.log('\n========================================');
