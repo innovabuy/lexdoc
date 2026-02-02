@@ -95,8 +95,9 @@ model Folder {
   parent      Folder?    @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
   children    Folder[]   @relation("FolderHierarchy")
 
-  // Document Builder relation
+  // Document Builder relations
   generatedDocuments GeneratedDocument[]
+  freeNotes          DocumentBlock[]     @relation("FolderFreeNotes") // Notes libres du dossier
 
   @@index([cabinetId])
   @@index([parentId])
@@ -493,6 +494,8 @@ model DocumentBlock {
   isSystemBlock Boolean       @default(false) @map("is_system_block")
   displayOrder  Int           @default(0) @map("display_order")
   usageCount    Int           @default(0) @map("usage_count")
+  metadata      Json?         @default("{}") // Métadonnées: {folderId, linkedCategory, convertedFrom}
+  folderId      String?       @map("folder_id") // Pour notes libres liées à un dossier
   createdById   String        @map("created_by_id")
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
@@ -501,10 +504,12 @@ model DocumentBlock {
   // Relations
   cabinet   Cabinet @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
   createdBy User    @relation("BlockCreator", fields: [createdById], references: [id])
+  folder    Folder? @relation("FolderFreeNotes", fields: [folderId], references: [id], onDelete: SetNull)
 
   @@index([cabinetId, category])
   @@index([tags])
   @@index([isSystemBlock])
+  @@index([folderId])
   @@map("document_blocks")
 }
 
@@ -616,6 +621,7 @@ enum BlockCategory {
   CLAUSE
   MENTION_LEGALE
   CUSTOM
+  NOTE_LIBRE  // Bloc de saisie libre spécifique à un dossier
 }
 
 enum BuilderDocumentType {

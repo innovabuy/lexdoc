@@ -23,6 +23,7 @@ const CATEGORY_COLORS: Record<BlockCategory, string> = {
   CLAUSE: 'bg-yellow-100 text-yellow-800',
   MENTION_LEGALE: 'bg-gray-100 text-gray-800',
   CUSTOM: 'bg-indigo-100 text-indigo-800',
+  NOTE_LIBRE: 'bg-cyan-100 text-cyan-800',
 };
 
 export const BlockModal: React.FC<BlockModalProps> = ({ block, onClose }) => {

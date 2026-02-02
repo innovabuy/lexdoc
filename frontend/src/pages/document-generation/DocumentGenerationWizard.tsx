@@ -59,6 +59,7 @@ interface WizardState {
   selectedFolderId: string | null;
   filledVariables: Record<string, any>;
   generatedDocumentId: string | null;
+  selectedFreeNoteIds: string[];
 }
 
 const INITIAL_STATE: WizardState = {
@@ -66,6 +67,7 @@ const INITIAL_STATE: WizardState = {
   selectedFolderId: null,
   filledVariables: {},
   generatedDocumentId: null,
+  selectedFreeNoteIds: [],
 };
 
 export const DocumentGenerationWizard: React.FC = () => {
@@ -117,6 +119,13 @@ export const DocumentGenerationWizard: React.FC = () => {
     }));
   }, []);
 
+  const handleUpdateFreeNotes = useCallback((noteIds: string[]) => {
+    setState((prev) => ({
+      ...prev,
+      selectedFreeNoteIds: noteIds,
+    }));
+  }, []);
+
   // Create document when moving from step 2 to step 3
   const handleStep2Next = async () => {
     if (!state.selectedTemplate || !state.selectedFolderId) return;
@@ -129,6 +138,7 @@ export const DocumentGenerationWizard: React.FC = () => {
           folderId: state.selectedFolderId,
           title: `${state.selectedTemplate.name} - ${new Date().toLocaleDateString('fr-FR')}`,
           filledVariables: state.filledVariables,
+          freeNoteIds: state.selectedFreeNoteIds.length > 0 ? state.selectedFreeNoteIds : undefined,
         };
 
         const doc = await createDocumentMutation.mutateAsync(input);
@@ -243,6 +253,9 @@ export const DocumentGenerationWizard: React.FC = () => {
             onUpdateVariables={handleUpdateVariables}
             onNext={handleStep2Next}
             onBack={prevStep}
+            folderId={state.selectedFolderId || undefined}
+            selectedFreeNoteIds={state.selectedFreeNoteIds}
+            onUpdateFreeNotes={handleUpdateFreeNotes}
           />
         );
 

@@ -10,6 +10,7 @@ export const createGeneratedDocumentSchema = z.object({
   clientId: z.string().uuid().optional(),
   filledVariables: z.record(z.any()).optional().default({}),
   outputFormat: z.nativeEnum(OutputFormat).optional().default(OutputFormat.DOCX),
+  freeNoteIds: z.array(z.string().uuid()).optional(),
 });
 
 // Update generated document schema

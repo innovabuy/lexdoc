@@ -3,7 +3,7 @@
 // ============================================
 
 // Block Category
-export type BlockCategory = 'INTRO' | 'FAITS' | 'MOYENS' | 'DISPOSITIF' | 'SIGNATURE' | 'CLAUSE' | 'MENTION_LEGALE' | 'CUSTOM';
+export type BlockCategory = 'INTRO' | 'FAITS' | 'MOYENS' | 'DISPOSITIF' | 'SIGNATURE' | 'CLAUSE' | 'MENTION_LEGALE' | 'CUSTOM' | 'NOTE_LIBRE';
 
 // Document Types
 export type BuilderDocumentType =
@@ -338,6 +338,7 @@ export interface CreateGeneratedDocumentInput {
   clientId?: string;
   filledVariables?: Record<string, any>;
   outputFormat?: OutputFormat;
+  freeNoteIds?: string[];
 }
 
 export interface UpdateGeneratedDocumentInput {
@@ -384,6 +385,7 @@ export const BLOCK_CATEGORY_LABELS: Record<BlockCategory, string> = {
   CLAUSE: 'Clause',
   MENTION_LEGALE: 'Mention legale',
   CUSTOM: 'Personnalise',
+  NOTE_LIBRE: 'Note libre',
 };
 
 export const DOCUMENT_TYPE_LABELS: Record<BuilderDocumentType, string> = {

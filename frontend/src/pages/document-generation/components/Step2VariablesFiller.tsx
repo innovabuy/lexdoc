@@ -1,12 +1,15 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
-import { ChevronLeft, ChevronRight, AlertCircle, User, Calendar, Hash, FileText, ToggleLeft, List } from 'lucide-react';
+import { ChevronLeft, ChevronRight, AlertCircle, User, Calendar, Hash, FileText, ToggleLeft, List, FilePlus } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import { LoadingState } from '@/components/ui/Spinner';
 import { useBuilderTemplateVariables } from '@/hooks/useDocumentBuilder';
+import { useFolderFreeNotes } from '@/hooks/useFreeNotes';
+import { FreeNoteEditor, AddFreeNoteButton } from '@/components/FreeNoteBlock';
+import type { FreeNote } from '@/lib/api/freeNotes';
 import type { BlockVariable, VariableType } from '@/lib/types/documentBuilder';
 import { VARIABLE_TYPE_LABELS } from '@/lib/types/documentBuilder';
 
@@ -17,6 +20,9 @@ interface Step2VariablesFillerProps {
   onUpdateVariables: (variables: Record<string, any>) => void;
   onNext: () => void;
   onBack: () => void;
+  folderId?: string;
+  selectedFreeNoteIds?: string[];
+  onUpdateFreeNotes?: (noteIds: string[]) => void;
 }
 
 // Variable type icons
@@ -78,9 +84,19 @@ export const Step2VariablesFiller: React.FC<Step2VariablesFillerProps> = ({
   onUpdateVariables,
   onNext,
   onBack,
+  folderId,
+  selectedFreeNoteIds = [],
+  onUpdateFreeNotes,
 }) => {
+  // State for free notes
+  const [isAddingFreeNote, setIsAddingFreeNote] = useState(false);
+  const [localSelectedNoteIds, setLocalSelectedNoteIds] = useState<string[]>(selectedFreeNoteIds);
+
   // Fetch template variables
   const { data: variables, isLoading, error } = useBuilderTemplateVariables(templateId);
+
+  // Fetch folder free notes
+  const { data: freeNotes = [], isLoading: isLoadingNotes } = useFolderFreeNotes(folderId);
 
   const { control, handleSubmit, watch, setValue, formState: { errors } } = useForm({
     defaultValues: filledVariables,
@@ -312,6 +328,118 @@ export const Step2VariablesFiller: React.FC<Step2VariablesFillerProps> = ({
           </div>
         ))}
       </div>
+
+      {/* Free Notes Section */}
+      {folderId && (
+        <Card className="p-4">
+          <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-200">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <FilePlus className="h-4 w-4 text-blue-600" />
+            </div>
+            <div className="flex-1">
+              <h4 className="font-medium text-gray-900">Notes libres</h4>
+              <p className="text-xs text-gray-500">
+                Contenu personnalise specifique a ce dossier
+              </p>
+            </div>
+            {freeNotes.length > 0 && (
+              <Badge variant="primary">
+                {localSelectedNoteIds.length}/{freeNotes.length} selectionnee{localSelectedNoteIds.length > 1 ? 's' : ''}
+              </Badge>
+            )}
+          </div>
+
+          {isLoadingNotes ? (
+            <div className="py-4 text-center text-gray-500 text-sm">
+              Chargement des notes...
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Existing Free Notes */}
+              {freeNotes.length > 0 ? (
+                <div className="space-y-3">
+                  {freeNotes.map((note: FreeNote) => {
+                    const isSelected = localSelectedNoteIds.includes(note.id);
+                    return (
+                      <div
+                        key={note.id}
+                        className={`border-2 rounded-lg p-3 transition-colors cursor-pointer ${
+                          isSelected
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                        onClick={() => {
+                          const newIds = isSelected
+                            ? localSelectedNoteIds.filter((id) => id !== note.id)
+                            : [...localSelectedNoteIds, note.id];
+                          setLocalSelectedNoteIds(newIds);
+                          onUpdateFreeNotes?.(newIds);
+                        }}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => {}}
+                              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <div>
+                              <h5 className="font-medium text-gray-900 text-sm">{note.title}</h5>
+                              <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
+                                {note.content.substring(0, 150)}
+                                {note.content.length > 150 ? '...' : ''}
+                              </p>
+                            </div>
+                          </div>
+                          {note.metadata?.linkedCategory && (
+                            <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">
+                              {note.metadata.linkedCategory}
+                            </span>
+                          )}
+                        </div>
+                        {note.variables && note.variables.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {note.variables.map((v) => (
+                              <span
+                                key={v.name}
+                                className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-mono"
+                              >
+                                {`{{${v.name}}}`}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-gray-500 text-sm">
+                  Aucune note libre pour ce dossier.
+                </div>
+              )}
+
+              {/* Add New Free Note */}
+              {isAddingFreeNote ? (
+                <FreeNoteEditor
+                  folderId={folderId}
+                  onCancel={() => setIsAddingFreeNote(false)}
+                  onSuccess={(note) => {
+                    setIsAddingFreeNote(false);
+                    // Auto-select the new note
+                    const newIds = [...localSelectedNoteIds, note.id];
+                    setLocalSelectedNoteIds(newIds);
+                    onUpdateFreeNotes?.(newIds);
+                  }}
+                />
+              ) : (
+                <AddFreeNoteButton onClick={() => setIsAddingFreeNote(true)} />
+              )}
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* Navigation */}
       <div className="flex justify-between">

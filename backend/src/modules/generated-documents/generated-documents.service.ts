@@ -174,8 +174,13 @@ export class GeneratedDocumentsService {
         throw new NotFoundError('Builder template not found');
       }
 
-      // Generate content from template
-      generatedContent = await this.generateContent(template, data.filledVariables || {}, cabinetId);
+      // Generate content from template (including free notes if provided)
+      generatedContent = await this.generateContent(
+        template,
+        data.filledVariables || {},
+        cabinetId,
+        data.freeNoteIds
+      );
     }
 
     const document = await prisma.generatedDocument.create({
@@ -190,6 +195,9 @@ export class GeneratedDocumentsService {
         filledVariables: data.filledVariables as Prisma.InputJsonValue,
         generatedContent,
         status: GeneratedDocumentStatus.DRAFT,
+        workflowStatus: {
+          freeNoteIds: data.freeNoteIds || [],
+        } as Prisma.InputJsonValue,
       },
       include: {
         template: {
@@ -257,7 +265,9 @@ export class GeneratedDocumentsService {
       });
 
       if (template) {
-        generatedContent = await this.generateContent(template, data.filledVariables, cabinetId);
+        const workflowStatus = (existing.workflowStatus || {}) as Record<string, any>;
+        const freeNoteIds = workflowStatus.freeNoteIds as string[] | undefined;
+        generatedContent = await this.generateContent(template, data.filledVariables, cabinetId, freeNoteIds);
       }
     }
 
@@ -472,7 +482,9 @@ export class GeneratedDocumentsService {
     }
 
     const filledVariables = (document.filledVariables || {}) as Record<string, any>;
-    const generatedContent = await this.generateContent(document.template, filledVariables, cabinetId);
+    const workflowStatus = (document.workflowStatus || {}) as Record<string, any>;
+    const freeNoteIds = workflowStatus.freeNoteIds as string[] | undefined;
+    const generatedContent = await this.generateContent(document.template, filledVariables, cabinetId, freeNoteIds);
 
     const updated = await prisma.generatedDocument.update({
       where: { id },
@@ -562,16 +574,14 @@ export class GeneratedDocumentsService {
   private async generateContent(
     template: { blocksStructure: any },
     variables: Record<string, any>,
-    cabinetId: string
+    cabinetId: string,
+    freeNoteIds?: string[]
   ): Promise<string> {
     const blocksStructure = (template.blocksStructure || []) as unknown as BlockReference[];
     const blockIds = blocksStructure.map((b) => b.blockId);
 
-    if (blockIds.length === 0) {
-      return '';
-    }
-
-    const blocks = await prisma.documentBlock.findMany({
+    // Fetch template blocks
+    const blocks = blockIds.length > 0 ? await prisma.documentBlock.findMany({
       where: {
         id: { in: blockIds },
         deletedAt: null,
@@ -580,12 +590,45 @@ export class GeneratedDocumentsService {
         id: true,
         content: true,
         title: true,
+        category: true,
       },
-    });
+    }) : [];
+
+    // Fetch free notes if provided
+    const freeNotes = freeNoteIds && freeNoteIds.length > 0
+      ? await prisma.documentBlock.findMany({
+          where: {
+            id: { in: freeNoteIds },
+            cabinetId,
+            category: 'NOTE_LIBRE',
+            deletedAt: null,
+          },
+          select: {
+            id: true,
+            content: true,
+            title: true,
+            metadata: true,
+          },
+        })
+      : [];
 
     const blockMap = new Map(blocks.map((b) => [b.id, b]));
-    const renderedParts: string[] = [];
+    const freeNoteMap = new Map(freeNotes.map((n) => [n.id, n]));
 
+    // Group free notes by linked category
+    const freeNotesByCategory = new Map<string, typeof freeNotes>();
+    for (const note of freeNotes) {
+      const linkedCategory = (note.metadata as any)?.linkedCategory || 'END';
+      if (!freeNotesByCategory.has(linkedCategory)) {
+        freeNotesByCategory.set(linkedCategory, []);
+      }
+      freeNotesByCategory.get(linkedCategory)!.push(note);
+    }
+
+    const renderedParts: string[] = [];
+    const processedCategories = new Set<string>();
+
+    // Render template blocks, inserting free notes after their linked category
     for (const ref of blocksStructure) {
       const block = blockMap.get(ref.blockId);
       if (!block) continue;
@@ -594,8 +637,44 @@ export class GeneratedDocumentsService {
         const compiled = Handlebars.compile(block.content);
         const rendered = compiled(variables);
         renderedParts.push(rendered);
+
+        // Check if there are free notes linked to this category
+        const category = block.category;
+        if (category && freeNotesByCategory.has(category) && !processedCategories.has(category)) {
+          processedCategories.add(category);
+          const linkedNotes = freeNotesByCategory.get(category)!;
+          for (const note of linkedNotes) {
+            try {
+              const noteCompiled = Handlebars.compile(note.content);
+              const noteRendered = noteCompiled(variables);
+              renderedParts.push(`\n--- Note libre: ${note.title} ---\n${noteRendered}`);
+            } catch {
+              renderedParts.push(`\n--- Note libre: ${note.title} ---\n${note.content}`);
+            }
+          }
+        }
       } catch (error) {
         renderedParts.push(`[Error rendering: ${block.title}]`);
+      }
+    }
+
+    // Add any remaining free notes (those with no linked category or 'END')
+    const remainingNotes = freeNotes.filter((n) => {
+      const linkedCategory = (n.metadata as any)?.linkedCategory;
+      return !linkedCategory || linkedCategory === 'END' || !processedCategories.has(linkedCategory);
+    });
+
+    if (remainingNotes.length > 0) {
+      renderedParts.push('\n--- Notes libres additionnelles ---');
+      for (const note of remainingNotes) {
+        if (processedCategories.has((note.metadata as any)?.linkedCategory)) continue;
+        try {
+          const noteCompiled = Handlebars.compile(note.content);
+          const noteRendered = noteCompiled(variables);
+          renderedParts.push(`\n${note.title}:\n${noteRendered}`);
+        } catch {
+          renderedParts.push(`\n${note.title}:\n${note.content}`);
+        }
       }
     }
 
