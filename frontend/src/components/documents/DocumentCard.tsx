@@ -11,13 +11,18 @@ import {
   Trash2,
   Copy,
   FolderInput,
+  PenTool,
+  Mail,
 } from 'lucide-react';
-import type { Document } from '@/lib/types';
+import type { Document, DocumentTrackingStatus, DeliveryMethod } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { DocumentStatusIndicator } from './DocumentStatusBadge';
 
 interface DocumentCardProps {
   document: Document;
   isSelected?: boolean;
+  trackingStatus?: DocumentTrackingStatus;
+  deliveryMethod?: DeliveryMethod;
   onSelect?: (id: string) => void;
   onView?: (document: Document) => void;
   onDownload?: (document: Document) => void;
@@ -25,6 +30,8 @@ interface DocumentCardProps {
   onDelete?: (document: Document) => void;
   onDuplicate?: (document: Document) => void;
   onMove?: (document: Document) => void;
+  onSendForSignature?: (document: Document) => void;
+  onSendLrar?: (document: Document) => void;
 }
 
 const typeColors: Record<string, string> = {
@@ -63,6 +70,7 @@ function formatDate(dateString: string): string {
 export function DocumentCard({
   document,
   isSelected = false,
+  trackingStatus,
   onSelect,
   onView,
   onDownload,
@@ -70,6 +78,8 @@ export function DocumentCard({
   onDelete,
   onDuplicate,
   onMove,
+  onSendForSignature,
+  onSendLrar,
 }: DocumentCardProps) {
   const [showMenu, setShowMenu] = useState(false);
   const Icon = getFileIcon(document.mimeType);
@@ -171,6 +181,35 @@ export function DocumentCard({
               >
                 <FolderInput className="h-4 w-4" /> Deplacer
               </button>
+              {(onSendForSignature || onSendLrar) && (
+                <>
+                  <hr className="my-1" />
+                  {onSendForSignature && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMenu(false);
+                        onSendForSignature(document);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm hover:bg-blue-50 text-blue-600 flex items-center gap-2"
+                    >
+                      <PenTool className="h-4 w-4" /> Envoyer pour signature
+                    </button>
+                  )}
+                  {onSendLrar && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMenu(false);
+                        onSendLrar(document);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm hover:bg-purple-50 text-purple-600 flex items-center gap-2"
+                    >
+                      <Mail className="h-4 w-4" /> Envoyer en LRAR
+                    </button>
+                  )}
+                </>
+              )}
               <hr className="my-1" />
               <button
                 onClick={(e) => {
@@ -186,6 +225,11 @@ export function DocumentCard({
           </>
         )}
       </div>
+
+      {/* Tracking status indicator */}
+      {trackingStatus && trackingStatus !== 'DRAFT' && (
+        <DocumentStatusIndicator status={trackingStatus} />
+      )}
 
       {/* Document icon */}
       <div className="flex justify-center mb-4 mt-4">

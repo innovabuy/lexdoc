@@ -205,6 +205,7 @@ model Document {
   folder                Folder?                @relation(fields: [folderId], references: [id])
   signatureTransactions SignatureTransaction[]
   lrarShipments         LrarShipment[]
+  tracking              DocumentTracking?
 
   @@index([cabinetId])
   @@index([folderId])
@@ -1097,4 +1098,97 @@ enum BackupStatus {
   IN_PROGRESS
   SUCCESS
   FAILED
+}
+
+// ============================================
+// DOCUMENT TRACKING SYSTEM
+// ============================================
+
+/// Track document delivery status (signature, LRAR) with automatic reminders
+model DocumentTracking {
+  id                   String                @id @default(uuid())
+  documentId           String                @unique @map("document_id")
+  document             Document              @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  status               DocumentTrackingStatus @default(DRAFT)
+  deliveryMethod       DeliveryMethod?       @map("delivery_method")
+
+  // Signature electronique
+  signatureRequestId   String?               @map("signature_request_id")
+  signatureStatus      TrackingSignatureStatus? @map("signature_status")
+  signedAt             DateTime?             @map("signed_at")
+  signedBy             String[]              @default([]) @map("signed_by")
+  expiresAt            DateTime?             @map("expires_at")
+
+  // LRAR
+  lrarRequestId        String?               @map("lrar_request_id")
+  lrarTrackingNumber   String?               @map("lrar_tracking_number")
+  lrarStatus           TrackingLrarStatus?   @map("lrar_status")
+  sentAt               DateTime?             @map("sent_at")
+  deliveredAt          DateTime?             @map("delivered_at")
+
+  // Relances automatiques
+  reminderCount        Int                   @default(0) @map("reminder_count")
+  lastReminderAt       DateTime?             @map("last_reminder_at")
+  nextReminderAt       DateTime?             @map("next_reminder_at")
+  autoRemindersEnabled Boolean               @default(true) @map("auto_reminders_enabled")
+  reminderFrequency    ReminderFrequency     @default(DAILY) @map("reminder_frequency")
+  maxReminders         Int                   @default(5) @map("max_reminders")
+
+  // Recipients for tracking
+  recipients           Json                  @default("[]") // [{name, email, status, signedAt}]
+
+  // Metadata
+  customMessage        String?               @map("custom_message") @db.Text
+  createdAt            DateTime              @default(now()) @map("created_at")
+  updatedAt            DateTime              @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([signatureRequestId])
+  @@index([lrarRequestId])
+  @@index([nextReminderAt])
+  @@index([documentId])
+  @@map("document_tracking")
+}
+
+enum DocumentTrackingStatus {
+  DRAFT              // Document cree, pas encore envoye
+  PENDING_SIGNATURE  // Envoye pour signature, en attente
+  PARTIALLY_SIGNED   // Au moins un signataire a signe
+  SIGNED             // Signe par tous les signataires
+  PENDING_DELIVERY   // Envoye en LRAR, en cours d'acheminement
+  DELIVERED          // LRAR livre avec AR
+  CANCELLED          // Annule
+  EXPIRED            // Expire sans signature/livraison
+  FAILED             // Echec d'envoi
+}
+
+enum DeliveryMethod {
+  SIGNATURE_ELECTRONIQUE
+  LRAR
+  BOTH  // Signe puis envoye en LRAR
+}
+
+enum TrackingSignatureStatus {
+  PENDING
+  IN_PROGRESS   // Au moins 1 signataire a signe
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+enum TrackingLrarStatus {
+  PENDING
+  SENT
+  IN_TRANSIT
+  DELIVERED
+  FAILED
+  RETURNED
+}
+
+enum ReminderFrequency {
+  DAILY
+  EVERY_2_DAYS
+  EVERY_3_DAYS
+  WEEKLY
 }

@@ -31,6 +31,7 @@ import { clientsRouter } from '@/modules/clients';
 import { rgpdRoutes } from '@/modules/rgpd';
 import { wizardsRoutes } from '@/modules/wizards';
 import { backupRoutes } from '@/modules/backups';
+import documentTrackingRoutes, { webhookRouter as documentTrackingWebhookRouter } from '@/modules/document-tracking/document-tracking.routes';
 
 const app = express();
 
@@ -131,10 +132,12 @@ app.use('/api/clients', apiLimiter, clientsRouter);
 app.use('/api/rgpd', apiLimiter, rgpdRoutes);
 app.use('/api/wizards', apiLimiter, wizardsRoutes);
 app.use('/api/backups', apiLimiter, backupRoutes);
+app.use('/api/document-tracking', apiLimiter, documentTrackingRoutes);
 
 // Webhook routes (public, no rate limiting)
 app.use('/api/webhooks', signatureWebhookRouter);
 app.use('/api/webhooks', lrarWebhookRouter);
+app.use('/api/webhooks', documentTrackingWebhookRouter);
 
 // API info endpoint
 app.get('/api', (_req, res) => {
@@ -163,6 +166,7 @@ app.get('/api', (_req, res) => {
       rgpd: '/api/rgpd',
       wizards: '/api/wizards',
       backups: '/api/backups',
+      documentTracking: '/api/document-tracking',
       webhooks: '/api/webhooks',
     },
   });
