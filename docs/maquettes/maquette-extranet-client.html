@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Extranet Client - LexDoc</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <meta name="theme-color" content="#0066ff">
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <!-- PWA Install Banner -->
+  <div class="bg-blue-600 text-white px-4 py-3 flex items-center justify-between" id="install-banner">
+    <div class="flex items-center">
+      <i class="fas fa-download mr-3"></i>
+      <span class="text-sm">Installez l'application pour un accès rapide à vos documents</span>
+    </div>
+    <div class="flex items-center space-x-2">
+      <button class="bg-white text-blue-600 px-3 py-1 rounded text-sm font-medium hover:bg-blue-50">
+        Installer
+      </button>
+      <button class="text-white/80 hover:text-white">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Navbar -->
+  <nav class="bg-white shadow-sm border-b">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between h-16">
+        <div class="flex items-center">
+          <span class="text-xl font-bold text-blue-600">LexDoc</span>
+          <span class="ml-2 text-sm text-gray-500">Espace Client</span>
+        </div>
+        <div class="flex items-center space-x-4">
+          <!-- Offline Indicator (hidden by default) -->
+          <div class="hidden items-center text-orange-500 text-sm" id="offline-indicator">
+            <i class="fas fa-wifi-slash mr-1"></i>
+            <span>Hors ligne</span>
+          </div>
+          <button class="p-2 text-gray-400 hover:text-gray-500 relative">
+            <i class="fas fa-bell"></i>
+            <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+          </button>
+          <div class="flex items-center">
+            <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-medium">
+              JD
+            </div>
+            <span class="ml-2 text-sm font-medium text-gray-700">Jean Dupont</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Welcome Section -->
+    <div class="mb-8">
+      <h1 class="text-2xl font-bold text-gray-900">Bonjour Jean,</h1>
+      <p class="text-gray-500">Bienvenue sur votre espace client sécurisé</p>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      <div class="bg-white rounded-lg shadow-sm p-4 border">
+        <div class="flex items-center">
+          <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+            <i class="fas fa-file-alt text-blue-600"></i>
+          </div>
+          <div class="ml-3">
+            <p class="text-2xl font-bold text-gray-900">12</p>
+            <p class="text-xs text-gray-500">Documents</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-lg shadow-sm p-4 border">
+        <div class="flex items-center">
+          <div class="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
+            <i class="fas fa-signature text-orange-600"></i>
+          </div>
+          <div class="ml-3">
+            <p class="text-2xl font-bold text-gray-900">3</p>
+            <p class="text-xs text-gray-500">À signer</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-lg shadow-sm p-4 border">
+        <div class="flex items-center">
+          <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+            <i class="fas fa-check-circle text-green-600"></i>
+          </div>
+          <div class="ml-3">
+            <p class="text-2xl font-bold text-gray-900">8</p>
+            <p class="text-xs text-gray-500">Signés</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-lg shadow-sm p-4 border">
+        <div class="flex items-center">
+          <div class="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+            <i class="fas fa-folder text-purple-600"></i>
+          </div>
+          <div class="ml-3">
+            <p class="text-2xl font-bold text-gray-900">2</p>
+            <p class="text-xs text-gray-500">Dossiers</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Required Section -->
+    <div class="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-8">
+      <div class="flex items-start">
+        <div class="flex-shrink-0">
+          <i class="fas fa-exclamation-triangle text-orange-500 text-xl"></i>
+        </div>
+        <div class="ml-3 flex-1">
+          <h3 class="text-sm font-medium text-orange-800">Actions requises</h3>
+          <p class="text-sm text-orange-700 mt-1">
+            Vous avez 3 documents en attente de signature. Merci de les traiter dans les plus brefs délais.
+          </p>
+          <button class="mt-2 text-sm font-medium text-orange-800 hover:text-orange-900">
+            Voir les documents <i class="fas fa-arrow-right ml-1"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Documents Table -->
+    <div class="bg-white rounded-lg shadow-sm border">
+      <div class="px-4 py-3 border-b flex justify-between items-center">
+        <h2 class="text-lg font-medium text-gray-900">Mes documents</h2>
+        <div class="flex items-center space-x-2">
+          <div class="relative">
+            <input type="text" placeholder="Rechercher..."
+              class="pl-8 pr-4 py-1.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <i class="fas fa-search absolute left-2.5 top-2.5 text-gray-400 text-sm"></i>
+          </div>
+          <select class="border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option>Tous les statuts</option>
+            <option>À signer</option>
+            <option>Signé</option>
+            <option>En cours</option>
+          </select>
+        </div>
+      </div>
+
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Document</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dossier</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Relances</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <!-- Document Row 1 - Pending Signature -->
+          <tr class="hover:bg-gray-50">
+            <td class="px-4 py-4">
+              <div class="flex items-center">
+                <div class="w-8 h-8 rounded bg-red-100 flex items-center justify-center">
+                  <i class="fas fa-file-pdf text-red-600 text-sm"></i>
+                </div>
+                <div class="ml-3">
+                  <p class="text-sm font-medium text-gray-900">Contrat de cession de parts</p>
+                  <p class="text-xs text-gray-500">PDF - 245 Ko</p>
+                </div>
+              </div>
+            </td>
+            <td class="px-4 py-4">
+              <span class="text-sm text-gray-600">Cession SARL Martin</span>
+            </td>
+            <td class="px-4 py-4">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                <i class="fas fa-signature mr-1"></i>
+                À signer
+              </span>
+            </td>
+            <td class="px-4 py-4">
+              <div class="flex items-center">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                  <i class="fas fa-bell mr-1"></i>
+                  2 relances
+                </span>
+              </div>
+            </td>
+            <td class="px-4 py-4">
+              <span class="text-sm text-gray-500">28 jan. 2024</span>
+            </td>
+            <td class="px-4 py-4 text-right">
+              <button class="bg-blue-600 text-white text-sm px-3 py-1.5 rounded hover:bg-blue-700">
+                Signer
+              </button>
+            </td>
+          </tr>
+
+          <!-- Document Row 2 - Pending Signature -->
+          <tr class="hover:bg-gray-50">
+            <td class="px-4 py-4">
+              <div class="flex items-center">
+                <div class="w-8 h-8 rounded bg-red-100 flex items-center justify-center">
+                  <i class="fas fa-file-pdf text-red-600 text-sm"></i>
+                </div>
+                <div class="ml-3">
+                  <p class="text-sm font-medium text-gray-900">Mandat de représentation</p>
+                  <p class="text-xs text-gray-500">PDF - 128 Ko</p>
+                </div>
+              </div>
+            </td>
+            <td class="px-4 py-4">
+              <span class="text-sm text-gray-600">Cession SARL Martin</span>
+            </td>
+            <td class="px-4 py-4">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                <i class="fas fa-signature mr-1"></i>
+                À signer
+              </span>
+            </td>
+            <td class="px-4 py-4">
+              <div class="flex items-center">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                  <i class="fas fa-bell-slash mr-1"></i>
+                  0 relance
+                </span>
+              </div>
+            </td>
+            <td class="px-4 py-4">
+              <span class="text-sm text-gray-500">30 jan. 2024</span>
+            </td>
+            <td class="px-4 py-4 text-right">
+              <button class="bg-blue-600 text-white text-sm px-3 py-1.5 rounded hover:bg-blue-700">
+                Signer
+              </button>
+            </td>
+          </tr>
+
+          <!-- Document Row 3 - Signed -->
+          <tr class="hover:bg-gray-50">
+            <td class="px-4 py-4">
+              <div class="flex items-center">
+                <div class="w-8 h-8 rounded bg-red-100 flex items-center justify-center">
+                  <i class="fas fa-file-pdf text-red-600 text-sm"></i>
+                </div>
+                <div class="ml-3">
+                  <p class="text-sm font-medium text-gray-900">Convention d'honoraires</p>
+                  <p class="text-xs text-gray-500">PDF - 89 Ko</p>
+                </div>
+              </div>
+            </td>
+            <td class="px-4 py-4">
+              <span class="text-sm text-gray-600">Cession SARL Martin</span>
+            </td>
+            <td class="px-4 py-4">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                <i class="fas fa-check mr-1"></i>
+                Signé
+              </span>
+            </td>
+            <td class="px-4 py-4">
+              <span class="text-xs text-gray-400">-</span>
+            </td>
+            <td class="px-4 py-4">
+              <span class="text-sm text-gray-500">15 jan. 2024</span>
+            </td>
+            <td class="px-4 py-4 text-right">
+              <div class="flex items-center justify-end space-x-2">
+                <button class="text-gray-400 hover:text-gray-500 p-1.5" title="Voir">
+                  <i class="fas fa-eye"></i>
+                </button>
+                <button class="text-gray-400 hover:text-gray-500 p-1.5" title="Télécharger">
+                  <i class="fas fa-download"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Document Row 4 - LRAR Delivered -->
+          <tr class="hover:bg-gray-50">
+            <td class="px-4 py-4">
+              <div class="flex items-center">
+                <div class="w-8 h-8 rounded bg-red-100 flex items-center justify-center">
+                  <i class="fas fa-file-pdf text-red-600 text-sm"></i>
+                </div>
+                <div class="ml-3">
+                  <p class="text-sm font-medium text-gray-900">Mise en demeure</p>
+                  <p class="text-xs text-gray-500">PDF - 156 Ko</p>
+                </div>
+              </div>
+            </td>
+            <td class="px-4 py-4">
+              <span class="text-sm text-gray-600">Litige Locatif</span>
+            </td>
+            <td class="px-4 py-4">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                <i class="fas fa-envelope mr-1"></i>
+                LRAR livré
+              </span>
+            </td>
+            <td class="px-4 py-4">
+              <span class="text-xs text-gray-400">-</span>
+            </td>
+            <td class="px-4 py-4">
+              <span class="text-sm text-gray-500">10 jan. 2024</span>
+            </td>
+            <td class="px-4 py-4 text-right">
+              <div class="flex items-center justify-end space-x-2">
+                <button class="text-gray-400 hover:text-gray-500 p-1.5" title="Voir">
+                  <i class="fas fa-eye"></i>
+                </button>
+                <button class="text-gray-400 hover:text-gray-500 p-1.5" title="Télécharger">
+                  <i class="fas fa-download"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Document Row 5 - Signed -->
+          <tr class="hover:bg-gray-50">
+            <td class="px-4 py-4">
+              <div class="flex items-center">
+                <div class="w-8 h-8 rounded bg-blue-100 flex items-center justify-center">
+                  <i class="fas fa-file-word text-blue-600 text-sm"></i>
+                </div>
+                <div class="ml-3">
+                  <p class="text-sm font-medium text-gray-900">Assignation TJ Paris</p>
+                  <p class="text-xs text-gray-500">DOCX - 312 Ko</p>
+                </div>
+              </div>
+            </td>
+            <td class="px-4 py-4">
+              <span class="text-sm text-gray-600">Litige Locatif</span>
+            </td>
+            <td class="px-4 py-4">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                <i class="fas fa-check mr-1"></i>
+                Signé
+              </span>
+            </td>
+            <td class="px-4 py-4">
+              <span class="text-xs text-gray-400">-</span>
+            </td>
+            <td class="px-4 py-4">
+              <span class="text-sm text-gray-500">5 jan. 2024</span>
+            </td>
+            <td class="px-4 py-4 text-right">
+              <div class="flex items-center justify-end space-x-2">
+                <button class="text-gray-400 hover:text-gray-500 p-1.5" title="Voir">
+                  <i class="fas fa-eye"></i>
+                </button>
+                <button class="text-gray-400 hover:text-gray-500 p-1.5" title="Télécharger">
+                  <i class="fas fa-download"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Pagination -->
+      <div class="px-4 py-3 border-t flex items-center justify-between">
+        <p class="text-sm text-gray-500">
+          Affichage de 1 à 5 sur 12 documents
+        </p>
+        <div class="flex items-center space-x-2">
+          <button class="px-3 py-1 border rounded text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-50" disabled>
+            Précédent
+          </button>
+          <button class="px-3 py-1 border rounded text-sm bg-blue-50 text-blue-600 border-blue-200">1</button>
+          <button class="px-3 py-1 border rounded text-sm text-gray-500 hover:bg-gray-50">2</button>
+          <button class="px-3 py-1 border rounded text-sm text-gray-500 hover:bg-gray-50">3</button>
+          <button class="px-3 py-1 border rounded text-sm text-gray-500 hover:bg-gray-50">
+            Suivant
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Update Available Toast (PWA) -->
+  <div class="fixed bottom-4 right-4 bg-white rounded-lg shadow-lg border p-4 max-w-sm hidden" id="update-toast">
+    <div class="flex items-start">
+      <div class="flex-shrink-0">
+        <i class="fas fa-sync-alt text-blue-500"></i>
+      </div>
+      <div class="ml-3 flex-1">
+        <p class="text-sm font-medium text-gray-900">Mise à jour disponible</p>
+        <p class="text-sm text-gray-500">Une nouvelle version est disponible.</p>
+        <div class="mt-2 flex space-x-2">
+          <button class="text-sm font-medium text-blue-600 hover:text-blue-500">
+            Mettre à jour
+          </button>
+          <button class="text-sm text-gray-500 hover:text-gray-400">
+            Plus tard
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

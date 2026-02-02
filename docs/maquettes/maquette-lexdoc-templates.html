@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Maquette LexDoc - Templates</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <!-- Navbar -->
+  <nav class="bg-white shadow-sm border-b">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between h-16">
+        <div class="flex items-center">
+          <span class="text-xl font-bold text-blue-600">LexDoc</span>
+          <span class="ml-2 text-sm text-gray-500">Document Builder</span>
+        </div>
+        <div class="flex items-center space-x-4">
+          <button class="p-2 text-gray-400 hover:text-gray-500">
+            <i class="fas fa-bell"></i>
+          </button>
+          <div class="flex items-center">
+            <img class="h-8 w-8 rounded-full bg-blue-500" src="" alt="">
+            <span class="ml-2 text-sm font-medium text-gray-700">Me Martin</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="flex">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-white h-[calc(100vh-4rem)] border-r overflow-y-auto">
+      <div class="p-4">
+        <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">
+          Templates
+        </h2>
+
+        <!-- Search -->
+        <div class="relative mb-4">
+          <input type="text" placeholder="Rechercher..."
+            class="w-full pl-10 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+        </div>
+
+        <!-- Favoris -->
+        <div class="mb-4">
+          <button class="flex items-center justify-between w-full px-2 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100">
+            <span><i class="fas fa-star text-yellow-400 mr-2"></i>Favoris</span>
+            <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full">5</span>
+          </button>
+        </div>
+
+        <!-- Récents -->
+        <div class="mb-4">
+          <button class="flex items-center justify-between w-full px-2 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100">
+            <span><i class="fas fa-clock text-gray-400 mr-2"></i>Récents</span>
+            <span class="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full">10</span>
+          </button>
+        </div>
+
+        <hr class="my-4">
+
+        <!-- Categories Tree -->
+        <div class="space-y-1">
+          <!-- Procédure Civile -->
+          <div>
+            <button class="flex items-center justify-between w-full px-2 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100">
+              <span><i class="fas fa-gavel text-indigo-500 mr-2"></i>Procédure Civile</span>
+              <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
+            </button>
+            <div class="ml-6 space-y-1 mt-1">
+              <a href="#" class="block px-2 py-1.5 text-sm text-gray-600 rounded hover:bg-gray-50">Assignations</a>
+              <a href="#" class="block px-2 py-1.5 text-sm text-gray-600 rounded hover:bg-gray-50">Conclusions</a>
+              <a href="#" class="block px-2 py-1.5 text-sm text-gray-600 rounded hover:bg-gray-50">Requêtes</a>
+              <a href="#" class="block px-2 py-1.5 text-sm text-gray-600 rounded hover:bg-gray-50">Référés</a>
+            </div>
+          </div>
+
+          <!-- Procédure Commerciale -->
+          <div>
+            <button class="flex items-center justify-between w-full px-2 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100">
+              <span><i class="fas fa-briefcase text-green-500 mr-2"></i>Procédure Commerciale</span>
+              <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
+            </button>
+          </div>
+
+          <!-- Contrats Affaires -->
+          <div>
+            <button class="flex items-center justify-between w-full px-2 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100">
+              <span><i class="fas fa-file-contract text-blue-500 mr-2"></i>Contrats Affaires</span>
+              <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
+            </button>
+          </div>
+
+          <!-- Droit du Travail -->
+          <div>
+            <button class="flex items-center justify-between w-full px-2 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100">
+              <span><i class="fas fa-users text-orange-500 mr-2"></i>Droit du Travail</span>
+              <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
+            </button>
+          </div>
+
+          <!-- Courriers -->
+          <div>
+            <button class="flex items-center justify-between w-full px-2 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100">
+              <span><i class="fas fa-envelope text-purple-500 mr-2"></i>Courriers</span>
+              <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 p-6">
+      <!-- Header -->
+      <div class="flex justify-between items-center mb-6">
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900">Procédure Civile</h1>
+          <p class="text-sm text-gray-500">Assignations - 12 templates</p>
+        </div>
+        <button class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center">
+          <i class="fas fa-plus mr-2"></i>
+          Nouveau template
+        </button>
+      </div>
+
+      <!-- Templates Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Template Card 1 -->
+        <div class="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow">
+          <div class="p-4">
+            <div class="flex items-start justify-between">
+              <div class="flex items-center">
+                <div class="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
+                  <i class="fas fa-file-alt text-indigo-600"></i>
+                </div>
+                <div class="ml-3">
+                  <h3 class="text-sm font-medium text-gray-900">Assignation TJ</h3>
+                  <p class="text-xs text-gray-500">Tribunal Judiciaire</p>
+                </div>
+              </div>
+              <button class="text-yellow-400 hover:text-yellow-500">
+                <i class="fas fa-star"></i>
+              </button>
+            </div>
+            <p class="mt-3 text-sm text-gray-600 line-clamp-2">
+              Modèle d'assignation devant le Tribunal Judiciaire avec mentions obligatoires.
+            </p>
+            <div class="mt-3 flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                  Système
+                </span>
+              </div>
+              <span class="text-xs text-gray-400">Utilisé 45 fois</span>
+            </div>
+          </div>
+          <div class="border-t px-4 py-3 bg-gray-50 rounded-b-lg flex justify-end space-x-2">
+            <button class="text-gray-400 hover:text-gray-500 p-1">
+              <i class="fas fa-copy"></i>
+            </button>
+            <button class="text-gray-400 hover:text-gray-500 p-1">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="bg-blue-600 text-white text-sm px-3 py-1 rounded hover:bg-blue-700">
+              Utiliser
+            </button>
+          </div>
+        </div>
+
+        <!-- Template Card 2 -->
+        <div class="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow">
+          <div class="p-4">
+            <div class="flex items-start justify-between">
+              <div class="flex items-center">
+                <div class="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
+                  <i class="fas fa-file-alt text-indigo-600"></i>
+                </div>
+                <div class="ml-3">
+                  <h3 class="text-sm font-medium text-gray-900">Assignation en référé</h3>
+                  <p class="text-xs text-gray-500">Procédure d'urgence</p>
+                </div>
+              </div>
+              <button class="text-gray-300 hover:text-yellow-400">
+                <i class="far fa-star"></i>
+              </button>
+            </div>
+            <p class="mt-3 text-sm text-gray-600 line-clamp-2">
+              Modèle d'assignation en référé pour les procédures d'urgence.
+            </p>
+            <div class="mt-3 flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                  Cabinet
+                </span>
+              </div>
+              <span class="text-xs text-gray-400">Utilisé 23 fois</span>
+            </div>
+          </div>
+          <div class="border-t px-4 py-3 bg-gray-50 rounded-b-lg flex justify-end space-x-2">
+            <button class="text-gray-400 hover:text-gray-500 p-1">
+              <i class="fas fa-copy"></i>
+            </button>
+            <button class="text-gray-400 hover:text-gray-500 p-1">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="bg-blue-600 text-white text-sm px-3 py-1 rounded hover:bg-blue-700">
+              Utiliser
+            </button>
+          </div>
+        </div>
+
+        <!-- Template Card 3 -->
+        <div class="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow">
+          <div class="p-4">
+            <div class="flex items-start justify-between">
+              <div class="flex items-center">
+                <div class="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
+                  <i class="fas fa-file-alt text-indigo-600"></i>
+                </div>
+                <div class="ml-3">
+                  <h3 class="text-sm font-medium text-gray-900">Assignation JAF</h3>
+                  <p class="text-xs text-gray-500">Juge aux Affaires Familiales</p>
+                </div>
+              </div>
+              <button class="text-yellow-400 hover:text-yellow-500">
+                <i class="fas fa-star"></i>
+              </button>
+            </div>
+            <p class="mt-3 text-sm text-gray-600 line-clamp-2">
+              Assignation devant le Juge aux Affaires Familiales - divorce, garde, pension.
+            </p>
+            <div class="mt-3 flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                  Système
+                </span>
+              </div>
+              <span class="text-xs text-gray-400">Utilisé 67 fois</span>
+            </div>
+          </div>
+          <div class="border-t px-4 py-3 bg-gray-50 rounded-b-lg flex justify-end space-x-2">
+            <button class="text-gray-400 hover:text-gray-500 p-1">
+              <i class="fas fa-copy"></i>
+            </button>
+            <button class="text-gray-400 hover:text-gray-500 p-1">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="bg-blue-600 text-white text-sm px-3 py-1 rounded hover:bg-blue-700">
+              Utiliser
+            </button>
+          </div>
+        </div>
+
+        <!-- Template Card 4 -->
+        <div class="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow">
+          <div class="p-4">
+            <div class="flex items-start justify-between">
+              <div class="flex items-center">
+                <div class="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
+                  <i class="fas fa-file-alt text-indigo-600"></i>
+                </div>
+                <div class="ml-3">
+                  <h3 class="text-sm font-medium text-gray-900">Assignation expulsion</h3>
+                  <p class="text-xs text-gray-500">Bail d'habitation</p>
+                </div>
+              </div>
+              <button class="text-gray-300 hover:text-yellow-400">
+                <i class="far fa-star"></i>
+              </button>
+            </div>
+            <p class="mt-3 text-sm text-gray-600 line-clamp-2">
+              Assignation en expulsion pour impayés de loyers - procédure bail habitation.
+            </p>
+            <div class="mt-3 flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                  Cabinet
+                </span>
+              </div>
+              <span class="text-xs text-gray-400">Utilisé 12 fois</span>
+            </div>
+          </div>
+          <div class="border-t px-4 py-3 bg-gray-50 rounded-b-lg flex justify-end space-x-2">
+            <button class="text-gray-400 hover:text-gray-500 p-1">
+              <i class="fas fa-copy"></i>
+            </button>
+            <button class="text-gray-400 hover:text-gray-500 p-1">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="bg-blue-600 text-white text-sm px-3 py-1 rounded hover:bg-blue-700">
+              Utiliser
+            </button>
+          </div>
+        </div>
+
+        <!-- Template Card 5 -->
+        <div class="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow">
+          <div class="p-4">
+            <div class="flex items-start justify-between">
+              <div class="flex items-center">
+                <div class="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
+                  <i class="fas fa-file-alt text-indigo-600"></i>
+                </div>
+                <div class="ml-3">
+                  <h3 class="text-sm font-medium text-gray-900">Assignation injonction</h3>
+                  <p class="text-xs text-gray-500">Recouvrement créance</p>
+                </div>
+              </div>
+              <button class="text-gray-300 hover:text-yellow-400">
+                <i class="far fa-star"></i>
+              </button>
+            </div>
+            <p class="mt-3 text-sm text-gray-600 line-clamp-2">
+              Assignation suite à opposition à injonction de payer - recouvrement créance.
+            </p>
+            <div class="mt-3 flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                  Système
+                </span>
+              </div>
+              <span class="text-xs text-gray-400">Utilisé 34 fois</span>
+            </div>
+          </div>
+          <div class="border-t px-4 py-3 bg-gray-50 rounded-b-lg flex justify-end space-x-2">
+            <button class="text-gray-400 hover:text-gray-500 p-1">
+              <i class="fas fa-copy"></i>
+            </button>
+            <button class="text-gray-400 hover:text-gray-500 p-1">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="bg-blue-600 text-white text-sm px-3 py-1 rounded hover:bg-blue-700">
+              Utiliser
+            </button>
+          </div>
+        </div>
+
+        <!-- Template Card 6 - New -->
+        <div class="bg-white rounded-lg shadow-sm border border-dashed border-gray-300 hover:border-blue-400 transition-colors cursor-pointer">
+          <div class="p-4 h-full flex flex-col items-center justify-center text-gray-400 hover:text-blue-500">
+            <i class="fas fa-plus text-3xl mb-2"></i>
+            <span class="text-sm font-medium">Créer un template</span>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
