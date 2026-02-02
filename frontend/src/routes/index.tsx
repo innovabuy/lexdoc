@@ -59,12 +59,15 @@ const GeneratedDocumentsListPage = lazy(() => import('@/pages/document-generatio
 const DocumentGenerationWizard = lazy(() => import('@/pages/document-generation/DocumentGenerationWizard'));
 
 // Extranet (Client Portal)
+import { ExtranetProtectedRoute } from '@/pages/extranet/ExtranetProtectedRoute';
+const ExtranetLayout = lazy(() => import('@/pages/extranet/ExtranetLayout'));
 const ExtranetLoginPage = lazy(() => import('@/pages/extranet/LoginPage'));
 const ExtranetActivationPage = lazy(() => import('@/pages/extranet/ActivationPage'));
 const ExtranetForgotPasswordPage = lazy(() => import('@/pages/extranet/ForgotPasswordPage'));
 const ExtranetResetPasswordPage = lazy(() => import('@/pages/extranet/ResetPasswordPage'));
 const ExtranetDashboardPage = lazy(() => import('@/pages/extranet/DashboardPage'));
 const ExtranetDocumentsPage = lazy(() => import('@/pages/extranet/DocumentsPage'));
+const ExtranetOfflinePage = lazy(() => import('@/pages/extranet/OfflinePage'));
 
 const AppRoutes: React.FC = () => {
   return (
@@ -350,14 +353,43 @@ const AppRoutes: React.FC = () => {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
         {/* Client Extranet Routes (separate from main app) */}
-        <Route path="/extranet/login" element={<ExtranetLoginPage />} />
-        <Route path="/extranet/activate/:token" element={<ExtranetActivationPage />} />
-        <Route path="/extranet/forgot-password" element={<ExtranetForgotPasswordPage />} />
-        <Route path="/extranet/reset-password/:token" element={<ExtranetResetPasswordPage />} />
-        <Route path="/extranet/dashboard" element={<ExtranetDashboardPage />} />
-        <Route path="/extranet/documents" element={<ExtranetDocumentsPage />} />
-        <Route path="/extranet/documents/:id" element={<ExtranetDocumentsPage />} />
-        <Route path="/extranet" element={<Navigate to="/extranet/login" replace />} />
+        <Route path="/extranet" element={<ExtranetLayout />}>
+          {/* Public extranet routes */}
+          <Route path="login" element={<ExtranetLoginPage />} />
+          <Route path="activate/:token" element={<ExtranetActivationPage />} />
+          <Route path="forgot-password" element={<ExtranetForgotPasswordPage />} />
+          <Route path="reset-password/:token" element={<ExtranetResetPasswordPage />} />
+          <Route path="offline" element={<ExtranetOfflinePage />} />
+
+          {/* Protected extranet routes */}
+          <Route
+            path="dashboard"
+            element={
+              <ExtranetProtectedRoute>
+                <ExtranetDashboardPage />
+              </ExtranetProtectedRoute>
+            }
+          />
+          <Route
+            path="documents"
+            element={
+              <ExtranetProtectedRoute>
+                <ExtranetDocumentsPage />
+              </ExtranetProtectedRoute>
+            }
+          />
+          <Route
+            path="documents/:id"
+            element={
+              <ExtranetProtectedRoute>
+                <ExtranetDocumentsPage />
+              </ExtranetProtectedRoute>
+            }
+          />
+
+          {/* Default redirect */}
+          <Route index element={<Navigate to="login" replace />} />
+        </Route>
 
         {/* Error pages */}
         <Route path="/unauthorized" element={<UnauthorizedPage />} />

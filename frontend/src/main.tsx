@@ -5,6 +5,20 @@ import { Toaster } from 'react-hot-toast';
 import App from './App';
 import './index.css';
 
+// Register service worker for PWA (only for extranet routes)
+if ('serviceWorker' in navigator && window.location.pathname.startsWith('/extranet')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/service-worker.js', { scope: '/extranet/' })
+      .then((registration) => {
+        console.log('[PWA] Service Worker registered with scope:', registration.scope);
+      })
+      .catch((error) => {
+        console.error('[PWA] Service Worker registration failed:', error);
+      });
+  });
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

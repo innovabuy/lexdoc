@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720">
+  <rect width="1280" height="720" fill="#f8fafc"/>
+  <rect x="0" y="0" width="1280" height="64" fill="#ffffff"/>
+  <rect x="40" y="16" width="120" height="32" rx="8" fill="#0066ff" opacity="0.1"/>
+  <rect x="40" y="100" width="400" height="32" rx="4" fill="#1e293b"/>
+  <rect x="40" y="150" width="300" height="16" rx="4" fill="#64748b"/>
+  <g transform="translate(40, 200)">
+    <rect width="280" height="160" rx="12" fill="white" stroke="#e2e8f0"/>
+    <rect width="280" height="160" rx="12" fill="white" stroke="#e2e8f0" x="300"/>
+    <rect width="280" height="160" rx="12" fill="white" stroke="#e2e8f0" x="600"/>
+    <rect width="280" height="160" rx="12" fill="white" stroke="#e2e8f0" x="900"/>
+  </g>
+  <text x="640" y="500" text-anchor="middle" font-family="Arial" font-size="24" fill="#64748b">Dashboard Extranet Client</text>
+</svg>

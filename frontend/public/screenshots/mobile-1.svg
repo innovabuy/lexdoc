@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="750" height="1334">
+  <rect width="750" height="1334" fill="#f8fafc"/>
+  <rect x="0" y="0" width="750" height="120" fill="#ffffff"/>
+  <rect x="30" y="40" width="80" height="40" rx="8" fill="#0066ff" opacity="0.1"/>
+  <rect x="30" y="160" width="400" height="40" rx="4" fill="#1e293b"/>
+  <rect x="30" y="220" width="300" height="20" rx="4" fill="#64748b"/>
+  <g transform="translate(30, 280)">
+    <rect width="690" height="200" rx="12" fill="white" stroke="#e2e8f0"/>
+    <rect width="690" height="200" rx="12" fill="white" stroke="#e2e8f0" y="220"/>
+    <rect width="690" height="200" rx="12" fill="white" stroke="#e2e8f0" y="440"/>
+  </g>
+  <text x="375" y="1000" text-anchor="middle" font-family="Arial" font-size="32" fill="#64748b">Documents Mobile</text>
+</svg>
