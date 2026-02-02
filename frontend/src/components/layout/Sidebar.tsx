@@ -11,6 +11,7 @@ import {
   PenTool,
   Mail,
   Layers,
+  Scale,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useUIStore } from '@/store/uiStore';
@@ -30,6 +31,7 @@ const navItems: NavItem[] = [
   { label: 'Document Builder', href: '/document-builder', icon: Layers, roles: ['ADMIN', 'AVOCAT'] },
   { label: 'Signatures', href: '/signatures', icon: PenTool, roles: ['ADMIN', 'AVOCAT', 'COLLABORATEUR'] },
   { label: 'LRAR', href: '/lrar', icon: Mail, roles: ['ADMIN', 'AVOCAT', 'COLLABORATEUR'] },
+  { label: 'Profil légal', href: '/profile/legal', icon: Scale, roles: ['ADMIN', 'AVOCAT'] },
   { label: 'Utilisateurs', href: '/users', icon: Users, roles: ['ADMIN'] },
   { label: 'Cabinet', href: '/cabinet', icon: Building2, roles: ['ADMIN'] },
   { label: 'Paramètres', href: '/settings', icon: Settings },
