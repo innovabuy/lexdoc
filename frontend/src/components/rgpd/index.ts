@@ -1,0 +1,1 @@
+export { RgpdConsentScreen } from './RgpdConsentScreen';

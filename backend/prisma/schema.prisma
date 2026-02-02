@@ -76,6 +76,9 @@ model User {
   generatedDocuments      GeneratedDocument[] @relation("GeneratedDocCreator")
   avocatLegalInfo         AvocatLegalInfo?
 
+  // RGPD relations
+  processedRgpdRequests   RgpdDataRequest[]   @relation("RgpdRequestProcessor")
+
   @@index([cabinetId])
   @@index([email])
   @@map("users")
@@ -121,6 +124,10 @@ model Client {
   // Relations
   cabinet      Cabinet     @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
   folders      Folder[]
+
+  // RGPD relations
+  rgpdConsents     RgpdConsent[]
+  rgpdDataRequests RgpdDataRequest[]
 
   @@index([cabinetId])
   @@index([nom])
@@ -333,6 +340,14 @@ enum AuditAction {
   CLIENT_CREATED
   CLIENT_UPDATED
   CLIENT_DELETED
+
+  // RGPD actions
+  RGPD_CONSENT_GIVEN
+  RGPD_CONSENT_REVOKED
+  RGPD_REQUEST_CREATED
+  RGPD_REQUEST_PROCESSED
+  RGPD_DATA_EXPORTED
+  RGPD_DATA_ANONYMIZED
 }
 
 // ============================================
@@ -784,4 +799,182 @@ enum Civilite {
   MAITRE
   MONSIEUR
   MADAME
+}
+
+// ============================================
+// RGPD COMPLIANCE MODELS
+// ============================================
+
+/// RGPD consent record for tracking user consent
+model RgpdConsent {
+  id            String   @id @default(uuid())
+
+  // Link to client (optional - for existing clients)
+  clientId      String?  @map("client_id")
+  client        Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  // Consent metadata
+  consentGiven  Boolean  @default(false) @map("consent_given")
+  consentDate   DateTime @default(now()) @map("consent_date")
+  ipAddress     String   @map("ip_address")
+  userAgent     String?  @map("user_agent")
+
+  // Types of processing accepted
+  consentTypes  Json     @default("{}") @map("consent_types") // {processing: true, storage: true, communication: false}
+
+  // Revocation
+  isRevoked     Boolean  @default(false) @map("is_revoked")
+  revokedAt     DateTime? @map("revoked_at")
+
+  // Traceability
+  version       String   // Version of the privacy policy
+
+  // Context
+  context       String?  // Where consent was given (e.g., "public_form", "registration")
+  contextId     String?  @map("context_id") // Related entity ID (e.g., formTokenId)
+
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([clientId])
+  @@index([consentDate])
+  @@index([isRevoked])
+  @@map("rgpd_consents")
+}
+
+/// RGPD data request for exercising rights (access, erasure, etc.)
+model RgpdDataRequest {
+  id              String            @id @default(uuid())
+
+  // Link to client
+  clientId        String?           @map("client_id")
+  client          Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  // Request type and status
+  type            RgpdRequestType
+  status          RgpdRequestStatus @default(PENDING)
+
+  // Requester info (may not be linked to client yet)
+  requestedByEmail String           @map("requested_by_email")
+  requestedByName  String?          @map("requested_by_name")
+
+  // Verification
+  verificationToken String?         @unique @map("verification_token")
+  verifiedAt        DateTime?       @map("verified_at")
+
+  // Request details
+  requestDetails  Json?             @map("request_details") // Specific details
+  responseData    Json?             @map("response_data") // Data sent in response
+
+  // Processing info
+  processedById   String?           @map("processed_by_id")
+  processedBy     User?             @relation("RgpdRequestProcessor", fields: [processedById], references: [id])
+  processingNotes String?           @map("processing_notes") @db.Text
+
+  // Timestamps
+  requestDate     DateTime          @default(now()) @map("request_date")
+  completedDate   DateTime?         @map("completed_date")
+  dueDate         DateTime          @map("due_date") // 1 month deadline
+
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  @@index([clientId, status])
+  @@index([status, dueDate])
+  @@index([requestedByEmail])
+  @@map("rgpd_data_requests")
+}
+
+/// RGPD data retention policy tracking
+model RgpdDataRetention {
+  id              String   @id @default(uuid())
+
+  entityType      String   @map("entity_type") // 'Client', 'Folder', 'Document'
+  entityId        String   @map("entity_id")
+
+  // Retention policy
+  retentionUntil  DateTime @map("retention_until") // Date for automatic deletion
+  reason          String   // 'Prescription légale', 'Fin de prestation', etc.
+  legalBasis      String?  @map("legal_basis") // Legal article reference
+
+  // Status
+  isArchived      Boolean  @default(false) @map("is_archived")
+  isAnonymized    Boolean  @default(false) @map("is_anonymized")
+  anonymizedAt    DateTime? @map("anonymized_at")
+
+  // Notes
+  notes           String?  @db.Text
+
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@unique([entityType, entityId])
+  @@index([entityType, entityId])
+  @@index([retentionUntil, isAnonymized])
+  @@map("rgpd_data_retention")
+}
+
+/// RGPD audit log for tracking all RGPD-related actions
+model RgpdAuditLog {
+  id            String   @id @default(uuid())
+
+  action        RgpdAuditAction
+  entityType    String?  @map("entity_type")
+  entityId      String?  @map("entity_id")
+
+  // Actor info
+  actorId       String?  @map("actor_id")
+  actorEmail    String?  @map("actor_email")
+  actorType     String   @map("actor_type") // 'user', 'system', 'client'
+
+  // Details
+  details       Json?
+  ipAddress     String?  @map("ip_address")
+  userAgent     String?  @map("user_agent")
+
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([createdAt])
+  @@map("rgpd_audit_logs")
+}
+
+enum RgpdRequestType {
+  ACCESS          // Droit d'accès (Art. 15)
+  RECTIFICATION   // Droit de rectification (Art. 16)
+  ERASURE         // Droit à l'effacement (Art. 17)
+  PORTABILITY     // Droit à la portabilité (Art. 20)
+  RESTRICTION     // Droit à la limitation (Art. 18)
+  OPPOSITION      // Droit d'opposition (Art. 21)
+}
+
+enum RgpdRequestStatus {
+  PENDING         // En attente de vérification
+  VERIFIED        // Email vérifié, en attente de traitement
+  PROCESSING      // En cours de traitement
+  COMPLETED       // Traité avec succès
+  REJECTED        // Rejeté (motif légal)
+}
+
+enum RgpdAuditAction {
+  CONSENT_GIVEN
+  CONSENT_REVOKED
+  DATA_ACCESS_REQUESTED
+  DATA_ACCESS_PROVIDED
+  DATA_RECTIFICATION_REQUESTED
+  DATA_RECTIFICATION_COMPLETED
+  DATA_ERASURE_REQUESTED
+  DATA_ERASURE_COMPLETED
+  DATA_PORTABILITY_REQUESTED
+  DATA_PORTABILITY_PROVIDED
+  DATA_RESTRICTION_REQUESTED
+  DATA_RESTRICTION_APPLIED
+  DATA_OPPOSITION_REQUESTED
+  DATA_OPPOSITION_APPLIED
+  DATA_ANONYMIZED
+  RETENTION_POLICY_APPLIED
+  DATA_BREACH_DETECTED
+  DATA_BREACH_NOTIFIED
 }

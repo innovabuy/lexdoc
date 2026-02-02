@@ -3,6 +3,7 @@ import { config } from '@/config';
 import { logger } from '@/utils/logger';
 import { prisma, testConnection } from '@/config/database';
 import { initializeBuckets, testMinioConnection } from '@/config/minio';
+import { initCronJobs } from '@/cron';
 
 const PORT = config.port;
 
@@ -28,6 +29,11 @@ async function bootstrap() {
       logger.info(`LexDoc API running on port ${PORT}`);
       logger.info(`Environment: ${config.env}`);
       logger.info(`API Documentation: http://localhost:${PORT}/api/docs`);
+
+      // Initialize CRON jobs
+      if (config.env !== 'test') {
+        initCronJobs();
+      }
     });
 
     // Graceful shutdown
