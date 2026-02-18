@@ -1,0 +1,1339 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// TENANTS (Cabinets d'avocats)
+// ============================================================================
+
+model Tenant {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Informations cabinet
+  name           String
+  legalName      String?
+  siret          String?  @unique
+  address        String?
+  postalCode     String?
+  city           String?
+  country        String   @default("FR")
+  phone          String?
+  email          String   @unique
+  website        String?
+
+  // Configuration
+  logo           String?
+  primaryColor   String   @default("#0066ff")
+  isActive       Boolean  @default(true)
+  subscriptionTier String @default("TRIAL")
+  maxUsers       Int      @default(5)
+  maxClients     Int      @default(100)
+  maxStorage     BigInt   @default(5368709120)
+
+  // Dates importantes
+  trialEndsAt    DateTime?
+  subscribedAt   DateTime?
+
+  // Relations
+  users              User[]
+  clients            Client[]
+  folders            Folder[]
+  documents          Document[]
+  templates          FolderTemplate[]
+  settings           TenantSettings?
+  auditLogs          AuditLog[]
+  legalInfo          AvocatLegalInfo?
+  builderBlocks      BuilderBlock[]
+  builderTemplates   BuilderTemplate[]
+  backupLogs         BackupLog[]
+  folderPersons      FolderPerson[]
+  folderCategories   FolderCategory[]
+  templateCategories TemplateCategory[]
+  documentRequests   DocumentRequest[]
+
+  @@index([email])
+  @@index([siret])
+  @@map("tenants")
+}
+
+// ============================================================================
+// PROFIL LÉGAL AVOCAT (Instruction #3)
+// ============================================================================
+
+model AvocatLegalInfo {
+  id              String   @id @default(cuid())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenantId        String   @unique
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Informations professionnelles
+  numeroToque     String?
+  barreau         String?
+  specialites     String[] @default([])
+  rcs             String?
+  tvaIntra        String?
+
+  // Assurance
+  assuranceRC     String?
+  numeroPolice    String?
+
+  // Fichiers
+  signaturePath   String?
+  cachetPath      String?
+
+  // Mentions légales personnalisées
+  mentionsLegales Json?
+
+  @@map("avocat_legal_info")
+}
+
+// ============================================================================
+// USERS (Membres du cabinet)
+// ============================================================================
+
+model User {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Informations personnelles
+  email       String   @unique
+  password    String
+  firstName   String
+  lastName    String
+  phone       String?
+  avatar      String?
+
+  // Rôle et permissions
+  role        UserRole @default(USER)
+  permissions Json?
+
+  // État
+  isActive    Boolean  @default(true)
+  isEmailVerified Boolean @default(false)
+  emailVerifiedAt DateTime?
+  lastLoginAt DateTime?
+
+  // Sécurité
+  resetToken  String?  @unique
+  resetTokenExpiresAt DateTime?
+
+  // 2FA
+  twoFactorEnabled Boolean @default(false)
+  twoFactorSecret  String?
+  refreshTokens    String[] @default([])
+
+  // Multi-tenant
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Relations
+  createdFolders    Folder[]   @relation("FolderCreator")
+  createdDocuments  Document[] @relation("DocumentCreator")
+  auditLogs         AuditLog[]
+  documentRequestsCreated DocumentRequest[] @relation("DocumentRequestCreator")
+  notifications     Notification[]
+  notificationPreferences NotificationPreference?
+  assignedDeadlines Deadline[] @relation("DeadlineAssignee")
+  createdDeadlines  Deadline[] @relation("DeadlineCreator")
+
+  @@index([email])
+  @@index([tenantId])
+  @@index([tenantId, role])
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  LAWYER
+  ASSISTANT
+  USER
+}
+
+// ============================================================================
+// CLIENTS
+// ============================================================================
+
+model Client {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  type        ClientType @default(INDIVIDUAL)
+  
+  firstName   String?
+  lastName    String?
+  birthDate   DateTime?
+  
+  companyName String?
+  siret       String?
+  vatNumber   String?
+  
+  email       String
+  phone       String?
+  mobile      String?
+  
+  address     String?
+  addressLine2 String?
+  postalCode  String?
+  city        String?
+  country     String   @default("FR")
+  
+  hasExternet       Boolean  @default(false)
+  extranetPassword  String?
+  extranetActivatedAt DateTime?
+  extranetLastLoginAt DateTime?
+  
+  invitationToken   String?  @unique
+  invitationSentAt  DateTime?
+  invitationExpiresAt DateTime?
+  
+  isActive    Boolean  @default(true)
+  notes       String?  @db.Text
+  
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  folders     Folder[]
+  consents    ClientConsent[]
+
+  @@index([email])
+  @@index([tenantId])
+  @@index([tenantId, email])
+  @@index([invitationToken])
+  @@map("clients")
+}
+
+enum ClientType {
+  INDIVIDUAL
+  COMPANY
+  ASSOCIATION
+}
+
+// ============================================================================
+// CONSENTEMENTS RGPD
+// ============================================================================
+
+model ClientConsent {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  type      ConsentType
+  granted   Boolean
+  grantedAt DateTime @default(now())
+  ipAddress String?
+  userAgent String?
+  
+  @@index([clientId])
+  @@map("client_consents")
+}
+
+enum ConsentType {
+  DATA_PROCESSING
+  EMAIL_NOTIFICATIONS
+  SMS_NOTIFICATIONS
+  DOCUMENT_STORAGE
+  DATA_RETENTION
+}
+
+// ============================================================================
+// DOSSIERS JURIDIQUES
+// ============================================================================
+
+model Folder {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reference   String
+  title       String
+  description String?  @db.Text
+  type        FolderType
+  status      FolderStatus @default(OPEN)
+  color       String?  @default("#3B82F6")
+
+  openedAt    DateTime @default(now())
+  closedAt    DateTime?
+  archivedAt  DateTime?
+
+  // Métadonnées auto-fill (Instruction #7)
+  metadataCession Json?
+
+  // Hiérarchie (sous-dossiers)
+  parentId    String?
+  parent      Folder?  @relation("FolderHierarchy", fields: [parentId], references: [id])
+  children    Folder[] @relation("FolderHierarchy")
+
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Restrict)
+
+  createdById String
+  createdBy   User     @relation("FolderCreator", fields: [createdById], references: [id])
+
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  documents        Document[]
+  clientAccesses   ClientAccess[]
+  persons          FolderPerson[]
+  documentRequests DocumentRequest[]
+  deadlines        Deadline[]
+
+  @@unique([tenantId, reference])
+  @@index([tenantId])
+  @@index([clientId])
+  @@index([status])
+  @@index([parentId])
+  @@map("folders")
+}
+
+enum FolderType {
+  LITIGATION
+  CONTRACT
+  BUSINESS
+  FAMILY
+  REAL_ESTATE
+  LABOR
+  INTELLECTUAL
+  ADMINISTRATIVE
+  CRIMINAL
+  OTHER
+}
+
+enum FolderStatus {
+  OPEN
+  IN_PROGRESS
+  PENDING
+  CLOSED
+  ARCHIVED
+}
+
+// ============================================================================
+// PERSONNES LIÉES AUX DOSSIERS (Folder Persons)
+// ============================================================================
+
+enum PersonRole {
+  PARTIE_ADVERSE
+  AVOCAT_ADVERSE
+  TEMOIN
+  EXPERT
+  NOTAIRE
+  HUISSIER
+  MEDIATEUR
+  AUTRE
+}
+
+enum PersonType {
+  PHYSIQUE
+  MORALE
+}
+
+model FolderPerson {
+  id          String      @id @default(cuid())
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  folderId    String
+  folder      Folder      @relation(fields: [folderId], references: [id], onDelete: Cascade)
+
+  tenantId    String
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Identité
+  type        PersonType  @default(PHYSIQUE)
+  role        PersonRole
+  firstName   String?
+  lastName    String
+  company     String?     // Pour personnes morales
+
+  // Contact
+  email       String?
+  phone       String?
+  address     String?
+
+  // Métadonnées
+  notes       String?     @db.Text
+
+  @@index([folderId])
+  @@index([tenantId])
+  @@map("folder_persons")
+}
+
+// ============================================================================
+// DOCUMENTS
+// ============================================================================
+
+model Document {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  name        String
+  description String?  @db.Text
+  type        DocumentType
+  tags        String[] @default([])
+
+  // Catégorie hiérarchique
+  folderCategoryId String?
+  folderCategory   FolderCategory? @relation(fields: [folderCategoryId], references: [id], onDelete: SetNull)
+  
+  filename    String
+  originalName String
+  mimeType    String
+  size        BigInt
+  checksum    String
+  
+  bucketName  String
+  objectKey   String
+  isEncrypted Boolean  @default(true)
+  
+  version     Int      @default(1)
+  parentId    String?
+  parent      Document? @relation("DocumentVersions", fields: [parentId], references: [id])
+  versions    Document[] @relation("DocumentVersions")
+  
+  status      DocumentStatus @default(DRAFT)
+  
+  requiresSignature Boolean @default(false)
+  signatureDeadline DateTime?
+  
+  validFrom   DateTime?
+  validUntil  DateTime?
+  archivedAt  DateTime?
+  deletedAt   DateTime?
+  
+  folderId    String
+  folder      Folder   @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  
+  createdById String
+  createdBy   User     @relation("DocumentCreator", fields: [createdById], references: [id])
+  
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  signatures  Signature[]
+  registeredMails RegisteredMail[]
+  tracking    DocumentTracking?
+  documentRequests DocumentRequest[]
+
+  @@index([tenantId])
+  @@index([folderId])
+  @@index([status])
+  @@index([requiresSignature])
+  @@index([checksum])
+  @@index([folderCategoryId])
+  @@map("documents")
+}
+
+// ============================================================================
+// DOCUMENT TRACKING & RELANCES (Instruction #16)
+// ============================================================================
+
+model DocumentTracking {
+  id                   String          @id @default(cuid())
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  documentId           String          @unique
+  document             Document        @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  status               TrackingStatus  @default(DRAFT)
+  deliveryMethod       DeliveryMethod?
+
+  // Signature tracking
+  signatureRequestId   String?         @unique
+  signatureStatus      SignatureStatus?
+  signedAt             DateTime?
+  signedBy             String[]        @default([])
+
+  // LRAR tracking
+  lrarTrackingNumber   String?         @unique
+  lrarStatus           RegisteredMailStatus?
+  sentAt               DateTime?
+  deliveredAt          DateTime?
+
+  // Relances automatiques
+  reminderCount        Int             @default(0)
+  lastReminderAt       DateTime?
+  nextReminderAt       DateTime?
+  autoRemindersEnabled Boolean         @default(false)
+
+  reminders            ReminderLog[]
+
+  @@index([status])
+  @@index([nextReminderAt])
+  @@map("document_tracking")
+}
+
+model ReminderLog {
+  id           String         @id @default(cuid())
+  createdAt    DateTime       @default(now())
+
+  trackingId   String
+  tracking     DocumentTracking @relation(fields: [trackingId], references: [id], onDelete: Cascade)
+
+  type         ReminderType
+  sentAt       DateTime       @default(now())
+  sentTo       String
+  emailSubject String?
+  emailBody    String?        @db.Text
+  status       ReminderStatus @default(SENT)
+  errorMessage String?
+
+  @@index([trackingId])
+  @@index([sentAt])
+  @@map("reminder_logs")
+}
+
+enum TrackingStatus {
+  DRAFT
+  PENDING_SIGNATURE
+  SIGNED
+  PENDING_DELIVERY
+  DELIVERED
+  EXPIRED
+}
+
+enum DeliveryMethod {
+  SIGNATURE_ELECTRONIQUE
+  LRAR
+  EMAIL
+}
+
+enum ReminderType {
+  FIRST_REMINDER
+  SECOND_REMINDER
+  THIRD_REMINDER
+  FINAL_NOTICE
+}
+
+enum ReminderStatus {
+  SENT
+  FAILED
+  OPENED
+  CLICKED
+}
+
+enum DocumentType {
+  CONTRACT
+  DEED
+  LETTER
+  INVOICE
+  RECEIPT
+  CERTIFICATE
+  REPORT
+  MINUTES
+  AMENDMENT
+  MEMORANDUM
+  POWER_OF_ATTORNEY
+  OTHER
+}
+
+enum DocumentStatus {
+  DRAFT
+  PENDING_REVIEW
+  PENDING_SIGNATURE
+  SIGNED
+  SENT
+  ARCHIVED
+  CANCELLED
+}
+
+// ============================================================================
+// SIGNATURES ÉLECTRONIQUES
+// ============================================================================
+
+model Signature {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  documentId  String
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  
+  signerEmail String
+  signerName  String
+  signerType  SignerType @default(CLIENT)
+  
+  transactionId String?  @unique
+  signatureUrl  String?  @db.Text
+  
+  status      SignatureStatus @default(PENDING)
+  
+  invitedAt   DateTime @default(now())
+  signedAt    DateTime?
+  refusedAt   DateTime?
+  expiredAt   DateTime?
+  
+  certificateUrl String? @db.Text
+  
+  reminders   SignatureReminder[]
+  
+  @@index([documentId])
+  @@index([transactionId])
+  @@index([status])
+  @@index([signerEmail])
+  @@map("signatures")
+}
+
+enum SignerType {
+  CLIENT
+  LAWYER
+  THIRD_PARTY
+}
+
+enum SignatureStatus {
+  PENDING
+  SIGNED
+  REFUSED
+  EXPIRED
+  CANCELLED
+}
+
+// ============================================================================
+// RELANCES SIGNATURE
+// ============================================================================
+
+model SignatureReminder {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  signatureId String
+  signature   Signature @relation(fields: [signatureId], references: [id], onDelete: Cascade)
+  
+  reminderNumber Int
+  sentAt      DateTime @default(now())
+  emailSent   Boolean  @default(true)
+  smsSent     Boolean  @default(false)
+  
+  @@index([signatureId])
+  @@map("signature_reminders")
+}
+
+// ============================================================================
+// COURRIERS RECOMMANDÉS (LRAR)
+// ============================================================================
+
+model RegisteredMail {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  documentId  String
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Restrict)
+  
+  recipientName    String
+  recipientAddress String
+  recipientCity    String
+  recipientPostalCode String
+  recipientCountry String @default("FR")
+  
+  sendingBoxId     String?  @unique
+  trackingNumber   String?  @unique
+  
+  status      RegisteredMailStatus @default(PREPARING)
+  
+  sentAt      DateTime?
+  deliveredAt DateTime?
+  returnedAt  DateTime?
+  
+  proofUrl    String?  @db.Text
+  
+  cost        Decimal? @db.Decimal(10, 2)
+  
+  @@index([documentId])
+  @@index([trackingNumber])
+  @@index([status])
+  @@map("registered_mails")
+}
+
+enum RegisteredMailStatus {
+  PREPARING
+  SENT
+  IN_TRANSIT
+  DELIVERED
+  RETURNED
+  ERROR
+}
+
+// ============================================================================
+// TEMPLATES DE DOSSIERS
+// ============================================================================
+
+model FolderTemplate {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  name        String
+  description String?  @db.Text
+  folderType  FolderType
+
+  structure   Json
+
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("folder_templates")
+}
+
+// ============================================================================
+// DOCUMENT BUILDER (Instructions #8-12, #14)
+// ============================================================================
+
+model BuilderBlock {
+  id           String        @id @default(cuid())
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  tenantId     String
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  category     BlockCategory
+  title        String
+  content      String        @db.Text
+  variables    Json?
+  tags         String[]      @default([])
+
+  isMandatory  Boolean       @default(false)
+  isSystem     Boolean       @default(false)
+  displayOrder Int?
+  usageCount   Int           @default(0)
+
+  createdById  String?
+
+  @@index([tenantId])
+  @@index([category])
+  @@index([isSystem])
+  @@map("builder_blocks")
+}
+
+model BuilderTemplate {
+  id                String       @id @default(cuid())
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  tenantId          String
+  tenant            Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name              String
+  description       String?      @db.Text
+  documentType      String
+  juridiction       String?
+  category          String?      // Catégorie texte legacy
+
+  // Catégorie structurée
+  templateCategoryId String?
+  templateCategory   TemplateCategory? @relation(fields: [templateCategoryId], references: [id], onDelete: SetNull)
+
+  blocksStructure   Json
+  requiredVariables Json?
+  outputFormat      OutputFormat @default(DOCX)
+  workflowConfig    Json?
+  legalMentions     Json?
+
+  isSystem          Boolean      @default(false)
+  usageCount        Int          @default(0)
+
+  createdById       String?
+
+  @@index([tenantId])
+  @@index([documentType])
+  @@index([isSystem])
+  @@index([category])
+  @@index([templateCategoryId])
+  @@map("builder_templates")
+}
+
+enum BlockCategory {
+  INTRO
+  FAITS
+  MOYENS
+  DISPOSITIF
+  SIGNATURE
+  CLAUSE
+  CUSTOM
+}
+
+enum OutputFormat {
+  DOCX
+  PDF
+}
+
+// ============================================================================
+// EXTRANET CLIENT (Instruction #17)
+// ============================================================================
+
+model ClientAccess {
+  id                String    @id @default(cuid())
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  folderId          String
+  folder            Folder    @relation(fields: [folderId], references: [id], onDelete: Cascade)
+
+  email             String
+  passwordHash      String?
+  activationToken   String?   @unique
+  tokenExpiresAt    DateTime?
+
+  isActivated       Boolean   @default(false)
+  lastLoginAt       DateTime?
+
+  accessLogs        ClientAccessLog[]
+  pushSubscriptions PushSubscription[]
+
+  @@unique([folderId, email])
+  @@index([email])
+  @@index([activationToken])
+  @@map("client_accesses")
+}
+
+model ClientAccessLog {
+  id          String       @id @default(cuid())
+  createdAt   DateTime     @default(now())
+
+  accessId    String
+  access      ClientAccess @relation(fields: [accessId], references: [id], onDelete: Cascade)
+
+  action      String
+  ipAddress   String
+  userAgent   String?
+
+  @@index([accessId])
+  @@index([createdAt])
+  @@map("client_access_logs")
+}
+
+// ============================================================================
+// PWA PUSH NOTIFICATIONS (Instruction #18)
+// ============================================================================
+
+model PushSubscription {
+  id          String       @id @default(cuid())
+  createdAt   DateTime     @default(now())
+
+  accessId    String
+  access      ClientAccess @relation(fields: [accessId], references: [id], onDelete: Cascade)
+
+  endpoint    String       @unique
+  keys        Json
+
+  @@index([accessId])
+  @@map("push_subscriptions")
+}
+
+// ============================================================================
+// BACKUP GOOGLE DRIVE (Instruction #13)
+// ============================================================================
+
+model BackupLog {
+  id            String       @id @default(cuid())
+  createdAt     DateTime     @default(now())
+
+  tenantId      String?
+  tenant        Tenant?      @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  type          BackupType
+  status        BackupStatus
+  startedAt     DateTime     @default(now())
+  completedAt   DateTime?
+  fileSize      BigInt?
+  googleDriveId String?
+  errorMessage  String?
+
+  @@index([startedAt])
+  @@index([tenantId])
+  @@map("backup_logs")
+}
+
+enum BackupType {
+  DATABASE
+  MINIO
+  FULL
+}
+
+enum BackupStatus {
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+// ============================================================================
+// PARAMÈTRES TENANT
+// ============================================================================
+
+model TenantSettings {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  enableReminders Boolean @default(true)
+  reminderSchedule String @default("1,3,5")
+  maxReminders    Int    @default(3)
+  
+  defaultSignatureDeadlineDays Int @default(7)
+  
+  emailFromName   String?
+  emailReplyTo    String?
+  emailSignature  String? @db.Text
+  
+  lrarSenderName    String?
+  lrarSenderAddress String?
+  
+  documentRetentionYears Int @default(10)
+  autoArchiveClosedFolders Boolean @default(false)
+  autoArchiveAfterDays Int @default(365)
+  
+  enforceStrongPasswords Boolean @default(true)
+  sessionTimeoutMinutes  Int     @default(480)
+  require2FA             Boolean @default(false)
+  
+  allowClientUpload      Boolean @default(false)
+  clientUploadMaxSizeMB  Int     @default(10)
+  
+  tenantId    String  @unique
+  tenant      Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  @@map("tenant_settings")
+}
+
+// ============================================================================
+// CATÉGORIES DE DOCUMENTS (Hiérarchiques)
+// ============================================================================
+
+model FolderCategory {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  name        String
+  description String?  @db.Text
+  color       String?  // Code couleur hex (#3B82F6)
+  icon        String?  // Nom d'icône (lucide-react)
+
+  // Hiérarchie
+  parentId    String?
+  parent      FolderCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children    FolderCategory[] @relation("CategoryHierarchy")
+
+  // Ordre d'affichage
+  displayOrder Int     @default(0)
+
+  // Relations
+  documents   Document[]
+
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([parentId])
+  @@map("folder_categories")
+}
+
+// ============================================================================
+// CATÉGORIES DE TEMPLATES
+// ============================================================================
+
+model TemplateCategory {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  name        String
+  description String?  @db.Text
+  icon        String?
+  color       String?
+
+  displayOrder Int     @default(0)
+
+  // Relations
+  templates   BuilderTemplate[]
+
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("template_categories")
+}
+
+// ============================================================================
+// DEMANDES DE PIÈCES AUX CLIENTS
+// ============================================================================
+
+model DocumentRequest {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  folderId    String
+  folder      Folder   @relation(fields: [folderId], references: [id], onDelete: Cascade)
+
+  // Informations de la demande
+  title       String
+  description String?  @db.Text
+  status      DocumentRequestStatus @default(PENDING)
+  priority    DocumentRequestPriority @default(NORMAL)
+
+  // Date limite
+  dueDate     DateTime?
+
+  // Réponse du client
+  responseDocumentId String?
+  responseDocument   Document? @relation(fields: [responseDocumentId], references: [id], onDelete: SetNull)
+  responseDate       DateTime?
+  responseNotes      String?   @db.Text
+
+  // Relances
+  reminderCount  Int       @default(0)
+  lastReminderAt DateTime?
+
+  // Métadonnées
+  createdById String
+  createdBy   User     @relation("DocumentRequestCreator", fields: [createdById], references: [id])
+
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([folderId])
+  @@index([tenantId])
+  @@index([status])
+  @@map("document_requests")
+}
+
+enum DocumentRequestStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+enum DocumentRequestPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+// ============================================================================
+// AUDIT LOGS
+// ============================================================================
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  action      String
+  entityType  String
+  entityId    String?
+  
+  changes     Json?
+  metadata    Json?
+  
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  ipAddress   String?
+  userAgent   String?
+  
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  @@index([tenantId])
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ============================================================================
+// NOTIFICATIONS
+// ============================================================================
+
+model Notification {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  type        NotificationType
+  title       String
+  message     String   @db.Text
+
+  // Lien vers l'entité concernée
+  entityType  String?
+  entityId    String?
+  link        String?
+
+  // Statut
+  isRead      Boolean  @default(false)
+  readAt      DateTime?
+
+  // Email envoyé ?
+  emailSent   Boolean  @default(false)
+  emailSentAt DateTime?
+
+  // Destinataire
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tenantId    String
+
+  @@index([userId, isRead])
+  @@index([tenantId])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  SIGNATURE_PENDING
+  SIGNATURE_COMPLETED
+  SIGNATURE_REMINDER
+  DOCUMENT_UPLOADED
+  DOCUMENT_SHARED
+  DOCUMENT_REQUEST
+  DOCUMENT_REQUEST_FULFILLED
+  FOLDER_CREATED
+  FOLDER_STATUS_CHANGED
+  CLIENT_ACCESS_CREATED
+  DEADLINE_APPROACHING
+  DEADLINE_PASSED
+  MESSAGE_RECEIVED
+  SYSTEM
+}
+
+// ============================================================================
+// NOTIFICATION PREFERENCES
+// ============================================================================
+
+model NotificationPreference {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Email notifications
+  emailSignatures     Boolean @default(true)
+  emailDocuments      Boolean @default(true)
+  emailDeadlines      Boolean @default(true)
+  emailMessages       Boolean @default(true)
+  emailDigest         Boolean @default(false)
+  digestFrequency     String  @default("DAILY") // DAILY, WEEKLY
+
+  // Push notifications
+  pushEnabled         Boolean @default(true)
+  pushSignatures      Boolean @default(true)
+  pushDocuments       Boolean @default(true)
+  pushDeadlines       Boolean @default(true)
+  pushMessages        Boolean @default(true)
+
+  @@map("notification_preferences")
+}
+
+// ============================================================================
+// EMAIL LOGS
+// ============================================================================
+
+model EmailLog {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  to          String
+  subject     String
+  template    String
+
+  status      EmailStatus @default(SENT)
+  errorMessage String?
+
+  // Lien avec notification
+  notificationId String?
+
+  tenantId    String
+
+  @@index([tenantId])
+  @@index([createdAt])
+  @@map("email_logs")
+}
+
+enum EmailStatus {
+  PENDING
+  SENT
+  FAILED
+  BOUNCED
+}
+
+// ============================================================================
+// DEADLINES / EVENTS
+// ============================================================================
+
+model Deadline {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  title       String
+  description String?  @db.Text
+  dueDate     DateTime
+  dueTime     String?  // Format HH:mm
+
+  type        DeadlineType @default(DEADLINE)
+  priority    DeadlinePriority @default(NORMAL)
+  status      DeadlineStatus @default(PENDING)
+
+  // Rappels
+  reminders   Json?    // Array of reminder configs: [{daysBefore: 7}, {daysBefore: 1}]
+  lastReminderSentAt DateTime?
+
+  // Relations
+  folderId    String?
+  folder      Folder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
+
+  documentId  String?
+
+  // Assignation
+  assignedToId String?
+  assignedTo   User?   @relation("DeadlineAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  createdById  String
+  createdBy    User    @relation("DeadlineCreator", fields: [createdById], references: [id])
+
+  tenantId    String
+
+  // Recurrence
+  isRecurring Boolean @default(false)
+  recurrenceRule String? // RRULE format
+
+  // Completion
+  completedAt DateTime?
+  completedById String?
+
+  @@index([tenantId])
+  @@index([dueDate])
+  @@index([status])
+  @@index([folderId])
+  @@index([assignedToId])
+  @@map("deadlines")
+}
+
+enum DeadlineType {
+  DEADLINE      // Echeance
+  HEARING       // Audience
+  MEETING       // Rendez-vous
+  REMINDER      // Rappel simple
+  TASK          // Tache
+  OTHER
+}
+
+enum DeadlinePriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum DeadlineStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  OVERDUE
+}
+
+// ============================================================================
+// MESSAGERIE / CHAT
+// ============================================================================
+
+model Conversation {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Sujet de la conversation
+  subject   String?
+
+  // Lien avec dossier (optionnel)
+  folderId  String?
+
+  // Participants (utilisateurs du cabinet)
+  participants ConversationParticipant[]
+
+  // Messages
+  messages  Message[]
+
+  // Dernier message pour tri
+  lastMessageAt DateTime?
+
+  tenantId  String
+
+  @@index([tenantId])
+  @@index([folderId])
+  @@index([lastMessageAt])
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id             String   @id @default(cuid())
+  createdAt      DateTime @default(now())
+
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  userId         String
+
+  // Dernière lecture
+  lastReadAt     DateTime?
+  unreadCount    Int      @default(0)
+
+  // Notifications
+  notificationsEnabled Boolean @default(true)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+  @@map("conversation_participants")
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  // Contenu
+  content   String   @db.Text
+
+  // Pièces jointes
+  attachments Json?   // [{name, url, type, size}]
+
+  // Auteur
+  senderId  String
+
+  // Modifications
+  isEdited  Boolean  @default(false)
+  editedAt  DateTime?
+
+  // Suppression
+  isDeleted Boolean  @default(false)
+  deletedAt DateTime?
+
+  tenantId  String
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@index([createdAt])
+  @@map("messages")
+}

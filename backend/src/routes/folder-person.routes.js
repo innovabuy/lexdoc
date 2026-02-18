@@ -1,0 +1,410 @@
+const express = require('express');
+const router = express.Router();
+const prisma = require('../config/database');
+const { authenticate } = require('../middleware/auth');
+const { enforceTenant } = require('../middleware/tenant');
+const { successResponse, paginatedResponse } = require('../utils/response');
+const { NotFoundError, BadRequestError } = require('../utils/errors');
+const { parsePaginationParams, omitSensitiveFields } = require('../utils/helpers');
+
+router.use(authenticate);
+router.use(enforceTenant);
+
+// Valid enum values
+const PERSON_ROLES = [
+  'PARTIE_ADVERSE',
+  'AVOCAT_ADVERSE',
+  'TEMOIN',
+  'EXPERT',
+  'NOTAIRE',
+  'HUISSIER',
+  'MEDIATEUR',
+  'AUTRE',
+];
+
+const PERSON_TYPES = ['PHYSIQUE', 'MORALE'];
+
+// Role labels for display
+const ROLE_LABELS = {
+  PARTIE_ADVERSE: 'Partie adverse',
+  AVOCAT_ADVERSE: 'Avocat adverse',
+  TEMOIN: 'Témoin',
+  EXPERT: 'Expert',
+  NOTAIRE: 'Notaire',
+  HUISSIER: 'Huissier',
+  MEDIATEUR: 'Médiateur',
+  AUTRE: 'Autre',
+};
+
+// ============================================================================
+// FOLDER PERSONS CRUD
+// ============================================================================
+
+// List persons for a folder
+router.get('/folders/:folderId/persons', async (req, res, next) => {
+  try {
+    const { folderId } = req.params;
+    const { page, pageSize, skip, take } = parsePaginationParams(req.query);
+    const { role, type, search } = req.query;
+
+    // Verify folder belongs to tenant
+    const folder = await prisma.folder.findFirst({
+      where: { id: folderId, tenantId: req.tenant.id },
+    });
+
+    if (!folder) throw new NotFoundError('Dossier non trouvé');
+
+    const where = { folderId, tenantId: req.tenant.id };
+
+    if (role && PERSON_ROLES.includes(role)) where.role = role;
+    if (type && PERSON_TYPES.includes(type)) where.type = type;
+    if (search) {
+      where.OR = [
+        { firstName: { contains: search, mode: 'insensitive' } },
+        { lastName: { contains: search, mode: 'insensitive' } },
+        { company: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [persons, total] = await Promise.all([
+      prisma.folderPerson.findMany({
+        where,
+        skip,
+        take,
+        orderBy: [{ role: 'asc' }, { lastName: 'asc' }],
+      }),
+      prisma.folderPerson.count({ where }),
+    ]);
+
+    // Add role labels
+    const personsWithLabels = persons.map((p) => ({
+      ...omitSensitiveFields(p),
+      roleLabel: ROLE_LABELS[p.role] || p.role,
+    }));
+
+    return paginatedResponse(res, personsWithLabels, { page, pageSize, total });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get a single person by ID
+router.get('/folders/:folderId/persons/:id', async (req, res, next) => {
+  try {
+    const { folderId, id } = req.params;
+
+    const person = await prisma.folderPerson.findFirst({
+      where: {
+        id,
+        folderId,
+        tenantId: req.tenant.id,
+      },
+      include: {
+        folder: {
+          select: { id: true, reference: true, title: true },
+        },
+      },
+    });
+
+    if (!person) throw new NotFoundError('Personne non trouvée');
+
+    return successResponse(res, {
+      ...omitSensitiveFields(person),
+      roleLabel: ROLE_LABELS[person.role] || person.role,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Create a new person for a folder
+router.post('/folders/:folderId/persons', async (req, res, next) => {
+  try {
+    const { folderId } = req.params;
+    const {
+      type = 'PHYSIQUE',
+      role,
+      firstName,
+      lastName,
+      company,
+      email,
+      phone,
+      address,
+      city,
+      postalCode,
+      country,
+      notes,
+    } = req.body;
+
+    // Verify folder belongs to tenant
+    const folder = await prisma.folder.findFirst({
+      where: { id: folderId, tenantId: req.tenant.id },
+    });
+
+    if (!folder) throw new NotFoundError('Dossier non trouvé');
+
+    // Validate required fields
+    if (!role || !PERSON_ROLES.includes(role)) {
+      throw new BadRequestError(`Rôle invalide. Valeurs acceptées: ${PERSON_ROLES.join(', ')}`);
+    }
+
+    if (!type || !PERSON_TYPES.includes(type)) {
+      throw new BadRequestError(`Type invalide. Valeurs acceptées: ${PERSON_TYPES.join(', ')}`);
+    }
+
+    if (!lastName || lastName.trim() === '') {
+      throw new BadRequestError('Le nom est requis');
+    }
+
+    // Validate based on type
+    if (type === 'PHYSIQUE' && (!firstName || firstName.trim() === '')) {
+      throw new BadRequestError('Le prénom est requis pour une personne physique');
+    }
+
+    if (type === 'MORALE' && (!company || company.trim() === '')) {
+      throw new BadRequestError('La raison sociale est requise pour une personne morale');
+    }
+
+    // Validate email format if provided
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new BadRequestError('Format d\'email invalide');
+    }
+
+    const person = await prisma.folderPerson.create({
+      data: {
+        folderId,
+        tenantId: req.tenant.id,
+        type,
+        role,
+        firstName: firstName?.trim() || null,
+        lastName: lastName.trim(),
+        company: company?.trim() || null,
+        email: email?.trim().toLowerCase() || null,
+        phone: phone?.trim() || null,
+        address: address?.trim() || null,
+        city: city?.trim() || null,
+        postalCode: postalCode?.trim() || null,
+        country: country?.trim() || 'FR',
+        notes: notes?.trim() || null,
+      },
+    });
+
+    // Audit log
+    await prisma.auditLog.create({
+      data: {
+        action: 'FOLDER_PERSON_CREATED',
+        entityType: 'FolderPerson',
+        entityId: person.id,
+        userId: req.user.id,
+        tenantId: req.tenant.id,
+        ipAddress: req.ip || req.connection?.remoteAddress,
+        userAgent: req.get('user-agent'),
+        metadata: { folderId, role, type },
+      },
+    });
+
+    return successResponse(
+      res,
+      {
+        ...omitSensitiveFields(person),
+        roleLabel: ROLE_LABELS[person.role] || person.role,
+      },
+      'Personne ajoutée au dossier',
+      201
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Update a person
+router.put('/folders/:folderId/persons/:id', async (req, res, next) => {
+  try {
+    const { folderId, id } = req.params;
+    const {
+      type,
+      role,
+      firstName,
+      lastName,
+      company,
+      email,
+      phone,
+      address,
+      city,
+      postalCode,
+      country,
+      notes,
+    } = req.body;
+
+    // Verify person exists and belongs to folder/tenant
+    const existingPerson = await prisma.folderPerson.findFirst({
+      where: {
+        id,
+        folderId,
+        tenantId: req.tenant.id,
+      },
+    });
+
+    if (!existingPerson) throw new NotFoundError('Personne non trouvée');
+
+    // Validate role if provided
+    if (role && !PERSON_ROLES.includes(role)) {
+      throw new BadRequestError(`Rôle invalide. Valeurs acceptées: ${PERSON_ROLES.join(', ')}`);
+    }
+
+    // Validate type if provided
+    if (type && !PERSON_TYPES.includes(type)) {
+      throw new BadRequestError(`Type invalide. Valeurs acceptées: ${PERSON_TYPES.join(', ')}`);
+    }
+
+    // Validate lastName if provided
+    if (lastName !== undefined && (!lastName || lastName.trim() === '')) {
+      throw new BadRequestError('Le nom est requis');
+    }
+
+    // Determine final type
+    const finalType = type || existingPerson.type;
+
+    // Validate based on type
+    if (finalType === 'PHYSIQUE') {
+      const finalFirstName = firstName !== undefined ? firstName : existingPerson.firstName;
+      if (!finalFirstName || finalFirstName.trim() === '') {
+        throw new BadRequestError('Le prénom est requis pour une personne physique');
+      }
+    }
+
+    if (finalType === 'MORALE') {
+      const finalCompany = company !== undefined ? company : existingPerson.company;
+      if (!finalCompany || finalCompany.trim() === '') {
+        throw new BadRequestError('La raison sociale est requise pour une personne morale');
+      }
+    }
+
+    // Validate email format if provided
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new BadRequestError('Format d\'email invalide');
+    }
+
+    const person = await prisma.folderPerson.update({
+      where: { id },
+      data: {
+        type: type || undefined,
+        role: role || undefined,
+        firstName: firstName !== undefined ? (firstName?.trim() || null) : undefined,
+        lastName: lastName !== undefined ? lastName.trim() : undefined,
+        company: company !== undefined ? (company?.trim() || null) : undefined,
+        email: email !== undefined ? (email?.trim().toLowerCase() || null) : undefined,
+        phone: phone !== undefined ? (phone?.trim() || null) : undefined,
+        address: address !== undefined ? (address?.trim() || null) : undefined,
+        city: city !== undefined ? (city?.trim() || null) : undefined,
+        postalCode: postalCode !== undefined ? (postalCode?.trim() || null) : undefined,
+        country: country !== undefined ? (country?.trim() || null) : undefined,
+        notes: notes !== undefined ? (notes?.trim() || null) : undefined,
+      },
+    });
+
+    // Audit log
+    await prisma.auditLog.create({
+      data: {
+        action: 'FOLDER_PERSON_UPDATED',
+        entityType: 'FolderPerson',
+        entityId: person.id,
+        userId: req.user.id,
+        tenantId: req.tenant.id,
+        ipAddress: req.ip || req.connection?.remoteAddress,
+        userAgent: req.get('user-agent'),
+        changes: { type, role, firstName, lastName, company, email, phone, address },
+      },
+    });
+
+    return successResponse(res, {
+      ...omitSensitiveFields(person),
+      roleLabel: ROLE_LABELS[person.role] || person.role,
+    }, 'Personne mise à jour');
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Delete a person
+router.delete('/folders/:folderId/persons/:id', async (req, res, next) => {
+  try {
+    const { folderId, id } = req.params;
+
+    // Verify person exists and belongs to folder/tenant
+    const person = await prisma.folderPerson.findFirst({
+      where: {
+        id,
+        folderId,
+        tenantId: req.tenant.id,
+      },
+    });
+
+    if (!person) throw new NotFoundError('Personne non trouvée');
+
+    await prisma.folderPerson.delete({
+      where: { id },
+    });
+
+    // Audit log
+    await prisma.auditLog.create({
+      data: {
+        action: 'FOLDER_PERSON_DELETED',
+        entityType: 'FolderPerson',
+        entityId: id,
+        userId: req.user.id,
+        tenantId: req.tenant.id,
+        ipAddress: req.ip || req.connection?.remoteAddress,
+        userAgent: req.get('user-agent'),
+        metadata: {
+          folderId,
+          deletedPerson: {
+            type: person.type,
+            role: person.role,
+            lastName: person.lastName,
+            firstName: person.firstName,
+          },
+        },
+      },
+    });
+
+    return successResponse(res, null, 'Personne supprimée du dossier');
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ============================================================================
+// UTILITIES
+// ============================================================================
+
+// Get available roles (for frontend dropdowns)
+router.get('/persons/roles', async (req, res, next) => {
+  try {
+    const roles = PERSON_ROLES.map((role) => ({
+      value: role,
+      label: ROLE_LABELS[role] || role,
+    }));
+
+    return successResponse(res, roles);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get available types (for frontend dropdowns)
+router.get('/persons/types', async (req, res, next) => {
+  try {
+    const types = [
+      { value: 'PHYSIQUE', label: 'Personne physique' },
+      { value: 'MORALE', label: 'Personne morale' },
+    ];
+
+    return successResponse(res, types);
+  } catch (error) {
+    next(error);
+  }
+});
+
+module.exports = router;

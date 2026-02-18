@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0066ff">
+  <title>Hors ligne - LexDoc Client</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+      max-width: 420px;
+      width: 100%;
+      padding: 40px;
+      text-align: center;
+    }
+
+    .icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      font-size: 24px;
+      color: #1f2937;
+      margin-bottom: 12px;
+    }
+
+    .description {
+      color: #6b7280;
+      margin-bottom: 30px;
+      line-height: 1.6;
+    }
+
+    .status-box {
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      text-align: left;
+    }
+
+    .status-box.available {
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+    }
+
+    .status-box.unavailable {
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+    }
+
+    .status-box h3 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .status-box.available h3 {
+      color: #065f46;
+    }
+
+    .status-box.unavailable h3 {
+      color: #92400e;
+    }
+
+    .status-box ul {
+      list-style: none;
+      font-size: 13px;
+    }
+
+    .status-box.available ul {
+      color: #047857;
+    }
+
+    .status-box.unavailable ul {
+      color: #b45309;
+    }
+
+    .status-box li {
+      padding: 4px 0;
+    }
+
+    .status-box li::before {
+      margin-right: 8px;
+    }
+
+    .status-box.available li::before {
+      content: "✓";
+    }
+
+    .status-box.unavailable li::before {
+      content: "⚠";
+    }
+
+    .retry-btn {
+      background: #0066ff;
+      color: white;
+      border: none;
+      padding: 14px 32px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: background 0.2s;
+    }
+
+    .retry-btn:hover {
+      background: #0052cc;
+    }
+
+    .retry-btn:active {
+      transform: scale(0.98);
+    }
+
+    .footer {
+      margin-top: 30px;
+      font-size: 12px;
+      color: #9ca3af;
+    }
+
+    @media (max-width: 480px) {
+      .container {
+        padding: 30px 20px;
+      }
+
+      h1 {
+        font-size: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">📡</div>
+    <h1>Mode hors ligne</h1>
+    <p class="description">
+      Vous n'etes pas connecte a Internet. Certaines fonctionnalites sont temporairement indisponibles.
+    </p>
+
+    <div class="status-box available">
+      <h3>Disponible hors ligne</h3>
+      <ul>
+        <li>Consultation documents en cache</li>
+        <li>Lecture informations profil</li>
+        <li>Navigation dans l'application</li>
+      </ul>
+    </div>
+
+    <div class="status-box unavailable">
+      <h3>Necessite une connexion</h3>
+      <ul>
+        <li>Signature electronique</li>
+        <li>Telechargement nouveaux documents</li>
+        <li>Mise a jour des donnees</li>
+      </ul>
+    </div>
+
+    <button class="retry-btn" onclick="window.location.reload()">
+      Reessayer la connexion
+    </button>
+
+    <div class="footer">
+      <p>LexDoc - Espace Client</p>
+    </div>
+  </div>
+
+  <script>
+    // Check online status and reload automatically when back online
+    window.addEventListener('online', () => {
+      window.location.reload();
+    });
+  </script>
+</body>
+</html>

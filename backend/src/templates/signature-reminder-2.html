@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #f59e0b; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+    .content { background: #fffbeb; padding: 30px; border: 1px solid #fcd34d; border-top: none; border-radius: 0 0 8px 8px; }
+    .button { display: inline-block; background: #f59e0b; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: 600; }
+    .footer { text-align: center; color: #666; font-size: 12px; margin-top: 20px; padding: 20px; }
+    .document-box { background: white; border: 1px solid #fcd34d; border-radius: 6px; padding: 15px; margin: 15px 0; }
+    .badge { display: inline-block; background: #f59e0b; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <span class="badge">2e RAPPEL</span>
+      <h1 style="margin: 10px 0 0 0;">{{tenantName}}</h1>
+    </div>
+    <div class="content">
+      <h2 style="color: #d97706; margin-top: 0;">Document en attente de signature</h2>
+
+      <p>Bonjour {{signerName}},</p>
+
+      <p>Nous vous rappelons <strong>pour la deuxieme fois</strong> qu'un document attend votre signature :</p>
+
+      <div class="document-box">
+        <strong>{{documentName}}</strong>
+        {{#if folderName}}<br><small style="color: #666;">Dossier : {{folderName}}</small>{{/if}}
+      </div>
+
+      <p style="color: #d97706;"><strong>Ce document necessite votre attention dans les plus brefs delais.</strong></p>
+
+      <p style="text-align: center;">
+        <a href="{{signatureUrl}}" class="button">Signer maintenant</a>
+      </p>
+
+      <p>Si vous rencontrez des difficultes pour signer ce document, merci de nous contacter rapidement.</p>
+
+      <p>Cordialement,<br><strong>{{tenantName}}</strong></p>
+    </div>
+    <div class="footer">
+      <p>Cet email a ete envoye automatiquement via LexDoc.<br>
+      <a href="{{unsubscribeUrl}}" style="color: #666;">Se desinscrire des rappels</a></p>
+    </div>
+  </div>
+</body>
+</html>

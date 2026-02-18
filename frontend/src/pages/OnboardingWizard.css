@@ -1,0 +1,526 @@
+/* ============================================
+   Onboarding Wizard — Full screen layout
+   ============================================ */
+.onboarding {
+  min-height: 100vh;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 24px;
+}
+
+.onboarding-card {
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+/* ============================================
+   Progress bar
+   ============================================ */
+.onboarding-progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 48px;
+  gap: 0;
+}
+
+.onboarding-progress-step {
+  display: flex;
+  align-items: center;
+}
+
+.onboarding-progress-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.onboarding-progress-dot--future {
+  background: #e2e8f0;
+  color: #94a3b8;
+}
+
+.onboarding-progress-dot--active {
+  background: #0066ff;
+  color: #fff;
+  box-shadow: 0 0 0 4px rgba(0, 102, 255, 0.15);
+}
+
+.onboarding-progress-dot--completed {
+  background: #10b981;
+  color: #fff;
+}
+
+.onboarding-progress-line {
+  width: 48px;
+  height: 4px;
+  border-radius: 2px;
+  transition: background 0.3s ease;
+}
+
+.onboarding-progress-line--completed {
+  background: #10b981;
+}
+
+.onboarding-progress-line--pending {
+  background: #e2e8f0;
+}
+
+/* ============================================
+   Step content with transitions
+   ============================================ */
+.onboarding-step {
+  animation: onboardingFadeIn 0.3s ease;
+}
+
+@keyframes onboardingFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.onboarding-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
+.onboarding-subtitle {
+  font-size: 1rem;
+  color: #64748b;
+  margin-bottom: 32px;
+  line-height: 1.6;
+}
+
+/* ============================================
+   Buttons
+   ============================================ */
+.onboarding-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 40px;
+  gap: 16px;
+}
+
+.onboarding-btn {
+  padding: 12px 28px;
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.onboarding-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.onboarding-btn--primary {
+  background: #0066ff;
+  color: #fff;
+}
+.onboarding-btn--primary:hover:not(:disabled) {
+  background: #0052cc;
+}
+
+.onboarding-btn--secondary {
+  background: #f1f5f9;
+  color: #334155;
+}
+.onboarding-btn--secondary:hover:not(:disabled) {
+  background: #e2e8f0;
+}
+
+.onboarding-btn--outline {
+  background: #fff;
+  color: #0066ff;
+  border: 1px solid #0066ff;
+}
+.onboarding-btn--outline:hover:not(:disabled) {
+  background: #eff6ff;
+}
+
+/* ============================================
+   Welcome step (step 1)
+   ============================================ */
+.onboarding-welcome-icon {
+  font-size: 2.5rem;
+  margin-bottom: 16px;
+}
+
+.onboarding-features {
+  list-style: none;
+  padding: 0;
+  margin: 24px 0;
+}
+
+.onboarding-features li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  font-size: 0.9375rem;
+  color: #334155;
+  line-height: 1.5;
+}
+
+.onboarding-features li::before {
+  content: '';
+  display: none;
+}
+
+.onboarding-feature-icon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  color: #0066ff;
+}
+
+/* ============================================
+   Form fields (step 2)
+   ============================================ */
+.onboarding-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.onboarding-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.onboarding-field--full {
+  grid-column: 1 / -1;
+}
+
+.onboarding-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.onboarding-label .required {
+  color: #ef4444;
+  margin-left: 2px;
+}
+
+.onboarding-input {
+  padding: 10px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  color: #0f172a;
+  transition: border-color 0.15s;
+  outline: none;
+  font-family: inherit;
+}
+
+.onboarding-input:focus {
+  border-color: #0066ff;
+  box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.1);
+}
+
+.onboarding-input--error {
+  border-color: #ef4444;
+}
+
+.onboarding-input::placeholder {
+  color: #94a3b8;
+}
+
+.onboarding-error {
+  font-size: 0.75rem;
+  color: #ef4444;
+}
+
+/* Logo upload zone */
+.onboarding-upload {
+  border: 2px dashed #e2e8f0;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.onboarding-upload:hover {
+  border-color: #0066ff;
+  background: #f8fafc;
+}
+
+.onboarding-upload-icon {
+  font-size: 1.5rem;
+  margin-bottom: 4px;
+}
+
+/* ============================================
+   Tree editor (step 3)
+   ============================================ */
+.onboarding-trees {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+}
+
+.onboarding-tree-col {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #e2e8f0;
+}
+
+.onboarding-tree-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.onboarding-tree-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.onboarding-tree-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.onboarding-tree-item-handle {
+  color: #94a3b8;
+  cursor: grab;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.onboarding-tree-item-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 0.875rem;
+  color: #0f172a;
+  background: transparent;
+  font-family: inherit;
+}
+
+.onboarding-tree-item-order {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  flex-shrink: 0;
+}
+
+.onboarding-tree-item-order button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #94a3b8;
+  padding: 0;
+  line-height: 1;
+  font-size: 0.75rem;
+}
+.onboarding-tree-item-order button:hover {
+  color: #0066ff;
+}
+
+.onboarding-tree-item-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #94a3b8;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.onboarding-tree-item-remove:hover {
+  color: #ef4444;
+  background: #fef2f2;
+}
+
+.onboarding-tree-add {
+  background: none;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: #64748b;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  width: 100%;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.onboarding-tree-add:hover {
+  border-color: #0066ff;
+  color: #0066ff;
+  background: #eff6ff;
+}
+
+/* ============================================
+   Integrations (step 4)
+   ============================================ */
+.onboarding-integrations {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.onboarding-integration-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.onboarding-integration-icon {
+  font-size: 1.75rem;
+  flex-shrink: 0;
+}
+
+.onboarding-integration-info {
+  flex: 1;
+}
+
+.onboarding-integration-name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
+
+.onboarding-integration-desc {
+  font-size: 0.8125rem;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.onboarding-integration-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  color: #f59e0b;
+  font-weight: 500;
+}
+
+.onboarding-integration-hint {
+  font-size: 0.8125rem;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.onboarding-info-box {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 14px 16px;
+  font-size: 0.8125rem;
+  color: #1e40af;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+/* ============================================
+   Done step (step 5)
+   ============================================ */
+.onboarding-done-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+}
+
+.onboarding-done-actions {
+  display: flex;
+  gap: 16px;
+  margin-top: 32px;
+}
+
+/* ============================================
+   API error
+   ============================================ */
+.onboarding-api-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 0.875rem;
+  margin-bottom: 16px;
+}
+
+/* ============================================
+   Responsive
+   ============================================ */
+@media (max-width: 767px) {
+  .onboarding {
+    padding: 24px 16px;
+  }
+
+  .onboarding-form {
+    grid-template-columns: 1fr;
+  }
+
+  .onboarding-trees {
+    grid-template-columns: 1fr;
+  }
+
+  .onboarding-progress-line {
+    width: 24px;
+  }
+
+  .onboarding-done-actions {
+    flex-direction: column;
+  }
+
+  .onboarding-actions {
+    flex-direction: column-reverse;
+  }
+
+  .onboarding-actions .onboarding-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

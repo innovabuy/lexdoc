@@ -1,0 +1,202 @@
+/* ════════════════════════════════════════════════════
+   TemplatesSettings — Bibliotheque de Templates
+   ════════════════════════════════════════════════════ */
+
+/* ── Layout ── */
+.ts-container { max-width: 960px; margin: 0 auto; }
+
+.ts-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 1.25rem; gap: 1rem;
+}
+.ts-title { font-size: 1.5rem; font-weight: 700; color: #111827; margin: 0; }
+.ts-subtitle { font-size: 0.875rem; color: #6B7280; margin: 0.25rem 0 0; }
+
+/* ── Buttons ── */
+.ts-btn {
+  display: inline-flex; align-items: center; gap: 0.375rem;
+  padding: 0.5rem 1rem; border-radius: 0.5rem;
+  font-size: 0.875rem; font-weight: 500;
+  border: 1px solid transparent; cursor: pointer;
+  transition: all 0.15s; white-space: nowrap;
+}
+.ts-btn-primary { background: #2563EB; color: #fff; border-color: #2563EB; }
+.ts-btn-primary:hover { background: #1D4ED8; }
+.ts-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.ts-btn-secondary { background: #fff; color: #374151; border-color: #D1D5DB; }
+.ts-btn-secondary:hover { background: #F3F4F6; }
+.ts-btn-danger { background: #DC2626; color: #fff; border-color: #DC2626; }
+.ts-btn-danger:hover { background: #B91C1C; }
+.ts-btn-ghost { background: transparent; color: #6B7280; border-color: transparent; }
+.ts-btn-ghost:hover { background: #F3F4F6; color: #374151; }
+
+/* ── Search ── */
+.ts-search-bar { margin-bottom: 1.25rem; }
+.ts-search-wrap { position: relative; max-width: 400px; }
+.ts-search-icon { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); pointer-events: none; }
+.ts-search-input {
+  width: 100%; padding: 0.5rem 0.75rem 0.5rem 2.25rem;
+  border: 1px solid #D1D5DB; border-radius: 0.5rem;
+  font-size: 0.875rem; color: #111827;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.ts-search-input:focus {
+  outline: none; border-color: #93C5FD;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+}
+.ts-search-input::placeholder { color: #9CA3AF; }
+
+/* ── Loading / Empty ── */
+.ts-loading { display: flex; align-items: center; justify-content: center; min-height: 200px; }
+.ts-spinner {
+  width: 2rem; height: 2rem;
+  border: 3px solid #E5E7EB; border-top-color: #3B82F6;
+  border-radius: 50%; animation: ts-spin 0.6s linear infinite;
+}
+@keyframes ts-spin { to { transform: rotate(360deg); } }
+.ts-empty { text-align: center; padding: 3rem; color: #9CA3AF; }
+
+/* ── Tree ── */
+.ts-tree { display: flex; flex-direction: column; gap: 0.5rem; }
+.ts-category {
+  background: #fff; border: 1px solid #E5E7EB; border-radius: 0.75rem;
+  overflow: hidden;
+}
+.ts-cat-perso { border-color: #C4B5FD; }
+.ts-cat-perso .ts-cat-header { background: #F5F3FF; }
+.ts-cat-perso .ts-cat-header:hover { background: #EDE9FE; }
+
+.ts-cat-header {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.75rem 1rem; width: 100%;
+  border: none; background: #F9FAFB;
+  cursor: pointer; font-size: 0.875rem; color: #374151;
+  transition: background 0.15s;
+}
+.ts-cat-header:hover { background: #F3F4F6; }
+.ts-cat-icon { display: flex; color: #6B7280; }
+.ts-cat-name { font-weight: 600; flex: 1; text-align: left; }
+.ts-cat-count {
+  font-size: 0.75rem; color: #6B7280; background: #E5E7EB;
+  padding: 0.0625rem 0.5rem; border-radius: 999px;
+}
+
+/* ── Template rows ── */
+.ts-tpl-list { padding: 0; }
+.ts-tpl-row {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.625rem 1rem 0.625rem 2.5rem;
+  border-top: 1px solid #F3F4F6;
+  transition: background 0.15s;
+}
+.ts-tpl-row:hover { background: #F9FAFB; }
+.ts-tpl-icon { flex-shrink: 0; color: #6B7280; display: flex; }
+.ts-tpl-info { flex: 1; min-width: 0; }
+.ts-tpl-name {
+  display: block; font-size: 0.875rem; font-weight: 500; color: #111827;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ts-tpl-desc {
+  display: block; font-size: 0.75rem; color: #9CA3AF; margin-top: 0.125rem;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ts-tpl-meta { display: flex; align-items: center; gap: 0.375rem; flex-shrink: 0; }
+.ts-usage { font-size: 0.75rem; color: #9CA3AF; }
+
+/* ── Badges ── */
+.ts-badge {
+  font-size: 0.6875rem; font-weight: 500; padding: 0.125rem 0.5rem;
+  border-radius: 999px; white-space: nowrap;
+}
+.ts-badge-blue { background: #DBEAFE; color: #1E40AF; }
+.ts-badge-purple { background: #EDE9FE; color: #6D28D9; }
+.ts-badge-green { background: #D1FAE5; color: #065F46; }
+.ts-badge-gray { background: #F3F4F6; color: #4B5563; }
+
+/* ── Icon buttons ── */
+.ts-tpl-actions { display: flex; gap: 0.125rem; flex-shrink: 0; }
+.ts-icon-btn {
+  width: 32px; height: 32px; border-radius: 0.375rem;
+  border: none; background: transparent; color: #6B7280;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.ts-icon-btn:hover { background: #F3F4F6; color: #374151; }
+.ts-icon-btn-danger:hover { background: #FEE2E2; color: #DC2626; }
+
+/* ── Add row ── */
+.ts-tpl-add {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.625rem 1rem 0.625rem 2.5rem; width: 100%;
+  border: none; border-top: 1px solid #F3F4F6;
+  background: transparent; color: #6B7280; cursor: pointer;
+  font-size: 0.875rem; transition: all 0.15s;
+}
+.ts-tpl-add:hover { background: #F9FAFB; color: #374151; }
+
+/* ── Modal ── */
+.ts-modal-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,0.5); display: flex;
+  align-items: center; justify-content: center; padding: 1rem;
+}
+.ts-modal {
+  background: #fff; border-radius: 0.75rem; width: 100%;
+  max-width: 540px; max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+}
+.ts-modal-sm { max-width: 400px; }
+.ts-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.25rem 1.5rem; border-bottom: 1px solid #E5E7EB;
+}
+.ts-modal-header h2 { font-size: 1.125rem; font-weight: 600; color: #111827; margin: 0; }
+.ts-modal-close {
+  width: 32px; height: 32px; border-radius: 0.375rem;
+  border: none; background: transparent; font-size: 1.25rem;
+  color: #6B7280; cursor: pointer; display: flex;
+  align-items: center; justify-content: center;
+}
+.ts-modal-close:hover { background: #F3F4F6; }
+.ts-modal-body { padding: 1.5rem; }
+.ts-modal-footer {
+  display: flex; justify-content: flex-end; gap: 0.5rem;
+  padding: 1rem 1.5rem; border-top: 1px solid #E5E7EB;
+}
+.ts-text-muted { font-size: 0.8125rem; color: #6B7280; margin: 0.25rem 0 0; }
+
+/* ── Form fields ── */
+.ts-field { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 1rem; }
+.ts-field:last-child { margin-bottom: 0; }
+.ts-field label { font-size: 0.8125rem; font-weight: 500; color: #374151; }
+.ts-input {
+  padding: 0.5rem 0.75rem; border: 1px solid #D1D5DB;
+  border-radius: 0.5rem; font-size: 0.875rem; color: #111827;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.ts-input:focus {
+  outline: none; border-color: #93C5FD;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+}
+
+/* ── Mode selection ── */
+.ts-mode-options { display: flex; gap: 0.75rem; margin-top: 0.25rem; }
+.ts-mode-option {
+  flex: 1; position: relative; cursor: pointer;
+  display: flex; align-items: stretch;
+}
+.ts-mode-option input[type="radio"] {
+  position: absolute; opacity: 0; pointer-events: none;
+}
+.ts-mode-content {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  gap: 0.375rem; padding: 1rem; border: 2px solid #E5E7EB;
+  border-radius: 0.5rem; text-align: center;
+  transition: all 0.15s;
+}
+.ts-mode-content:hover { border-color: #93C5FD; }
+.ts-mode-option.active .ts-mode-content {
+  border-color: #2563EB; background: #EFF6FF;
+}
+.ts-mode-title { font-size: 0.8125rem; font-weight: 600; color: #111827; }
+.ts-mode-desc { font-size: 0.75rem; color: #6B7280; }

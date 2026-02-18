@@ -1,0 +1,175 @@
+.exf-loading {
+  text-align: center;
+  padding: 60px 24px;
+  color: #64748b;
+}
+
+.exf-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #0066ff;
+  border-radius: 50%;
+  animation: exf-spin 0.8s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes exf-spin {
+  to { transform: rotate(360deg); }
+}
+
+.exf-container {
+  padding: 8px 0;
+}
+
+.exf-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0;
+  border: none;
+  background: none;
+  color: #0066ff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-bottom: 16px;
+}
+
+.exf-back:hover {
+  text-decoration: underline;
+}
+
+.exf-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 24px;
+}
+
+.exf-empty {
+  text-align: center;
+  padding: 48px 24px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  color: #64748b;
+  font-size: 15px;
+}
+
+.exf-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.exf-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  transition: border-color 0.2s;
+}
+
+.exf-row:hover {
+  border-color: #cbd5e1;
+}
+
+.exf-row-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.exf-row-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.exf-row-name {
+  font-size: 15px;
+  font-weight: 500;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.exf-status {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #f1f5f9;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.exf-status--success {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.exf-status--warning {
+  background: #fffbeb;
+  color: #d97706;
+}
+
+.exf-status--danger {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.exf-row-date {
+  font-size: 13px;
+  color: #94a3b8;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.exf-download-btn {
+  flex-shrink: 0;
+  padding: 6px 16px;
+  background: #eff6ff;
+  color: #0066ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.exf-download-btn:hover:not(:disabled) {
+  background: #dbeafe;
+}
+
+.exf-download-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .exf-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .exf-row-info {
+    flex-basis: calc(100% - 44px);
+  }
+
+  .exf-row-date {
+    margin-left: 34px;
+  }
+
+  .exf-download-btn {
+    width: 100%;
+    text-align: center;
+  }
+}

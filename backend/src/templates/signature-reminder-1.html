@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #0066ff; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+    .content { background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; }
+    .button { display: inline-block; background: #0066ff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: 500; }
+    .footer { text-align: center; color: #666; font-size: 12px; margin-top: 20px; padding: 20px; }
+    .document-box { background: white; border: 1px solid #e5e7eb; border-radius: 6px; padding: 15px; margin: 15px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1 style="margin: 0;">{{tenantName}}</h1>
+    </div>
+    <div class="content">
+      <h2 style="color: #0066ff; margin-top: 0;">Document en attente de signature</h2>
+
+      <p>Bonjour {{signerName}},</p>
+
+      <p>Nous vous rappelons qu'un document attend votre signature electronique :</p>
+
+      <div class="document-box">
+        <strong>{{documentName}}</strong>
+        {{#if folderName}}<br><small style="color: #666;">Dossier : {{folderName}}</small>{{/if}}
+      </div>
+
+      <p>Merci de bien vouloir le signer des que possible.</p>
+
+      <p style="text-align: center;">
+        <a href="{{signatureUrl}}" class="button">Signer maintenant</a>
+      </p>
+
+      <p>Si vous avez des questions, n'hesitez pas a nous contacter.</p>
+
+      <p>Cordialement,<br><strong>{{tenantName}}</strong></p>
+    </div>
+    <div class="footer">
+      <p>Cet email a ete envoye automatiquement via LexDoc.<br>
+      <a href="{{unsubscribeUrl}}" style="color: #666;">Se desinscrire des rappels</a></p>
+    </div>
+  </div>
+</body>
+</html>

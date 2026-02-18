@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl:*)",
+      "Bash(find:*)",
+      "Bash(python3:*)",
+      "Bash(pm2 restart:*)",
+      "Bash(node -e:*)",
+      "Bash(node scripts/generate-templates.js:*)",
+      "Bash(/home/lexdoc-dev/backend/.env:*)",
+      "Bash(wc -l:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx prisma db push:*)",
+      "Bash(pm2 list:*)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjbWw2dnlramEwMDAyam1zMmhocjRoZnIzIiwiZW1haWwiOiJ5dmVzLW1hcmllLmJpZW5haW1lQHByYWdtYXZveC5mciIsInJvbGUiOiJBRE1JTiIsImlhdCI6MTc3MTQyMTk2NCwiZXhwIjoxNzcxNDI1NTY0fQ.35Cp2g5z0aQbV2nfl5PlBj_iakEmuHJfbFYeDLEW4AE\")",
+      "Bash(__NEW_LINE_82783826e661ab8b__ python3 -c \"\nimport urllib.request, json\n\ntoken = ''$TOKEN''\n\n# Step 1: Get folders\nreq = urllib.request.Request\\(''http://localhost:4000/api/folders?pageSize=5'', headers={''Authorization'': f''Bearer {token}''}\\)\nresp = urllib.request.urlopen\\(req\\)\nfolders = json.loads\\(resp.read\\(\\)\\)[''data''][''data'']\nprint\\(f''Step 1: Found {len\\(folders\\)} folders''\\)\nfolderId = folders[0][''id'']\nprint\\(f''  Using folder: {folderId} - {folders[0].get\\(\"\"title\"\",\"\"\"\"\\)}''\\)\n\n# Step 2: Get documents in folder\nreq2 = urllib.request.Request\\(f''http://localhost:4000/api/folders/{folderId}/documents'', headers={''Authorization'': f''Bearer {token}''}\\)\nresp2 = urllib.request.urlopen\\(req2\\)\ndocs = json.loads\\(resp2.read\\(\\)\\)[''data''][''data'']\nprint\\(f''Step 2: Found {len\\(docs\\)} documents''\\)\nif docs:\n    docId = docs[0][''id'']\n    print\\(f''  Using document: {docId} - {docs[0].get\\(\"\"name\"\",\"\"\"\"\\)}''\\)\nelse:\n    print\\(''  No documents in folder''\\)\n    docId = None\n    \n# Step 3: Create a person with full address \\(city, postalCode, country\\)\npersonData = json.dumps\\({\n    ''type'': ''PHYSIQUE'',\n    ''role'': ''PARTIE_ADVERSE'',\n    ''firstName'': ''Jean'',\n    ''lastName'': ''Dupont'',\n    ''email'': ''jean.dupont@example.com'',\n    ''phone'': ''0612345678'',\n    ''address'': ''15 Rue de la Paix'',\n    ''city'': ''Paris'',\n    ''postalCode'': ''75002'',\n    ''country'': ''FR''\n}\\).encode\\(\\)\nreq3 = urllib.request.Request\\(f''http://localhost:4000/api/folders/{folderId}/persons'', data=personData, headers={''Authorization'': f''Bearer {token}'', ''Content-Type'': ''application/json''}\\)\nresp3 = urllib.request.urlopen\\(req3\\)\nperson = json.loads\\(resp3.read\\(\\)\\)[''data'']\npersonId = person[''id'']\nprint\\(f''Step 3: Person created: {personId}''\\)\nprint\\(f''  city={person.get\\(\"\"city\"\"\\)}, postalCode={person.get\\(\"\"postalCode\"\"\\)}, country={person.get\\(\"\"country\"\"\\)}''\\)\n\")",
+      "Bash(__NEW_LINE_1fa3a50f611b851e__ python3 -c \"\nimport urllib.request, json\n\ntoken = ''$TOKEN''\n\n# Get folders - check response structure\nreq = urllib.request.Request\\(''http://localhost:4000/api/folders?pageSize=5'', headers={''Authorization'': f''Bearer {token}''}\\)\nresp = urllib.request.urlopen\\(req\\)\nbody = json.loads\\(resp.read\\(\\)\\)\nprint\\(''Folders response keys:'', list\\(body.keys\\(\\)\\)\\)\nprint\\(''data keys:'', list\\(body[''data''].keys\\(\\)\\) if isinstance\\(body[''data''], dict\\) else type\\(body[''data'']\\)\\)\ndata = body[''data'']\nif isinstance\\(data, dict\\) and ''data'' in data:\n    folders = data[''data'']\nelif isinstance\\(data, list\\):\n    folders = data\nelse:\n    folders = data.get\\(''items'', data.get\\(''folders'', []\\)\\)\n    \nprint\\(f''Found {len\\(folders\\)} folders''\\)\nif folders:\n    print\\(''First folder keys:'', list\\(folders[0].keys\\(\\)\\)\\)\n    print\\(json.dumps\\(folders[0], indent=2, default=str\\)[:500]\\)\n\")",
+      "Bash(__NEW_LINE_389d8a884a83241e__ python3:*)",
+      "Bash(sudo systemctl:*)",
+      "Bash(ls:*)",
+      "Bash(pm2 status:*)",
+      "Bash(git status:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

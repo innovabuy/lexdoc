@@ -1,0 +1,132 @@
+.ext-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f8fafc;
+}
+
+.ext-header {
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.ext-header-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ext-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ext-logo-icon {
+  font-size: 20px;
+}
+
+.ext-logo-text {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.ext-nav {
+  display: flex;
+  gap: 8px;
+}
+
+.ext-nav-link {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #64748b;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.ext-nav-link:hover {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.ext-nav-link--active {
+  background: #eff6ff;
+  color: #0066ff;
+  font-weight: 600;
+}
+
+.ext-header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.ext-user-name {
+  font-size: 14px;
+  color: #475569;
+}
+
+.ext-logout-btn {
+  padding: 6px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #fff;
+  color: #64748b;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ext-logout-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.ext-main {
+  flex: 1;
+  padding: 32px 24px;
+}
+
+.ext-container {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.ext-footer {
+  padding: 24px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 13px;
+  border-top: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+@media (max-width: 768px) {
+  .ext-header-inner {
+    padding: 0 16px;
+  }
+
+  .ext-user-name {
+    display: none;
+  }
+
+  .ext-nav-link {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  .ext-main {
+    padding: 16px;
+  }
+}
