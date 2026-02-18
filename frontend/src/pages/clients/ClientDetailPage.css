@@ -94,6 +94,13 @@
 }
 .detail-action-btn--outline:hover { background: #eff6ff; }
 
+.detail-action-btn--danger {
+  background: #fff;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+}
+.detail-action-btn--danger:hover { background: #fef2f2; border-color: #dc2626; }
+
 /* Tabs */
 .detail-tabs {
   display: flex;

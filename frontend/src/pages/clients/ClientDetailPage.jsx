@@ -3,9 +3,9 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, Send, Edit3, ChevronDown, ChevronRight,
   Save, FolderOpen, Clock, User, Phone, Heart, Users as UsersIcon,
-  Globe, CheckCircle, RefreshCw,
+  Globe, CheckCircle, RefreshCw, Archive, Trash2, RotateCcw,
 } from 'lucide-react';
-import { getClient, updateClient, sendClientForm, inviteExtranet } from '../../services/clientsApi';
+import { getClient, updateClient, sendClientForm, inviteExtranet, archiveClient, deleteClient } from '../../services/clientsApi';
 import CompletenessAlert from '../../components/clients/CompletenessAlert';
 import { useToast } from '../../contexts/ToastContext';
 import './ClientDetailPage.css';
@@ -307,6 +307,31 @@ export default function ClientDetailPage() {
     }
   };
 
+  const handleArchive = async () => {
+    const isActive = client.isActive !== false;
+    const action = isActive ? 'archiver' : 'restaurer';
+    if (!window.confirm(`Voulez-vous ${action} ce client ?`)) return;
+    try {
+      await archiveClient(id);
+      toast.success(isActive ? 'Client archivé' : 'Client restauré');
+      await fetchClient();
+    } catch (err) {
+      toast.error(err.response?.data?.error?.message || "Erreur lors de l'archivage");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm('Supprimer ce client ? Cette action est irréversible.')) return;
+    if (!window.confirm('Confirmez-vous la suppression définitive ?')) return;
+    try {
+      await deleteClient(id);
+      toast.success('Client supprimé');
+      navigate('/clients');
+    } catch (err) {
+      toast.error(err.response?.data?.error?.message || 'Erreur lors de la suppression');
+    }
+  };
+
   if (loading) {
     return <div className="detail-loading">Chargement...</div>;
   }
@@ -379,6 +404,14 @@ export default function ClientDetailPage() {
             <button className="detail-action-btn detail-action-btn--outline" onClick={handleSendForm}>
               <Send size={16} />
               Envoyer le formulaire
+            </button>
+            <button className="detail-action-btn detail-action-btn--outline" onClick={handleArchive}>
+              {client.isActive !== false ? <Archive size={16} /> : <RotateCcw size={16} />}
+              {client.isActive !== false ? 'Archiver' : 'Restaurer'}
+            </button>
+            <button className="detail-action-btn detail-action-btn--danger" onClick={handleDelete}>
+              <Trash2 size={16} />
+              Supprimer
             </button>
           </div>
         </div>

@@ -403,6 +403,31 @@ router.patch('/:id/section/:section', async (req, res, next) => {
   }
 });
 
+// Archive / unarchive client
+router.patch('/:id/archive', async (req, res, next) => {
+  try {
+    const existing = await prisma.client.findFirst({
+      where: { id: req.params.id, tenantId: req.tenant.id, deletedAt: null },
+    });
+
+    if (!existing) {
+      throw new NotFoundError('Client not found');
+    }
+
+    const newIsActive = !existing.isActive;
+    const client = await prisma.client.update({
+      where: { id: req.params.id },
+      data: { isActive: newIsActive },
+    });
+
+    logger.info(`Client ${newIsActive ? 'unarchived' : 'archived'}`, { clientId: req.params.id, tenantId: req.tenant.id });
+
+    return successResponse(res, omitSensitiveFields(client, ['extranetPassword']), newIsActive ? 'Client restauré' : 'Client archivé');
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Soft delete client
 router.delete('/:id', async (req, res, next) => {
   try {

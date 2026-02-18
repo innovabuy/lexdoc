@@ -44,6 +44,11 @@ export async function sendClientForm(id) {
   return data.data;
 }
 
+export async function archiveClient(id) {
+  const { data } = await api.patch(`/clients/${id}/archive`);
+  return data.data;
+}
+
 export async function deleteClient(id) {
   await api.delete(`/clients/${id}`);
 }
