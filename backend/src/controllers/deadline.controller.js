@@ -3,6 +3,7 @@ const { successResponse, paginatedResponse } = require('../utils/response');
 const { NotFoundError, BadRequestError } = require('../utils/errors');
 const { parsePaginationParams } = require('../utils/helpers');
 const notificationService = require('../services/notification.service');
+const timeline = require('../services/timeline.service');
 
 /**
  * List deadlines with filters
@@ -241,6 +242,18 @@ const create = async (req, res, next) => {
       });
     }
 
+    // Timeline event
+    if (deadline.folderId) {
+      const typeLabels = { DEADLINE: 'Échéance', HEARING: 'Audience', MEETING: 'Rendez-vous', REMINDER: 'Rappel', TASK: 'Tâche', OTHER: 'Autre' };
+      await timeline.addEvent({
+        folderId: deadline.folderId,
+        type: 'echeance_creee',
+        description: `${typeLabels[type] || 'Échéance'} créée : "${title}" (${new Date(dueDate).toLocaleDateString('fr-FR')})`,
+        userId: req.user.id,
+        metadata: { deadlineId: deadline.id, type, priority, dueDate },
+      });
+    }
+
     return successResponse(res, deadline, 'Echeance creee', 201);
   } catch (error) {
     next(error);
@@ -337,6 +350,11 @@ const complete = async (req, res, next) => {
   try {
     const { id } = req.params;
 
+    const existing = await prisma.deadline.findFirst({
+      where: { id, tenantId: req.tenant.id },
+      select: { id: true, title: true, folderId: true },
+    });
+
     const deadline = await prisma.deadline.updateMany({
       where: { id, tenantId: req.tenant.id },
       data: {
@@ -345,6 +363,17 @@ const complete = async (req, res, next) => {
         completedById: req.user.id,
       },
     });
+
+    // Timeline event
+    if (existing?.folderId) {
+      await timeline.addEvent({
+        folderId: existing.folderId,
+        type: 'echeance_terminee',
+        description: `Échéance terminée : "${existing.title}"`,
+        userId: req.user.id,
+        metadata: { deadlineId: id },
+      });
+    }
 
     return successResponse(res, null, 'Echeance terminee');
   } catch (error) {

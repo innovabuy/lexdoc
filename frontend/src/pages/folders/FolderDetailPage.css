@@ -271,7 +271,7 @@ textarea.fdp-inline-input { resize: vertical; }
 .fdp-timeline { }
 .fdp-timeline-header {
   display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 1rem;
+  margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;
 }
 .fdp-timeline-body { }
 .fdp-timeline-group { margin-bottom: 1.5rem; }
@@ -285,15 +285,24 @@ textarea.fdp-inline-input { resize: vertical; }
   padding: 0.5rem 0; position: relative;
 }
 .fdp-timeline-item::before {
-  content: ''; position: absolute; left: 5px; top: 24px; bottom: -8px;
+  content: ''; position: absolute; left: 13px; top: 32px; bottom: -8px;
   width: 2px; background: #E5E7EB;
 }
 .fdp-timeline-group .fdp-timeline-item:last-child::before { display: none; }
 .fdp-timeline-dot {
-  width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; margin-top: 4px;
+  width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0.9;
 }
-.fdp-timeline-content { flex: 1; }
-.fdp-timeline-desc { font-size: 0.875rem; color: #374151; margin: 0; }
+.fdp-timeline-dot svg { stroke: #fff; }
+.fdp-timeline-content { flex: 1; min-width: 0; }
+.fdp-timeline-desc { font-size: 0.875rem; color: #374151; margin: 0; line-height: 1.4; }
+.fdp-timeline-meta {
+  display: flex; gap: 0.75rem; align-items: center; margin-top: 2px;
+}
+.fdp-timeline-user {
+  font-size: 0.75rem; color: #6366F1; font-weight: 500;
+}
 .fdp-timeline-time { font-size: 0.75rem; color: #9CA3AF; }
 
 /* ── Upload Modal ── */

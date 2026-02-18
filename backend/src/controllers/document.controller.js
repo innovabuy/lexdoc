@@ -4,6 +4,7 @@ const { successResponse, paginatedResponse } = require('../utils/response');
 const { NotFoundError, BadRequestError } = require('../utils/errors');
 const { parsePaginationParams, sanitizeFilename, omitSensitiveFields } = require('../utils/helpers');
 const logger = require('../config/logger');
+const timeline = require('../services/timeline.service');
 
 /**
  * List documents with search, filters and pagination
@@ -165,6 +166,18 @@ const create = async (req, res, next) => {
         },
       },
     });
+
+    // Timeline event
+    if (folderId) {
+      await timeline.addEvent({
+        folderId,
+        type: 'document_cree',
+        description: `Document "${document.name}" ajouté`,
+        userId: req.user.id,
+        documentId: document.id,
+        metadata: { originalName: file.originalname, mimeType: file.mimetype, size: file.size },
+      });
+    }
 
     logger.info('Document uploaded', {
       documentId: document.id,
@@ -500,6 +513,18 @@ const uploadVersion = async (req, res, next) => {
       },
     });
 
+    // Timeline event
+    if (parentDoc.folderId) {
+      await timeline.addEvent({
+        folderId: parentDoc.folderId,
+        type: 'document_modifie',
+        description: `Nouvelle version (v${nextVersion}) de "${parentDoc.name}"`,
+        userId: req.user.id,
+        documentId: newVersion.id,
+        metadata: { version: nextVersion, parentId: parentDoc.id },
+      });
+    }
+
     logger.info('Document version uploaded', {
       documentId: newVersion.id,
       parentId: parentDoc.id,
@@ -591,6 +616,17 @@ const deleteDoc = async (req, res, next) => {
         userAgent: req.get('user-agent'),
       },
     });
+
+    // Timeline event
+    if (document.folderId) {
+      await timeline.addEvent({
+        folderId: document.folderId,
+        type: 'document_supprime',
+        description: `Document "${document.name}" supprimé`,
+        userId: req.user.id,
+        documentId: document.id,
+      });
+    }
 
     logger.info('Document deleted', {
       documentId: document.id,

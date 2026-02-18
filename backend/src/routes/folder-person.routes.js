@@ -6,6 +6,7 @@ const { enforceTenant } = require('../middleware/tenant');
 const { successResponse, paginatedResponse } = require('../utils/response');
 const { NotFoundError, BadRequestError } = require('../utils/errors');
 const { parsePaginationParams, omitSensitiveFields } = require('../utils/helpers');
+const timeline = require('../services/timeline.service');
 
 router.use(authenticate);
 router.use(enforceTenant);
@@ -204,6 +205,16 @@ router.post('/folders/:folderId/persons', async (req, res, next) => {
       },
     });
 
+    // Timeline event
+    const personName = person.firstName ? `${person.firstName} ${person.lastName}` : (person.company || person.lastName);
+    await timeline.addEvent({
+      folderId,
+      type: 'personne_ajoutee',
+      description: `${ROLE_LABELS[person.role] || person.role} ajouté(e) : ${personName}`,
+      userId: req.user.id,
+      metadata: { personId: person.id, role: person.role, type: person.type },
+    });
+
     return successResponse(
       res,
       {
@@ -367,6 +378,16 @@ router.delete('/folders/:folderId/persons/:id', async (req, res, next) => {
           },
         },
       },
+    });
+
+    // Timeline event
+    const deletedName = person.firstName ? `${person.firstName} ${person.lastName}` : (person.company || person.lastName);
+    await timeline.addEvent({
+      folderId,
+      type: 'personne_supprimee',
+      description: `${ROLE_LABELS[person.role] || person.role} retiré(e) : ${deletedName}`,
+      userId: req.user.id,
+      metadata: { role: person.role, type: person.type },
     });
 
     return successResponse(res, null, 'Personne supprimée du dossier');

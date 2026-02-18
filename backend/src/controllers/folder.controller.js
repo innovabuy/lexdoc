@@ -3,6 +3,7 @@ const { successResponse, paginatedResponse } = require('../utils/response');
 const { NotFoundError, BadRequestError } = require('../utils/errors');
 const { parsePaginationParams, omitSensitiveFields } = require('../utils/helpers');
 const logger = require('../config/logger');
+const timeline = require('../services/timeline.service');
 
 /**
  * Generate unique folder reference
@@ -272,6 +273,14 @@ const create = async (req, res, next) => {
         userAgent: req.get('user-agent'),
         metadata: { title, type, clientId },
       },
+    });
+
+    // Timeline event
+    await timeline.addEvent({
+      folderId: folder.id,
+      type: 'dossier_cree',
+      description: `Dossier "${folder.title}" créé`,
+      userId: req.user.id,
     });
 
     logger.info('Folder created', {
@@ -937,6 +946,17 @@ const patchStatus = async (req, res, next) => {
       },
     });
 
+    // Timeline event
+    const statusLabels = { OPEN: 'Ouvert', IN_PROGRESS: 'En cours', PENDING: 'En attente', CLOSED: 'Clôturé', ARCHIVED: 'Archivé' };
+    const eventType = status === 'CLOSED' ? 'dossier_cloture' : status === 'ARCHIVED' ? 'dossier_archive' : (folder.status === 'CLOSED' ? 'dossier_reouvert' : 'dossier_statut');
+    await timeline.addEvent({
+      folderId: id,
+      type: eventType,
+      description: `Statut changé de "${statusLabels[folder.status] || folder.status}" à "${statusLabels[status] || status}"`,
+      userId: req.user.id,
+      metadata: { oldStatus: folder.status, newStatus: status },
+    });
+
     return successResponse(res, omitSensitiveFields(updated), 'Status updated');
   } catch (error) {
     next(error);
@@ -1069,6 +1089,7 @@ const getSignatures = async (req, res, next) => {
 const getTimeline = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const { type, limit } = req.query;
 
     const folder = await prisma.folder.findFirst({
       where: { id, tenantId: req.tenant.id },
@@ -1076,13 +1097,36 @@ const getTimeline = async (req, res, next) => {
     });
     if (!folder) throw new NotFoundError('Folder not found');
 
+    const where = { folderId: id };
+    if (type) where.type = type;
+
     const events = await prisma.timelineEvent.findMany({
-      where: { folderId: id },
+      where,
       orderBy: { createdAt: 'desc' },
-      take: 100,
+      take: parseInt(limit) || 200,
+      include: {
+        document: { select: { id: true, name: true } },
+      },
     });
 
-    return successResponse(res, events);
+    // Enrich with user names
+    const userIds = [...new Set(events.filter(e => e.userId).map(e => e.userId))];
+    const users = userIds.length > 0
+      ? await prisma.user.findMany({
+          where: { id: { in: userIds } },
+          select: { id: true, firstName: true, lastName: true },
+        })
+      : [];
+    const userMap = {};
+    users.forEach(u => { userMap[u.id] = `${u.firstName} ${u.lastName}`; });
+
+    const enriched = events.map(e => ({
+      ...e,
+      userName: e.userId ? (userMap[e.userId] || null) : null,
+      typeLabel: timeline.TYPE_LABELS[e.type] || e.type,
+    }));
+
+    return successResponse(res, enriched);
   } catch (error) {
     next(error);
   }

@@ -1183,6 +1183,52 @@ function SignaturesTab({ signatures, loading, onRefreshSigs }) {
    TIMELINE TAB
    ══════════════════════════════════════════════════════ */
 function TimelineTab({ events, loading, onRefresh }) {
+  const [typeFilter, setTypeFilter] = useState('');
+
+  const typeColors = {
+    dossier_cree: '#10B981', dossier_modifie: '#059669', dossier_statut: '#F59E0B',
+    dossier_cloture: '#6B7280', dossier_archive: '#6B7280', dossier_reouvert: '#10B981',
+    document_cree: '#3B82F6', document_modifie: '#6366F1', document_supprime: '#EF4444',
+    document_signe: '#10B981', document_genere: '#8B5CF6',
+    personne_ajoutee: '#8B5CF6', personne_supprimee: '#EF4444',
+    echeance_creee: '#F59E0B', echeance_terminee: '#10B981',
+    email_envoye: '#F59E0B', signature_demandee: '#3B82F6',
+    lrar_envoye: '#EF4444', ar_recu: '#10B981',
+    extranet_invitation: '#06B6D4', extranet_relance: '#06B6D4', extranet_relance_auto: '#06B6D4',
+    extranet_consulte: '#06B6D4', extranet_profile_step: '#06B6D4', extranet_profile_submitted: '#06B6D4',
+    formulaire_envoye: '#F59E0B',
+  };
+
+  const typeIconSvg = (type) => {
+    const color = typeColors[type] || '#9CA3AF';
+    const icons = {
+      dossier_cree: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>,
+      document_cree: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>,
+      document_supprime: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>,
+      document_modifie: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
+      document_signe: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>,
+      personne_ajoutee: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>,
+      personne_supprimee: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/></svg>,
+      echeance_creee: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+      echeance_terminee: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><polyline points="9 14 11 16 15 12"/></svg>,
+      signature_demandee: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+      lrar_envoye: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,
+      extranet_invitation: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>,
+    };
+    // Map similar types to same icon
+    const aliasMap = {
+      dossier_modifie: 'dossier_cree', dossier_statut: 'dossier_cree',
+      dossier_cloture: 'dossier_cree', dossier_archive: 'dossier_cree', dossier_reouvert: 'dossier_cree',
+      document_genere: 'document_cree',
+      email_envoye: 'lrar_envoye', formulaire_envoye: 'lrar_envoye',
+      ar_recu: 'document_signe',
+      extranet_relance: 'extranet_invitation', extranet_relance_auto: 'extranet_invitation',
+      extranet_consulte: 'extranet_invitation', extranet_profile_step: 'extranet_invitation',
+      extranet_profile_submitted: 'extranet_invitation',
+    };
+    return icons[type] || icons[aliasMap[type]] || <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2"><circle cx="12" cy="12" r="10"/></svg>;
+  };
+
   if (loading) return <div className="fdp-tab-loading"><div className="fdp-spinner" /></div>;
 
   if (!events || events.length === 0) {
@@ -1195,35 +1241,13 @@ function TimelineTab({ events, loading, onRefresh }) {
     );
   }
 
-  const typeIcons = {
-    dossier_cree: 'folder-plus',
-    document_cree: 'file-plus',
-    document_modifie: 'file-text',
-    document_signe: 'check-circle',
-    personne_ajoutee: 'user-plus',
-    email_envoye: 'mail',
-    signature_demandee: 'shield',
-    lrar_envoye: 'send',
-    ar_recu: 'inbox',
-    extranet_consulte: 'globe',
-  };
-
-  const typeColors = {
-    dossier_cree: '#10B981',
-    document_cree: '#3B82F6',
-    document_modifie: '#6366F1',
-    document_signe: '#10B981',
-    personne_ajoutee: '#8B5CF6',
-    email_envoye: '#F59E0B',
-    signature_demandee: '#3B82F6',
-    lrar_envoye: '#EF4444',
-    ar_recu: '#10B981',
-    extranet_consulte: '#06B6D4',
-  };
+  // Collect unique types for filter
+  const uniqueTypes = [...new Set(events.map(e => e.type))];
+  const filtered = typeFilter ? events.filter(e => e.type === typeFilter) : events;
 
   // Group by date
   const grouped = {};
-  events.forEach(evt => {
+  filtered.forEach(evt => {
     const key = new Date(evt.createdAt).toLocaleDateString('fr-FR', {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
     });
@@ -1235,7 +1259,20 @@ function TimelineTab({ events, loading, onRefresh }) {
     <div className="fdp-timeline">
       <div className="fdp-timeline-header">
         <h3 className="fdp-section-title-inline">Historique</h3>
-        <button onClick={onRefresh} className="fdp-btn fdp-btn-ghost fdp-btn-sm">Actualiser</button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <select
+            value={typeFilter}
+            onChange={e => setTypeFilter(e.target.value)}
+            className="fdp-input"
+            style={{ fontSize: '0.8rem', padding: '4px 8px', minWidth: 160 }}
+          >
+            <option value="">Tous les types ({events.length})</option>
+            {uniqueTypes.map(t => (
+              <option key={t} value={t}>{events[0] && events.find(e => e.type === t)?.typeLabel || t} ({events.filter(e => e.type === t).length})</option>
+            ))}
+          </select>
+          <button onClick={onRefresh} className="fdp-btn fdp-btn-ghost fdp-btn-sm">Actualiser</button>
+        </div>
       </div>
 
       <div className="fdp-timeline-body">
@@ -1244,10 +1281,15 @@ function TimelineTab({ events, loading, onRefresh }) {
             <div className="fdp-timeline-date">{date}</div>
             {evts.map(evt => (
               <div key={evt.id} className="fdp-timeline-item">
-                <div className="fdp-timeline-dot" style={{ backgroundColor: typeColors[evt.type] || '#9CA3AF' }} />
+                <div className="fdp-timeline-dot" style={{ backgroundColor: typeColors[evt.type] || '#9CA3AF' }}>
+                  {typeIconSvg(evt.type)}
+                </div>
                 <div className="fdp-timeline-content">
                   <p className="fdp-timeline-desc">{evt.description}</p>
-                  <span className="fdp-timeline-time">{relativeTime(evt.createdAt)}</span>
+                  <div className="fdp-timeline-meta">
+                    {evt.userName && <span className="fdp-timeline-user">{evt.userName}</span>}
+                    <span className="fdp-timeline-time">{relativeTime(evt.createdAt)}</span>
+                  </div>
                 </div>
               </div>
             ))}
