@@ -1238,7 +1238,13 @@ router.get('/me/folders/:folderId/documents', authenticateClient, async (req, re
       },
     });
 
-    return successResponse(res, documents);
+    // Convert BigInt size to Number for JSON serialization
+    const serializable = documents.map(d => ({
+      ...d,
+      size: d.size != null ? Number(d.size) : null,
+    }));
+
+    return successResponse(res, serializable);
   } catch (error) {
     next(error);
   }
