@@ -6,8 +6,12 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  // Don't inject admin token on extranet API calls — they use their own auth
+  const isExtranetCall = config.url?.startsWith('/extranet');
+  if (!isExtranetCall && !config.headers.Authorization) {
+    const token = localStorage.getItem('token');
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+  }
   return config;
 });
 
