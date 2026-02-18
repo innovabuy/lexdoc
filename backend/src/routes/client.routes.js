@@ -528,6 +528,8 @@ router.post('/:id/invite-extranet', async (req, res, next) => {
     const primaryToken = crypto.randomBytes(32).toString('hex');
 
     // Create or update ClientAccess for each folder (unique token per access)
+    // Track the token for the first folder — used in the email activation link
+    let firstFolderToken = null;
     for (const folder of folders) {
       const existing = await prisma.clientAccess.findUnique({
         where: { folderId_email: { folderId: folder.id, email: client.email.toLowerCase() } },
@@ -535,6 +537,7 @@ router.post('/:id/invite-extranet', async (req, res, next) => {
 
       if (!existing) {
         const folderToken = crypto.randomBytes(32).toString('hex');
+        if (!firstFolderToken) firstFolderToken = folderToken;
         await prisma.clientAccess.create({
           data: {
             folderId: folder.id,
@@ -545,10 +548,14 @@ router.post('/:id/invite-extranet', async (req, res, next) => {
         });
       } else if (!existing.isActivated) {
         const folderToken = crypto.randomBytes(32).toString('hex');
+        if (!firstFolderToken) firstFolderToken = folderToken;
         await prisma.clientAccess.update({
           where: { id: existing.id },
           data: { activationToken: folderToken, tokenExpiresAt },
         });
+      } else {
+        // Already activated — use its token reference if first
+        if (!firstFolderToken) firstFolderToken = existing.activationToken;
       }
     }
 
@@ -600,8 +607,9 @@ router.post('/:id/invite-extranet', async (req, res, next) => {
       },
     });
 
-    // Send invitation email
-    const activationUrl = `${process.env.CLIENT_PORTAL_URL || 'http://localhost:5173'}/extranet/activate/${primaryToken}`;
+    // Send invitation email — use the first folder's activation token (the one verify-token/activate will look up)
+    const emailToken = firstFolderToken || primaryToken;
+    const activationUrl = `${process.env.CLIENT_PORTAL_URL || 'http://localhost:5173'}/extranet/activate/${emailToken}`;
     try {
       await emailService.sendClientInvitation({
         to: client.email,

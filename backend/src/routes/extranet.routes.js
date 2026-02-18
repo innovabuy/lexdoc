@@ -114,8 +114,24 @@ router.post('/activate', async (req, res, next) => {
 
     const passwordHash = await bcrypt.hash(password, 10);
 
+    // Activate the primary access (the one matching the token)
     await prisma.clientAccess.update({
       where: { id: access.id },
+      data: {
+        passwordHash,
+        isActivated: true,
+        activationToken: null,
+        tokenExpiresAt: null,
+      },
+    });
+
+    // Also activate all other pending accesses for the same email (multi-folder)
+    await prisma.clientAccess.updateMany({
+      where: {
+        email: access.email,
+        isActivated: false,
+        id: { not: access.id },
+      },
       data: {
         passwordHash,
         isActivated: true,
