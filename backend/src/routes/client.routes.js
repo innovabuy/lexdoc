@@ -521,29 +521,33 @@ router.post('/:id/invite-extranet', async (req, res, next) => {
       throw new BadRequestError('Client has no folders');
     }
 
-    const activationToken = crypto.randomBytes(32).toString('hex');
     const tokenExpiresAt = new Date();
     tokenExpiresAt.setDate(tokenExpiresAt.getDate() + 7);
 
-    // Create or update ClientAccess for each folder
+    // Primary token stored on the client record for the activation link
+    const primaryToken = crypto.randomBytes(32).toString('hex');
+
+    // Create or update ClientAccess for each folder (unique token per access)
     for (const folder of folders) {
       const existing = await prisma.clientAccess.findUnique({
         where: { folderId_email: { folderId: folder.id, email: client.email.toLowerCase() } },
       });
 
       if (!existing) {
+        const folderToken = crypto.randomBytes(32).toString('hex');
         await prisma.clientAccess.create({
           data: {
             folderId: folder.id,
             email: client.email.toLowerCase(),
-            activationToken,
+            activationToken: folderToken,
             tokenExpiresAt,
           },
         });
       } else if (!existing.isActivated) {
+        const folderToken = crypto.randomBytes(32).toString('hex');
         await prisma.clientAccess.update({
           where: { id: existing.id },
-          data: { activationToken, tokenExpiresAt },
+          data: { activationToken: folderToken, tokenExpiresAt },
         });
       }
     }
@@ -553,7 +557,7 @@ router.post('/:id/invite-extranet', async (req, res, next) => {
       where: { id: client.id },
       data: {
         hasExternet: true,
-        invitationToken: activationToken,
+        invitationToken: primaryToken,
         invitationSentAt: new Date(),
         invitationExpiresAt: tokenExpiresAt,
       },
@@ -597,7 +601,7 @@ router.post('/:id/invite-extranet', async (req, res, next) => {
     });
 
     // Send invitation email
-    const activationUrl = `${process.env.CLIENT_PORTAL_URL || 'http://localhost:5173'}/extranet/activate/${activationToken}`;
+    const activationUrl = `${process.env.CLIENT_PORTAL_URL || 'http://localhost:5173'}/extranet/activate/${primaryToken}`;
     try {
       await emailService.sendClientInvitation({
         to: client.email,
