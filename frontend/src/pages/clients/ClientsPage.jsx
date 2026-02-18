@@ -43,7 +43,7 @@ export default function ClientsPage() {
   const [sortOrder, setSortOrder] = useState('desc');
   const [page, setPage] = useState(1);
   const [createOpen, setCreateOpen] = useState(false);
-  const [viewMode, setViewMode] = useState('list');
+  const [viewMode, setViewMode] = useState('tree');
   const [expandedClients, setExpandedClients] = useState({});
   const [clientFolders, setClientFolders] = useState({});
   const [loadingFolders, setLoadingFolders] = useState({});
