@@ -9,6 +9,13 @@ import CompletenessAlert from '../../components/clients/CompletenessAlert';
 import { useToast } from '../../contexts/ToastContext';
 import './ClientDetailPage.css';
 
+const formatDateField = (d) => {
+  if (!d) return '';
+  if (typeof d === 'string') return d.split('T')[0];
+  if (d instanceof Date) return d.toISOString().split('T')[0];
+  return '';
+};
+
 const STATUS_LABELS = { OPEN: 'Ouvert', IN_PROGRESS: 'En cours', PENDING: 'En attente', CLOSED: 'Fermé', ARCHIVED: 'Archivé' };
 const STATUS_COLORS = { OPEN: 'badge--green', IN_PROGRESS: 'badge--blue', PENDING: 'badge--yellow', CLOSED: 'badge--gray', ARCHIVED: 'badge--purple' };
 const TYPE_LABELS = { JURIDIQUE: 'Juridique', JUDICIAIRE: 'Judiciaire' };
@@ -102,7 +109,7 @@ function TabInformations({ client, onSave, saving }) {
           <FieldRow label="Nom" value={form.lastName} fieldKey="lastName" editMode={editMode} onChange={handleChange} />
           <FieldRow label="Prénom" value={form.firstName} fieldKey="firstName" editMode={editMode} onChange={handleChange} />
           <FieldRow label="Nom d'usage" value={form.nomUsage} fieldKey="nomUsage" editMode={editMode} onChange={handleChange} />
-          <FieldRow label="Date de naissance" value={form.birthDate ? form.birthDate.split('T')[0] : ''} fieldKey="birthDate" editMode={editMode} onChange={handleChange} />
+          <FieldRow label="Date de naissance" value={formatDateField(form.birthDate)} fieldKey="birthDate" editMode={editMode} onChange={handleChange} />
           <FieldRow label="Lieu de naissance" value={form.lieuNaissance} fieldKey="lieuNaissance" editMode={editMode} onChange={handleChange} />
           <FieldRow label="Département" value={form.departementNaissance} fieldKey="departementNaissance" editMode={editMode} onChange={handleChange} />
           <FieldRow label="Pays de naissance" value={form.paysNaissance} fieldKey="paysNaissance" editMode={editMode} onChange={handleChange} />
@@ -137,11 +144,11 @@ function TabInformations({ client, onSave, saving }) {
             <>
               <FieldRow label="Conjoint — Nom" value={form.conjointNom} fieldKey="conjointNom" editMode={editMode} onChange={handleChange} />
               <FieldRow label="Conjoint — Prénom" value={form.conjointPrenom} fieldKey="conjointPrenom" editMode={editMode} onChange={handleChange} />
-              <FieldRow label="Conjoint — Date naiss." value={form.conjointDateNaissance ? form.conjointDateNaissance.split('T')[0] : ''} fieldKey="conjointDateNaissance" editMode={editMode} onChange={handleChange} />
+              <FieldRow label="Conjoint — Date naiss." value={formatDateField(form.conjointDateNaissance)} fieldKey="conjointDateNaissance" editMode={editMode} onChange={handleChange} />
               <FieldRow label="Conjoint — Nationalité" value={form.conjointNationalite} fieldKey="conjointNationalite" editMode={editMode} onChange={handleChange} />
               <FieldRow label="Conjoint — Profession" value={form.conjointProfession} fieldKey="conjointProfession" editMode={editMode} onChange={handleChange} />
               <FieldRow label="Régime matrimonial" value={form.regimeMatrimonial} fieldKey="regimeMatrimonial" editMode={editMode} onChange={handleChange} />
-              <FieldRow label="Date contrat mariage" value={form.dateContratMariage ? form.dateContratMariage.split('T')[0] : ''} fieldKey="dateContratMariage" editMode={editMode} onChange={handleChange} />
+              <FieldRow label="Date contrat mariage" value={formatDateField(form.dateContratMariage)} fieldKey="dateContratMariage" editMode={editMode} onChange={handleChange} />
               <FieldRow label="Notaire mariage" value={form.notaireMariage} fieldKey="notaireMariage" editMode={editMode} onChange={handleChange} />
             </>
           )}
