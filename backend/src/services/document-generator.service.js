@@ -46,6 +46,29 @@ class DocumentGeneratorService {
   }
 
   /**
+   * Extract variable names from content, keeping full dot-notation paths
+   * e.g. "{{cabinet.nom}}" → "cabinet.nom" (not just "cabinet")
+   * @param {string} content - Content with {{variable}} placeholders
+   * @returns {string[]} - Array of full variable paths found
+   */
+  extractVariablesFull(content) {
+    if (!content) return [];
+    const regex = /\{\{([^}]+)\}\}/g;
+    const variables = new Set();
+    let match;
+    while ((match = regex.exec(content)) !== null) {
+      const varName = match[1].trim();
+      if (!varName.startsWith('#') && !varName.startsWith('/') && varName !== 'else') {
+        const cleanName = varName.split(' ')[0];
+        if (!cleanName.startsWith('@') && cleanName !== 'this') {
+          variables.add(cleanName);
+        }
+      }
+    }
+    return Array.from(variables);
+  }
+
+  /**
    * Validate that all required variables are provided
    * @param {Object} template - Template object with requiredVariables
    * @param {Object} variables - Provided variables

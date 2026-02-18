@@ -28,6 +28,13 @@ async function main() {
     tenant = await prisma.tenant.update({
       where: { id: tenant.id },
       data: {
+        legalName: tenant.legalName || 'SELARL Cabinet Pragmavox Avocat',
+        siret: tenant.siret || '12345678900001',
+        address: tenant.address || '10 rue de la Gare',
+        postalCode: tenant.postalCode || '49000',
+        city: tenant.city || 'Angers',
+        phone: tenant.phone || '02 41 00 00 00',
+        website: tenant.website || 'https://www.pragmavox.fr',
         toque: tenant.toque || 'T-123',
         barreau: tenant.barreau || 'Angers',
       },
@@ -63,8 +70,8 @@ async function main() {
     user = await prisma.user.update({
       where: { id: user.id },
       data: {
-        onboardingCompleted: false,
-        onboardingStep: 0,
+        onboardingCompleted: true,
+        onboardingStep: 99,
       },
     });
     console.log(`✅ User enrichi: ${user.firstName} ${user.lastName} (${user.role})`);

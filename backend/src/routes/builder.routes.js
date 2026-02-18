@@ -7,6 +7,7 @@ const { successResponse, paginatedResponse } = require('../utils/response');
 const { NotFoundError, BadRequestError } = require('../utils/errors');
 const { parsePaginationParams, omitSensitiveFields } = require('../utils/helpers');
 const documentGenerator = require('../services/document-generator.service');
+const templateEngine = require('../services/template-engine.service');
 const storageService = require('../services/storage.service');
 const { sanitizeFilename } = require('../utils/helpers');
 const logger = require('../config/logger');
@@ -79,13 +80,17 @@ router.post('/blocks', async (req, res, next) => {
   try {
     const { category, title, content, variables, tags, isMandatory, displayOrder } = req.body;
 
+    // Auto-extract variables from content if not explicitly provided
+    const autoVars = !variables ? documentGenerator.extractVariablesFull(content) : null;
+    const finalVariables = variables || (autoVars && autoVars.length > 0 ? autoVars : null);
+
     const block = await prisma.builderBlock.create({
       data: {
         tenantId: req.tenant.id,
         category,
         title,
         content,
-        variables,
+        variables: finalVariables,
         tags: tags || [],
         isMandatory: isMandatory || false,
         isSystem: false,
@@ -111,9 +116,16 @@ router.put('/blocks/:id', async (req, res, next) => {
 
     const { category, title, content, variables, tags, isMandatory, displayOrder } = req.body;
 
+    // Auto-extract variables if content changed but variables not explicitly provided
+    let finalVariables = variables;
+    if (content !== undefined && variables === undefined) {
+      const autoVars = documentGenerator.extractVariablesFull(content);
+      finalVariables = autoVars.length > 0 ? autoVars : existing.variables;
+    }
+
     const block = await prisma.builderBlock.update({
       where: { id: req.params.id },
-      data: { category, title, content, variables, tags, isMandatory, displayOrder },
+      data: { category, title, content, variables: finalVariables, tags, isMandatory, displayOrder },
     });
 
     return successResponse(res, omitSensitiveFields(block), 'Block updated');
@@ -450,15 +462,26 @@ router.get('/tree', async (req, res, next) => {
 // Generate document from template (optionally save to folder)
 router.post('/generate', async (req, res, next) => {
   try {
-    const { templateId, variables, folderId } = req.body;
+    const { templateId, variables: userVariables, folderId } = req.body;
 
     if (!templateId) {
       throw new BadRequestError('templateId is required');
     }
 
+    // Auto-collect context data (cabinet, avocat, date, etc.)
+    let contextData = {};
+    if (folderId) {
+      contextData = await templateEngine.collectData(folderId, req.tenant.id);
+    } else {
+      contextData = await templateEngine.collectBasicData(req.tenant.id, req.user.id);
+    }
+
+    // User variables override auto-collected data
+    const variables = { ...contextData, ...(userVariables || {}) };
+
     const result = await documentGenerator.generateDocument(
       templateId,
-      variables || {},
+      variables,
       req.tenant.id
     );
 
@@ -559,15 +582,26 @@ router.post('/generate', async (req, res, next) => {
 // Preview document generation (without incrementing usage count)
 router.post('/preview', async (req, res, next) => {
   try {
-    const { templateId, variables } = req.body;
+    const { templateId, variables: userVariables, folderId } = req.body;
 
     if (!templateId) {
       throw new BadRequestError('templateId is required');
     }
 
+    // Auto-collect context data (cabinet, avocat, date, etc.)
+    let contextData = {};
+    if (folderId) {
+      contextData = await templateEngine.collectData(folderId, req.tenant.id);
+    } else {
+      contextData = await templateEngine.collectBasicData(req.tenant.id, req.user.id);
+    }
+
+    // User variables override auto-collected data
+    const variables = { ...contextData, ...(userVariables || {}) };
+
     const result = await documentGenerator.previewDocument(
       templateId,
-      variables || {},
+      variables,
       req.tenant.id
     );
 

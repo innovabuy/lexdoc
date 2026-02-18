@@ -62,6 +62,8 @@ async function collectData(folderId, tenantId) {
       barreau: tenant.barreau || '',
       logo: tenant.logo || '',
       site: tenant.website || '',
+      cp: tenant.postalCode || '',
+      ville: tenant.city || '',
     },
     avocat: {
       nom: createdBy.lastName || '',
@@ -69,6 +71,11 @@ async function collectData(folderId, tenantId) {
       nom_complet: `${createdBy.firstName || ''} ${createdBy.lastName || ''}`.trim(),
       signature: `Me ${createdBy.firstName || ''} ${createdBy.lastName || ''}`.trim(),
       email: createdBy.email || '',
+      toque: tenant.toque || '',
+      barreau: tenant.barreau || '',
+      adresse: [tenant.address, tenant.postalCode, tenant.city].filter(Boolean).join(', '),
+      telephone: tenant.phone || '',
+      fax: '',
     },
     client: {
       civilite: client.civilite || '',
@@ -130,6 +137,53 @@ async function collectData(folderId, tenantId) {
   };
 
   return data;
+}
+
+/**
+ * Collect basic cabinet/avocat/date data without requiring a folderId.
+ * Used by the Builder pipeline when no folder is specified.
+ */
+async function collectBasicData(tenantId, userId) {
+  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+  if (!tenant) return { date: new Date().toLocaleDateString('fr-FR') };
+
+  let user = null;
+  if (userId) {
+    user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { firstName: true, lastName: true, email: true },
+    });
+  }
+
+  return {
+    cabinet: {
+      nom: tenant.name || '',
+      raison_sociale: tenant.legalName || tenant.name || '',
+      adresse: [tenant.address, tenant.postalCode, tenant.city].filter(Boolean).join(', '),
+      cp: tenant.postalCode || '',
+      ville: tenant.city || '',
+      telephone: tenant.phone || '',
+      email: tenant.email || '',
+      siret: tenant.siret || '',
+      toque: tenant.toque || '',
+      barreau: tenant.barreau || '',
+      logo: tenant.logo || '',
+      site: tenant.website || '',
+    },
+    avocat: {
+      nom: user?.lastName || '',
+      prenom: user?.firstName || '',
+      nom_complet: `${user?.firstName || ''} ${user?.lastName || ''}`.trim(),
+      signature: `Me ${user?.firstName || ''} ${user?.lastName || ''}`.trim(),
+      email: user?.email || '',
+      toque: tenant.toque || '',
+      barreau: tenant.barreau || '',
+      adresse: [tenant.address, tenant.postalCode, tenant.city].filter(Boolean).join(', '),
+      telephone: tenant.phone || '',
+      fax: '',
+    },
+    date: new Date().toLocaleDateString('fr-FR'),
+  };
 }
 
 /**
@@ -238,6 +292,7 @@ function mergeAdditionalData(data, additionalData) {
 
 module.exports = {
   collectData,
+  collectBasicData,
   findMissingFields,
   generateDocument,
   mergeAdditionalData,

@@ -1,17 +1,36 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
+// Standalone variable extractor (same logic as DocumentGeneratorService.extractVariablesFull)
+function extractVariablesFull(content) {
+  if (!content) return [];
+  const regex = /\{\{([^}]+)\}\}/g;
+  const variables = new Set();
+  let match;
+  while ((match = regex.exec(content)) !== null) {
+    const varName = match[1].trim();
+    if (!varName.startsWith('#') && !varName.startsWith('/') && varName !== 'else') {
+      const cleanName = varName.split(' ')[0];
+      if (!cleanName.startsWith('@') && cleanName !== 'this') {
+        variables.add(cleanName);
+      }
+    }
+  }
+  return Array.from(variables);
+}
+
 async function main() {
   console.log('🌱 Seeding Document Builder data...');
 
-  // Get the first tenant
-  const tenant = await prisma.tenant.findFirst();
-  if (!tenant) {
+  // Process all tenants
+  const tenants = await prisma.tenant.findMany();
+  if (tenants.length === 0) {
     console.error('❌ No tenant found. Run the main seed first.');
     process.exit(1);
   }
 
-  console.log(`📋 Using tenant: ${tenant.name} (${tenant.id})`);
+  for (const tenant of tenants) {
+  console.log(`\n📋 Processing tenant: ${tenant.name} (${tenant.id})`);
 
   // System blocks
   const systemBlocks = [
@@ -78,6 +97,12 @@ async function main() {
     { category: 'MOYENS', title: 'Moyen - Exécution provisoire', content: 'D. Sur l\'exécution provisoire\n\nConformément aux articles 514 et suivants du Code de procédure civile, l\'exécution provisoire est de droit pour les décisions de première instance.\n\nEn tout état de cause, la situation justifie que l\'exécution provisoire soit ordonnée :\n\n- L\'ancienneté de la créance ({{anciennete_creance}}) ;\n- L\'urgence de la situation ({{description_urgence}}) ;\n- L\'absence de risque de conséquences manifestement excessives.\n\nIl est en effet de jurisprudence constante que « l\'exécution provisoire peut être ordonnée lorsque le juge l\'estime nécessaire et compatible avec la nature de l\'affaire » (Civ. 2ème, 10 mars 2016, n°15-12.876).\n\nEn conséquence, il est demandé au Tribunal d\'ordonner l\'exécution provisoire du jugement à intervenir.', tags: ['moyens', 'exécution provisoire', 'procédure', 'urgence'], isSystem: true },
 
     // CLAUSE blocks (10) - Clauses contractuelles avancées
+    // Missing blocks referenced by templates
+    { category: 'INTRO', title: 'Corps mise en demeure', content: 'Par la présente, je vous mets en demeure de {{objet_mise_en_demeure}} dans un délai de {{delai}} jours à compter de la réception de la présente.\n\nEn effet, {{description_manquement}}.\n\nJe vous rappelle que {{fondement_juridique}}.\n\nÀ défaut de régularisation dans le délai imparti, je me verrai contraint de saisir les juridictions compétentes afin de faire valoir les droits de mon client, {{demandeur.nom}}, et d\'obtenir réparation de l\'intégralité du préjudice subi, estimé à ce jour à {{montant_prejudice}} euros.\n\nJe vous prie de croire, Madame, Monsieur, en l\'assurance de ma considération distinguée.', tags: ['mise en demeure', 'corps', 'courrier'], isSystem: true },
+    { category: 'INTRO', title: 'Préambule cession', content: 'IL A ÉTÉ PRÉALABLEMENT EXPOSÉ CE QUI SUIT :\n\nLa société {{societe.nom}}, {{societe.forme}}, au capital de {{societe.capital}} euros, immatriculée au RCS de {{societe.rcs}} sous le numéro {{societe.siret}}, dont le siège social est situé {{societe.siege}} (ci-après la « Société »),\n\na été constituée le {{societe.date_constitution}}.\n\nLe capital social est divisé en {{societe.nombre_parts}} parts sociales de {{societe.valeur_nominale}} euros chacune, entièrement souscrites et libérées.\n\n{{cedant.nom}} (ci-après le « Cédant ») est propriétaire de {{nombre_parts_cedees}} parts sociales, représentant {{pourcentage_cession}}% du capital social.\n\nLe Cédant souhaite céder lesdites parts à {{cessionnaire.nom}} (ci-après le « Cessionnaire »), qui souhaite les acquérir.\n\nCECI EXPOSÉ, IL A ÉTÉ CONVENU CE QUI SUIT :', tags: ['préambule', 'cession', 'parts sociales'], isSystem: true },
+    { category: 'INTRO', title: 'Préambule pacte', content: 'PRÉAMBULE\n\nLes soussignés sont associés de la société {{societe.nom}}, {{societe.forme}}, au capital de {{societe.capital}} euros, immatriculée au RCS de {{societe.rcs}}, dont le siège social est situé {{societe.siege}} (ci-après la « Société »).\n\nLes Associés souhaitent organiser leurs relations et définir les règles de gouvernance de la Société, conformément aux dispositions de l\'article L.227-1 du Code de commerce.\n\nLe présent pacte a pour objet de déterminer :\n- Les modalités de prise de décision collective ;\n- Les droits et obligations de chaque Associé ;\n- Les conditions de cession des actions ;\n- Les mécanismes de sortie.\n\nIL A ÉTÉ CONVENU CE QUI SUIT :', tags: ['préambule', 'pacte', 'associés', 'SAS'], isSystem: true },
+    { category: 'INTRO', title: 'Préambule GAP', content: 'CONVENTION DE GARANTIE D\'ACTIF ET DE PASSIF\n\nENTRE LES SOUSSIGNÉS :\n\n{{garant.nom}}, en sa qualité de cédant des parts sociales de la société {{societe.nom}} (ci-après le « Garant »),\n\nD\'UNE PART,\n\nET :\n\n{{beneficiaire.nom}}, en sa qualité de cessionnaire desdites parts sociales (ci-après le « Bénéficiaire »),\n\nD\'AUTRE PART,\n\nPRÉAMBULE :\n\nPar acte en date du {{date_cession}}, le Garant a cédé au Bénéficiaire {{nombre_parts_cedees}} parts sociales de la Société, représentant {{pourcentage_cession}}% du capital social, moyennant le prix de {{prix_cession}} euros.\n\nDans le cadre de cette cession, le Garant consent au Bénéficiaire la présente garantie d\'actif et de passif.\n\nIL A ÉTÉ CONVENU CE QUI SUIT :', tags: ['préambule', 'GAP', 'garantie', 'cession'], isSystem: true },
+
     { category: 'CLAUSE', title: 'Clause pénale', content: 'ARTICLE {{numero}} - CLAUSE PÉNALE\n\n{{numero}}.1 - En cas de manquement par l\'une des Parties à l\'une quelconque de ses obligations au titre du présent contrat, la Partie défaillante sera redevable de plein droit, après mise en demeure restée infructueuse pendant un délai de {{delai_mise_en_demeure}} jours, d\'une indemnité forfaitaire de {{montant_penalite}} euros, sans préjudice de tous dommages et intérêts complémentaires.\n\n{{numero}}.2 - Cette clause pénale est stipulée à titre de dommages et intérêts forfaitaires et définitifs, les Parties renonçant expressément à solliciter du juge la révision de son montant en application de l\'article 1231-5 du Code civil.\n\n{{numero}}.3 - Le paiement de cette indemnité n\'aura pas pour effet de libérer la Partie défaillante de son obligation d\'exécuter le contrat.', tags: ['clause', 'pénale', 'sanction', 'indemnité forfaitaire'], isSystem: true },
     { category: 'CLAUSE', title: 'Clause résolutoire', content: 'ARTICLE {{numero}} - CLAUSE RÉSOLUTOIRE\n\n{{numero}}.1 - En cas de manquement grave par l\'une des Parties à ses obligations essentielles au titre du présent contrat, et notamment :\n{{#each obligations_essentielles}}\n- {{this}}\n{{/each}}\n\nle contrat sera résolu de plein droit {{delai_resolution}} jours après l\'envoi d\'une mise en demeure par lettre recommandée avec accusé de réception restée sans effet, sans qu\'il soit besoin d\'aucune formalité judiciaire.\n\n{{numero}}.2 - La résolution sera acquise sans préjudice de tous dommages et intérêts que pourrait réclamer la Partie non défaillante.\n\n{{numero}}.3 - La présente clause résolutoire ne fait pas obstacle à la faculté pour la Partie non défaillante de solliciter l\'exécution forcée du contrat plutôt que sa résolution.', tags: ['clause', 'résolutoire', 'résolution', 'contrat'], isSystem: true },
     { category: 'CLAUSE', title: 'Clause de réserve de propriété', content: 'ARTICLE {{numero}} - RÉSERVE DE PROPRIÉTÉ\n\n{{numero}}.1 - Le transfert de propriété des {{biens_vises}} est suspendu jusqu\'au paiement intégral du prix, en principal et accessoires. Le défaut de paiement pourra entraîner la revendication des biens.\n\n{{numero}}.2 - Toutefois, les risques de perte et de détérioration des biens seront transférés à l\'Acheteur dès la livraison.\n\n{{numero}}.3 - L\'Acheteur s\'engage à :\n- Conserver les biens sous réserve de propriété dans des conditions propres à en assurer l\'identification ;\n- Les assurer contre tous risques, la police devant mentionner l\'existence de la clause de réserve de propriété ;\n- Informer immédiatement le Vendeur de toute saisie pratiquée par un tiers.\n\n{{numero}}.4 - En cas de revente des biens avant complet paiement du prix, l\'Acheteur s\'engage à mentionner la présente clause au sous-acquéreur et à informer le Vendeur de cette revente.', tags: ['clause', 'réserve de propriété', 'transfert', 'paiement'], isSystem: true },
@@ -92,17 +117,35 @@ async function main() {
 
   let blocksCreated = 0;
   for (const block of systemBlocks) {
+    const extractedVars = extractVariablesFull(block.content);
+    const vars = extractedVars.length > 0 ? extractedVars : null;
+
     const existing = await prisma.builderBlock.findFirst({
       where: { tenantId: tenant.id, title: block.title },
     });
+
     if (!existing) {
       await prisma.builderBlock.create({
-        data: { ...block, tenantId: tenant.id },
+        data: { ...block, tenantId: tenant.id, variables: vars },
       });
       blocksCreated++;
+    } else if (!existing.variables || existing.variables.length === 0) {
+      // Backfill variables on existing blocks that have variables: null
+      await prisma.builderBlock.update({
+        where: { id: existing.id },
+        data: { variables: vars },
+      });
     }
   }
   console.log(`✅ Created ${blocksCreated} builder blocks`);
+
+  // Build title → ID mapping for resolving blockTitle in templates
+  const allBlocks = await prisma.builderBlock.findMany({
+    where: { tenantId: tenant.id },
+    select: { id: true, title: true, content: true },
+  });
+  const titleToId = {};
+  allBlocks.forEach(b => { titleToId[b.title] = b.id; });
 
   // System templates
   const systemTemplates = [
@@ -114,10 +157,10 @@ async function main() {
       category: 'Procédure civile',
       blocksStructure: [
         { order: 1, blockTitle: 'En-tête assignation TJ', mandatory: true },
-        { order: 2, blockTitle: 'Exposé des faits', mandatory: true },
-        { order: 3, blockTitle: 'Discussion en droit', mandatory: true },
-        { order: 4, blockTitle: 'Dispositif', mandatory: true },
-        { order: 5, blockTitle: 'Signature', mandatory: true },
+        { order: 2, blockTitle: 'Exposé des faits - Inexécution contrat', mandatory: true },
+        { order: 3, blockTitle: 'Moyen - Article 1103 Code Civil', mandatory: true },
+        { order: 4, blockTitle: 'Dispositif - Condamnation pécuniaire', mandatory: true },
+        { order: 5, blockTitle: 'Formule signature avocat', mandatory: true },
       ],
       isSystem: true,
     },
@@ -130,9 +173,9 @@ async function main() {
       blocksStructure: [
         { order: 1, blockTitle: 'En-tête assignation TC', mandatory: true },
         { order: 2, blockTitle: 'Exposé des faits - Litige commercial', mandatory: true },
-        { order: 3, blockTitle: 'Discussion en droit', mandatory: true },
+        { order: 3, blockTitle: 'Moyen - Article 1103 Code Civil', mandatory: true },
         { order: 4, blockTitle: 'Dispositif - Condamnation pécuniaire', mandatory: true },
-        { order: 5, blockTitle: 'Signature', mandatory: true },
+        { order: 5, blockTitle: 'Formule signature avocat', mandatory: true },
       ],
       isSystem: true,
     },
@@ -143,10 +186,10 @@ async function main() {
       category: 'Procédure civile',
       blocksStructure: [
         { order: 1, blockTitle: 'En-tête conclusions', mandatory: true },
-        { order: 2, blockTitle: 'Rappel des faits', mandatory: true },
-        { order: 3, blockTitle: 'Discussion en droit', mandatory: true },
-        { order: 4, blockTitle: 'Dispositif', mandatory: true },
-        { order: 5, blockTitle: 'Signature', mandatory: true },
+        { order: 2, blockTitle: 'Exposé des faits - Inexécution contrat', mandatory: true },
+        { order: 3, blockTitle: 'Moyen - Responsabilité contractuelle', mandatory: true },
+        { order: 4, blockTitle: 'Dispositif - Condamnation pécuniaire', mandatory: true },
+        { order: 5, blockTitle: 'Formule signature avocat', mandatory: true },
       ],
       isSystem: true,
     },
@@ -158,7 +201,7 @@ async function main() {
       blocksStructure: [
         { order: 1, blockTitle: 'En-tête mise en demeure', mandatory: true },
         { order: 2, blockTitle: 'Corps mise en demeure', mandatory: true },
-        { order: 3, blockTitle: 'Signature', mandatory: true },
+        { order: 3, blockTitle: 'Formule signature avocat', mandatory: true },
       ],
       isSystem: true,
     },
@@ -171,7 +214,7 @@ async function main() {
         { order: 1, blockTitle: 'Préambule cession', mandatory: true },
         { order: 2, blockTitle: 'Clause de garantie d\'actif et passif', mandatory: true },
         { order: 3, blockTitle: 'Clause de non-concurrence', mandatory: true },
-        { order: 4, blockTitle: 'Signatures parties', mandatory: true },
+        { order: 4, blockTitle: 'Formule signature avocat', mandatory: true },
       ],
       isSystem: true,
     },
@@ -185,7 +228,7 @@ async function main() {
         { order: 2, blockTitle: 'Clause de sortie conjointe (tag-along)', mandatory: true },
         { order: 3, blockTitle: 'Clause d\'entraînement (drag-along)', mandatory: true },
         { order: 4, blockTitle: 'Clause de confidentialité', mandatory: true },
-        { order: 5, blockTitle: 'Signatures', mandatory: true },
+        { order: 5, blockTitle: 'Formule signature avocat', mandatory: true },
       ],
       isSystem: true,
     },
@@ -197,7 +240,7 @@ async function main() {
       blocksStructure: [
         { order: 1, blockTitle: 'Préambule GAP', mandatory: true },
         { order: 2, blockTitle: 'Clause de garantie d\'actif et passif', mandatory: true },
-        { order: 3, blockTitle: 'Signatures', mandatory: true },
+        { order: 3, blockTitle: 'Formule signature avocat', mandatory: true },
       ],
       isSystem: true,
     },
@@ -208,11 +251,45 @@ async function main() {
     const existing = await prisma.builderTemplate.findFirst({
       where: { tenantId: tenant.id, name: template.name },
     });
+
+    // Resolve blockTitle → blockId in blocksStructure
+    const resolvedStructure = (template.blocksStructure || []).map(item => ({
+      blockId: titleToId[item.blockTitle] || null,
+      blockTitle: item.blockTitle,
+      order: item.order,
+      mandatory: item.mandatory,
+    }));
+
+    // Compute requiredVariables from resolved block content
+    const allVars = new Set();
+    for (const item of resolvedStructure) {
+      if (item.blockId) {
+        const block = allBlocks.find(b => b.id === item.blockId);
+        if (block) extractVariablesFull(block.content).forEach(v => allVars.add(v));
+      }
+    }
+    const reqVars = Array.from(allVars);
+
     if (!existing) {
       await prisma.builderTemplate.create({
-        data: { ...template, tenantId: tenant.id, outputFormat: 'DOCX' },
+        data: {
+          ...template,
+          tenantId: tenant.id,
+          outputFormat: 'DOCX',
+          blocksStructure: resolvedStructure,
+          requiredVariables: reqVars.length > 0 ? reqVars : null,
+        },
       });
       templatesCreated++;
+    } else {
+      // Backfill existing templates with resolved blockIds and requiredVariables
+      await prisma.builderTemplate.update({
+        where: { id: existing.id },
+        data: {
+          blocksStructure: resolvedStructure,
+          requiredVariables: reqVars.length > 0 ? reqVars : null,
+        },
+      });
     }
   }
   console.log(`✅ Created ${templatesCreated} builder templates`);
@@ -246,10 +323,11 @@ async function main() {
     console.log('✅ Updated legal info');
   }
 
+  console.log(`  → ${blocksCreated} blocks created, ${templatesCreated} templates created`);
+  } // end for (const tenant of tenants)
+
   console.log('');
   console.log('🎉 Document Builder seeding completed!');
-  console.log(`   - ${blocksCreated} blocks created`);
-  console.log(`   - ${templatesCreated} templates created`);
 }
 
 main()
