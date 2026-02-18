@@ -567,27 +567,4 @@ textarea.fdp-inline-input { resize: vertical; }
   50% { opacity: 0.6; }
 }
 
-/* ── Dark mode ── */
-@media (prefers-color-scheme: dark) {
-  .fdp-header, .fdp-tabs-container, .fdp-modal { background: #1F2937; border-color: #374151; }
-  .fdp-title, .fdp-section-title, .fdp-section-title-inline, .fdp-doc-name,
-  .fdp-modal-header h2 { color: #F9FAFB; }
-  .fdp-ref, .fdp-info-label, .fdp-doc-meta { color: #9CA3AF; }
-  .fdp-info-value, .fdp-timeline-desc { color: #E5E7EB; }
-  .fdp-info-section, .fdp-cat-header, .fdp-sig-card, .fdp-empty-state { background: #111827; border-color: #374151; }
-  .fdp-cat-header:hover, .fdp-doc-row:hover, .fdp-dropdown-item:hover { background: #1F2937; }
-  .fdp-tab { color: #9CA3AF; }
-  .fdp-tab:hover { color: #E5E7EB; }
-  .fdp-tab.active { color: #60A5FA; border-bottom-color: #60A5FA; }
-  .fdp-inline-input { background: #374151; border-color: #60A5FA; color: #F9FAFB; }
-  .fdp-dropdown { background: #1F2937; border-color: #374151; }
-  .fdp-dropdown-item { color: #E5E7EB; }
-  .fdp-dropdown-item:hover { background: #374151; }
-  .fdp-btn-secondary { background: #374151; color: #E5E7EB; border-color: #4B5563; }
-  .fdp-input { background: #374151; border-color: #4B5563; color: #F9FAFB; }
-  .fdp-dropzone { border-color: #4B5563; }
-  .fdp-dropzone:hover { border-color: #60A5FA; background: #1E3A5F; }
-  .fdp-tree-node::before, .fdp-tree-line-h { background: #374151; }
-  .fdp-empty-cat-drop { background: #111827; border-color: #374151; }
-  .fdp-cat-add-btn { background: #1F2937; border-color: #374151; }
-}
+/* Dark mode disabled — light mode only for now */
