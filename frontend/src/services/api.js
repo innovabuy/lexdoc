@@ -15,8 +15,12 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+      // Don't redirect extranet routes — they have their own auth flow
+      const isExtranet = window.location.pathname.startsWith('/extranet');
+      if (!isExtranet) {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
