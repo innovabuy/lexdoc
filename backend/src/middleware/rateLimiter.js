@@ -19,7 +19,7 @@ const generalLimiter = rateLimit({
 // Rate limiter strict pour l'authentification
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 tentatives max
+  max: 20, // 20 tentatives max
   message: {
     success: false,
     error: {

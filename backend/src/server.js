@@ -11,6 +11,7 @@ const reminderJob = require('./jobs/reminder.job');
 const backupJob = require('./jobs/backup.job');
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 4000;
 
 // ============================================================================
