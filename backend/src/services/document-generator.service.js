@@ -2,6 +2,31 @@ const handlebars = require('handlebars');
 const prisma = require('../config/database');
 const { NotFoundError, BadRequestError } = require('../utils/errors');
 
+// ── Handlebars helpers ──
+const MOIS_FR = ['janvier', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'aout', 'septembre', 'octobre', 'novembre', 'decembre'];
+
+handlebars.registerHelper('formatDate', function (date) {
+  if (!date) return '';
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return date;
+  return `${d.getDate()} ${MOIS_FR[d.getMonth()]} ${d.getFullYear()}`;
+});
+
+handlebars.registerHelper('formatMoney', function (amount) {
+  if (amount == null || amount === '') return '';
+  const num = typeof amount === 'string' ? parseFloat(amount.replace(/[^\d.,-]/g, '').replace(',', '.')) : amount;
+  if (isNaN(num)) return amount;
+  return num.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' \u20ac';
+});
+
+handlebars.registerHelper('uppercase', function (str) {
+  return typeof str === 'string' ? str.toUpperCase() : '';
+});
+
+handlebars.registerHelper('lowercase', function (str) {
+  return typeof str === 'string' ? str.toLowerCase() : '';
+});
+
 class DocumentGeneratorService {
   /**
    * Parse and replace Handlebars variables in content

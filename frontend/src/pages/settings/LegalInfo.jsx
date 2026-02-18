@@ -328,7 +328,7 @@ export default function LegalInfo() {
                     ) : legalInfo?.signaturePath ? (
                       <div className="space-y-3">
                         <img
-                          src={`${import.meta.env.VITE_API_URL || 'http://localhost:4000/api'}/legal-info/signature`}
+                          src={`${import.meta.env.VITE_API_URL || '/api'}/legal-info/signature`}
                           alt="Signature"
                           className="max-h-24 mx-auto border rounded"
                           onError={(e) => { e.target.style.display = 'none'; }}
@@ -394,7 +394,7 @@ export default function LegalInfo() {
                     ) : legalInfo?.cachetPath ? (
                       <div className="space-y-3">
                         <img
-                          src={`${import.meta.env.VITE_API_URL || 'http://localhost:4000/api'}/legal-info/cachet`}
+                          src={`${import.meta.env.VITE_API_URL || '/api'}/legal-info/cachet`}
                           alt="Cachet"
                           className="max-h-24 mx-auto border rounded"
                           onError={(e) => { e.target.style.display = 'none'; }}

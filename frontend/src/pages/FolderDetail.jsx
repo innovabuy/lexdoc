@@ -6,7 +6,7 @@ import DocumentRequests from '../components/folders/DocumentRequests';
 import FolderTimeline from '../components/folders/FolderTimeline';
 import DocumentPreview from '../components/documents/DocumentPreview';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 const statusColors = {
   OPEN: 'bg-green-100 text-green-700',

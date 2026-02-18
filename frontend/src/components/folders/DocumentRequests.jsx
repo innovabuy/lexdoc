@@ -1,7 +1,7 @@
 import { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../../contexts/AuthContext';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 const STATUS_CONFIG = {
   PENDING: { label: 'En attente', color: 'bg-yellow-100 text-yellow-700', icon: '⏳' },

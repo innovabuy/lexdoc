@@ -11,6 +11,7 @@ const templateEngine = require('../services/template-engine.service');
 const storageService = require('../services/storage.service');
 const { sanitizeFilename } = require('../utils/helpers');
 const logger = require('../config/logger');
+const { getGroupedVariables } = require('../config/template-variables');
 
 router.use(authenticate);
 router.use(enforceTenant);
@@ -620,6 +621,16 @@ router.get('/templates/:id/variables', async (req, res, next) => {
     );
 
     return successResponse(res, result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get complete list of available template variables (grouped by category)
+router.get('/variables', async (req, res, next) => {
+  try {
+    const grouped = getGroupedVariables();
+    return successResponse(res, grouped);
   } catch (error) {
     next(error);
   }

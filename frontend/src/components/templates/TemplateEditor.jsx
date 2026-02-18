@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -21,6 +21,7 @@ import {
   saveTemplateBlocks,
   getBlocks,
   createBlock,
+  getTemplateVariables,
 } from '../../services/templateApi';
 import './TemplateEditor.css';
 
@@ -53,14 +54,24 @@ export default function TemplateEditor({ templateId, onClose, onSaved }) {
   // Block library
   const [allBlocks, setAllBlocks] = useState({ system: [], standard: [], custom: [] });
   const [libSearch, setLibSearch] = useState('');
-  const [libFilter, setLibFilter] = useState('all'); // 'all', 'system', 'standard', 'custom'
+  const [libFilter, setLibFilter] = useState('all');
 
-  // Composition (right panel)
+  // Composition (center panel)
   const [composition, setComposition] = useState([]);
   const [activeId, setActiveId] = useState(null);
 
+  // Variables panel
+  const [showVars, setShowVars] = useState(false);
+  const [varGroups, setVarGroups] = useState({});
+  const [varSearch, setVarSearch] = useState('');
+  const [expandedGroups, setExpandedGroups] = useState({});
+
   // Create block modal
   const [showCreateBlock, setShowCreateBlock] = useState(false);
+
+  // Track which free block is focused (for variable insertion)
+  const [activeFreeBlockId, setActiveFreeBlockId] = useState(null);
+  const freeBlockRefs = useRef({});
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -72,9 +83,12 @@ export default function TemplateEditor({ templateId, onClose, onSaved }) {
     try {
       const data = await getTemplate(templateId);
       setTemplate(data);
-      // Initialize composition from saved blocks
       if (data.blocks && Array.isArray(data.blocks)) {
-        setComposition(data.blocks.map((b, i) => ({ ...b, _sortId: `comp-${b.blockId || b.id || i}-${Date.now()}-${i}` })));
+        setComposition(data.blocks.map((b, i) => ({
+          ...b,
+          _sortId: `comp-${b.blockId || b.id || i}-${Date.now()}-${i}`,
+          _isFree: b._isFree || false,
+        })));
       }
     } catch { /* ignore */ }
   }, [templateId]);
@@ -86,9 +100,21 @@ export default function TemplateEditor({ templateId, onClose, onSaved }) {
     } catch { /* ignore */ }
   }, []);
 
+  const fetchVariables = useCallback(async () => {
+    try {
+      const data = await getTemplateVariables();
+      setVarGroups(data || {});
+      // Auto-expand all groups
+      const exp = {};
+      Object.keys(data || {}).forEach(k => { exp[k] = true; });
+      setExpandedGroups(exp);
+    } catch { /* ignore */ }
+  }, []);
+
   useEffect(() => {
-    Promise.all([fetchTemplate(), fetchBlocks()]).then(() => setLoading(false));
-  }, [fetchTemplate, fetchBlocks]);
+    Promise.all([fetchTemplate(), fetchBlocks(), fetchVariables()])
+      .then(() => setLoading(false));
+  }, [fetchTemplate, fetchBlocks, fetchVariables]);
 
   /* ── Library filtering ── */
   const filteredLibrary = useMemo(() => {
@@ -117,17 +143,30 @@ export default function TemplateEditor({ templateId, onClose, onSaved }) {
     return sections;
   }, [allBlocks, libSearch, libFilter]);
 
+  /* ── Filtered variables ── */
+  const filteredVarGroups = useMemo(() => {
+    if (!varSearch) return varGroups;
+    const q = varSearch.toLowerCase();
+    const result = {};
+    for (const [key, group] of Object.entries(varGroups)) {
+      const vars = group.variables.filter(v =>
+        v.label.toLowerCase().includes(q) ||
+        v.key.toLowerCase().includes(q) ||
+        (v.description || '').toLowerCase().includes(q)
+      );
+      if (vars.length > 0) result[key] = { ...group, variables: vars };
+    }
+    return result;
+  }, [varGroups, varSearch]);
+
   /* ── DnD ── */
-  const handleDragStart = (event) => {
-    setActiveId(event.active.id);
-  };
+  const handleDragStart = (event) => setActiveId(event.active.id);
 
   const handleDragEnd = (event) => {
     setActiveId(null);
     const { active, over } = event;
     if (!over) return;
 
-    // If dragging from library to composition
     if (String(active.id).startsWith('lib-') && !String(over.id).startsWith('lib-')) {
       const blockId = String(active.id).replace('lib-', '');
       const block = [...(allBlocks.system || []), ...(allBlocks.standard || []), ...(allBlocks.custom || [])]
@@ -142,9 +181,9 @@ export default function TemplateEditor({ templateId, onClose, onSaved }) {
         category: block.category,
         variables: block.variables,
         isSystem: block.isSystem,
+        _isFree: false,
       };
 
-      // Insert at the position of 'over'
       const overIdx = composition.findIndex(c => c._sortId === over.id);
       if (overIdx >= 0) {
         const updated = [...composition];
@@ -157,7 +196,6 @@ export default function TemplateEditor({ templateId, onClose, onSaved }) {
       return;
     }
 
-    // Reorder within composition
     if (active.id !== over.id && !String(active.id).startsWith('lib-') && !String(over.id).startsWith('lib-')) {
       const oldIdx = composition.findIndex(c => c._sortId === active.id);
       const newIdx = composition.findIndex(c => c._sortId === over.id);
@@ -168,7 +206,7 @@ export default function TemplateEditor({ templateId, onClose, onSaved }) {
     }
   };
 
-  /* ── Add block from library (click) ── */
+  /* ── Add/remove blocks ── */
   const addBlockToComposition = (block) => {
     const newItem = {
       _sortId: `comp-${block.id}-${Date.now()}`,
@@ -178,15 +216,93 @@ export default function TemplateEditor({ templateId, onClose, onSaved }) {
       category: block.category,
       variables: block.variables,
       isSystem: block.isSystem,
+      _isFree: false,
     };
     setComposition([...composition, newItem]);
     setDirty(true);
   };
 
-  /* ── Remove block from composition ── */
   const removeFromComposition = (sortId) => {
     setComposition(composition.filter(c => c._sortId !== sortId));
     setDirty(true);
+  };
+
+  /* ── Add free block ── */
+  const addFreeBlock = () => {
+    const id = `free-${Date.now()}`;
+    const newItem = {
+      _sortId: id,
+      blockId: null,
+      title: 'Bloc libre',
+      content: '',
+      category: 'CUSTOM',
+      variables: [],
+      isSystem: false,
+      _isFree: true,
+    };
+    setComposition([...composition, newItem]);
+    setDirty(true);
+    setActiveFreeBlockId(id);
+  };
+
+  /* ── Update free block content ── */
+  const updateFreeBlockContent = (sortId, content) => {
+    setComposition(composition.map(c =>
+      c._sortId === sortId ? { ...c, content } : c
+    ));
+    setDirty(true);
+  };
+
+  /* ── Update free block title ── */
+  const updateFreeBlockTitle = (sortId, title) => {
+    setComposition(composition.map(c =>
+      c._sortId === sortId ? { ...c, title } : c
+    ));
+    setDirty(true);
+  };
+
+  /* ── Save free block as custom block ── */
+  const saveFreeBlockAsCustom = async (sortId) => {
+    const item = composition.find(c => c._sortId === sortId);
+    if (!item || !item.content.trim()) return;
+    try {
+      const created = await createBlock({
+        title: item.title || 'Bloc personnalise',
+        content: item.content,
+        category: 'CUSTOM',
+        tags: ['custom', 'libre'],
+      });
+      // Update composition to reference the saved block
+      setComposition(composition.map(c =>
+        c._sortId === sortId
+          ? { ...c, blockId: created.id, _isFree: false }
+          : c
+      ));
+      await fetchBlocks();
+      setDirty(true);
+    } catch { /* ignore */ }
+  };
+
+  /* ── Insert variable into active free block ── */
+  const insertVariable = (varKey) => {
+    if (!activeFreeBlockId) return;
+    const ref = freeBlockRefs.current[activeFreeBlockId];
+    if (!ref) return;
+
+    const tag = `{{${varKey}}}`;
+    const start = ref.selectionStart;
+    const end = ref.selectionEnd;
+    const text = ref.value;
+    const newText = text.substring(0, start) + tag + text.substring(end);
+
+    updateFreeBlockContent(activeFreeBlockId, newText);
+
+    // Restore cursor position after React re-render
+    requestAnimationFrame(() => {
+      ref.focus();
+      const pos = start + tag.length;
+      ref.setSelectionRange(pos, pos);
+    });
   };
 
   /* ── Save ── */
@@ -201,6 +317,8 @@ export default function TemplateEditor({ templateId, onClose, onSaved }) {
         variables: c.variables,
         isSystem: c.isSystem,
         order: i,
+        _isFree: c._isFree || false,
+        customContent: c._isFree ? c.content : undefined,
       }));
       await saveTemplateBlocks(templateId, blocks);
       setDirty(false);
@@ -251,6 +369,13 @@ export default function TemplateEditor({ templateId, onClose, onSaved }) {
           </div>
         </div>
         <div className="te-header-right">
+          <button
+            className={`te-vars-toggle ${showVars ? 'te-vars-toggle--active' : ''}`}
+            onClick={() => setShowVars(!showVars)}
+          >
+            {'{ }'}
+            Variables
+          </button>
           {dirty && <span className="te-unsaved">Modifications non sauvegardees</span>}
           <button onClick={handleSave} className="te-btn te-btn-primary" disabled={saving || !dirty}>
             {saving ? 'Sauvegarde...' : 'Sauvegarder'}
@@ -258,7 +383,7 @@ export default function TemplateEditor({ templateId, onClose, onSaved }) {
         </div>
       </div>
 
-      {/* Two-panel layout */}
+      {/* Three-panel layout */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -275,7 +400,6 @@ export default function TemplateEditor({ templateId, onClose, onSaved }) {
               </button>
             </div>
 
-            {/* Search */}
             <div className="te-lib-search-wrap">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" className="te-lib-search-icon">
                 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -289,7 +413,6 @@ export default function TemplateEditor({ templateId, onClose, onSaved }) {
               />
             </div>
 
-            {/* Filter pills */}
             <div className="te-lib-filters">
               {[
                 { key: 'all', label: 'Tous' },
@@ -307,7 +430,6 @@ export default function TemplateEditor({ templateId, onClose, onSaved }) {
               ))}
             </div>
 
-            {/* Block list */}
             <div className="te-lib-blocks">
               {filteredLibrary.length === 0 ? (
                 <div className="te-lib-empty">Aucun bloc trouve</div>
@@ -332,7 +454,7 @@ export default function TemplateEditor({ templateId, onClose, onSaved }) {
             </div>
           </div>
 
-          {/* ── Right: Composition ── */}
+          {/* ── Center: Composition ── */}
           <div className="te-panel-right">
             <div className="te-comp-header">
               <h2 className="te-comp-title">Composition du document</h2>
@@ -359,15 +481,82 @@ export default function TemplateEditor({ templateId, onClose, onSaved }) {
                       item={item}
                       index={idx}
                       onRemove={() => removeFromComposition(item._sortId)}
+                      onContentChange={(content) => updateFreeBlockContent(item._sortId, content)}
+                      onTitleChange={(title) => updateFreeBlockTitle(item._sortId, title)}
+                      onSaveAsBlock={() => saveFreeBlockAsCustom(item._sortId)}
+                      onFocus={() => setActiveFreeBlockId(item._sortId)}
+                      freeBlockRef={(el) => { if (el) freeBlockRefs.current[item._sortId] = el; }}
                     />
                   ))}
+                  <button className="te-add-free-block" onClick={addFreeBlock}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    Ajouter un bloc libre
+                  </button>
                 </div>
               </SortableContext>
             )}
           </div>
+
+          {/* ── Right: Variables panel ── */}
+          <div className={`te-panel-vars ${showVars ? '' : 'te-panel-vars--hidden'}`}>
+            <div className="te-vars-header">
+              <h2 className="te-vars-title">Inserer une variable</h2>
+              <button onClick={() => setShowVars(false)} className="te-icon-btn" title="Fermer">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+
+            <div className="te-vars-search-wrap">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" className="te-vars-search-icon">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input
+                type="text"
+                value={varSearch}
+                onChange={e => setVarSearch(e.target.value)}
+                placeholder="Rechercher..."
+                className="te-vars-search"
+              />
+            </div>
+
+            <div className="te-vars-list">
+              {Object.entries(filteredVarGroups).map(([groupKey, group]) => (
+                <div key={groupKey} className="te-vars-group">
+                  <div
+                    className="te-vars-group-header"
+                    onClick={() => setExpandedGroups(prev => ({ ...prev, [groupKey]: !prev[groupKey] }))}
+                  >
+                    <span className="te-vars-group-icon">{group.icon}</span>
+                    <span className="te-vars-group-label">{group.label}</span>
+                    <span className="te-vars-group-count">{group.variables.length}</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                      className={`te-vars-group-chevron ${expandedGroups[groupKey] ? 'te-vars-group-chevron--open' : ''}`}>
+                      <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                  </div>
+                  {expandedGroups[groupKey] && (
+                    <div className="te-vars-items">
+                      {group.variables.map(v => (
+                        <div key={v.key} className="te-var-item" onClick={() => insertVariable(v.key)} title={v.description}>
+                          <div className="te-var-item-info">
+                            <span className="te-var-item-label">{v.label}</span>
+                            <span className="te-var-item-key">{`{{${v.key}}}`}</span>
+                          </div>
+                          <span className="te-var-item-insert">Inserer</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
-        {/* Drag overlay */}
         <DragOverlay>
           {activeDragItem && (
             <div className="te-drag-overlay">
@@ -380,11 +569,11 @@ export default function TemplateEditor({ templateId, onClose, onSaved }) {
         </DragOverlay>
       </DndContext>
 
-      {/* Create block modal */}
       {showCreateBlock && (
         <CreateBlockModal
           onClose={() => setShowCreateBlock(false)}
           onCreate={handleCreateBlock}
+          varGroups={varGroups}
         />
       )}
     </div>
@@ -428,12 +617,10 @@ function LibraryBlock({ block, onAdd }) {
         </button>
       </div>
 
-      {/* Content preview */}
       <div className="te-lib-block-preview">
         {(block.content || '').substring(0, 100)}{(block.content || '').length > 100 ? '...' : ''}
       </div>
 
-      {/* Variable tags */}
       {block.variables && block.variables.length > 0 && (
         <div className="te-lib-block-vars">
           {block.variables.slice(0, 4).map((v, i) => (
@@ -449,9 +636,9 @@ function LibraryBlock({ block, onAdd }) {
 }
 
 /* ══════════════════════════════════════════════════════
-   Sortable Composition Block (right panel)
+   Sortable Composition Block (center panel)
    ══════════════════════════════════════════════════════ */
-function SortableBlock({ item, index, onRemove }) {
+function SortableBlock({ item, index, onRemove, onContentChange, onTitleChange, onSaveAsBlock, onFocus, freeBlockRef }) {
   const {
     attributes, listeners, setNodeRef,
     transform, transition, isDragging,
@@ -464,11 +651,11 @@ function SortableBlock({ item, index, onRemove }) {
   };
 
   const catColor = CATEGORY_COLORS[item.category] || '#6B7280';
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(item._isFree);
 
   return (
     <div ref={setNodeRef} style={style} className="te-comp-block" {...attributes}>
-      <div className="te-comp-block-header" style={{ borderLeftColor: catColor }}>
+      <div className="te-comp-block-header" style={{ borderLeftColor: item._isFree ? '#7C3AED' : catColor }}>
         <div className="te-comp-block-drag" {...listeners} title="Reordonner">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
             <circle cx="8" cy="4" r="2"/><circle cx="16" cy="4" r="2"/>
@@ -477,12 +664,30 @@ function SortableBlock({ item, index, onRemove }) {
           </svg>
         </div>
         <span className="te-comp-block-num">{index + 1}</span>
-        <span className="te-comp-block-cat-dot" style={{ background: catColor }} />
-        <span className="te-comp-block-title">{item.title}</span>
-        <span className="te-comp-block-cat-label" style={{ color: catColor }}>
-          {CATEGORY_LABELS[item.category] || item.category}
+        <span className="te-comp-block-cat-dot" style={{ background: item._isFree ? '#7C3AED' : catColor }} />
+        {item._isFree ? (
+          <input
+            className="te-comp-block-title"
+            style={{ border: 'none', background: 'transparent', outline: 'none', font: 'inherit', padding: 0, width: '100%' }}
+            value={item.title}
+            onChange={(e) => onTitleChange(e.target.value)}
+            placeholder="Titre du bloc libre..."
+          />
+        ) : (
+          <span className="te-comp-block-title">{item.title}</span>
+        )}
+        <span className="te-comp-block-cat-label" style={{ color: item._isFree ? '#7C3AED' : catColor }}>
+          {item._isFree ? 'Libre' : (CATEGORY_LABELS[item.category] || item.category)}
         </span>
         <div className="te-comp-block-actions">
+          {item._isFree && item.content?.trim() && (
+            <button onClick={onSaveAsBlock} className="te-icon-btn" title="Sauvegarder comme bloc">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+              </svg>
+            </button>
+          )}
           <button onClick={() => setExpanded(!expanded)} className="te-icon-btn" title={expanded ? 'Reduire' : 'Developper'}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
               style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }}>
@@ -497,16 +702,31 @@ function SortableBlock({ item, index, onRemove }) {
         </div>
       </div>
 
-      {/* Expanded content */}
       {expanded && (
         <div className="te-comp-block-body">
-          <pre className="te-comp-block-content">{item.content}</pre>
-          {item.variables && item.variables.length > 0 && (
-            <div className="te-comp-block-vars">
-              {item.variables.map((v, i) => (
-                <span key={i} className="te-var-tag">{v.key || v}</span>
-              ))}
+          {item._isFree ? (
+            <div className="te-free-block-editor">
+              <textarea
+                ref={freeBlockRef}
+                className="te-free-block-textarea"
+                value={item.content}
+                onChange={(e) => onContentChange(e.target.value)}
+                onFocus={onFocus}
+                placeholder="Tapez votre texte ici... Utilisez le panneau Variables pour inserer des {{variables}}."
+                rows={6}
+              />
             </div>
+          ) : (
+            <>
+              <pre className="te-comp-block-content">{item.content}</pre>
+              {item.variables && item.variables.length > 0 && (
+                <div className="te-comp-block-vars">
+                  {item.variables.map((v, i) => (
+                    <span key={i} className="te-var-tag">{v.key || v}</span>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
@@ -517,10 +737,11 @@ function SortableBlock({ item, index, onRemove }) {
 /* ══════════════════════════════════════════════════════
    Create Block Modal
    ══════════════════════════════════════════════════════ */
-function CreateBlockModal({ onClose, onCreate }) {
+function CreateBlockModal({ onClose, onCreate, varGroups }) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [category, setCategory] = useState('CUSTOM');
+  const textareaRef = useRef(null);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -533,9 +754,24 @@ function CreateBlockModal({ onClose, onCreate }) {
     });
   };
 
+  const insertVar = (key) => {
+    const ref = textareaRef.current;
+    if (!ref) return;
+    const tag = `{{${key}}}`;
+    const start = ref.selectionStart;
+    const end = ref.selectionEnd;
+    const newContent = content.substring(0, start) + tag + content.substring(end);
+    setContent(newContent);
+    requestAnimationFrame(() => {
+      ref.focus();
+      const pos = start + tag.length;
+      ref.setSelectionRange(pos, pos);
+    });
+  };
+
   return (
     <div className="te-modal-overlay" onClick={onClose}>
-      <div className="te-modal" onClick={e => e.stopPropagation()}>
+      <div className="te-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '640px' }}>
         <div className="te-modal-header">
           <h2>Nouveau bloc personnalise</h2>
           <button onClick={onClose} className="te-modal-close">&times;</button>
@@ -565,14 +801,28 @@ function CreateBlockModal({ onClose, onCreate }) {
             <div className="te-field">
               <label>Contenu *</label>
               <textarea
+                ref={textareaRef}
                 value={content}
                 onChange={e => setContent(e.target.value)}
-                placeholder="Contenu du bloc... Utilisez {variable} pour les champs dynamiques"
+                placeholder={'Contenu du bloc...\nUtilisez {{variable}} pour les champs dynamiques.'}
                 className="te-input te-textarea"
                 rows={8}
                 required
               />
-              <span className="te-field-hint">Utilisez {'{variable}'} pour inserer des champs dynamiques</span>
+              {/* Quick variable buttons */}
+              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '6px' }}>
+                {['client.nom_complet', 'client.adresse', 'cabinet.nom', 'dossier.reference', 'date'].map(k => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => insertVar(k)}
+                    className="te-var-tag"
+                    style={{ cursor: 'pointer', border: '1px solid #E5E7EB' }}
+                  >
+                    {k}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
           <div className="te-modal-footer">

@@ -68,3 +68,9 @@ export async function deleteBlock(id) {
   const { data } = await api.delete(`/blocks/${id}`);
   return data.data;
 }
+
+// Template variables catalog
+export async function getTemplateVariables() {
+  const { data } = await api.get('/builder/variables');
+  return data.data;
+}

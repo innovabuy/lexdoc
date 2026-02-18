@@ -134,6 +134,12 @@ async function collectData(folderId, tenantId) {
       rcs: client.rcs || '',
     },
     date: new Date().toLocaleDateString('fr-FR'),
+    date_jour_long: (() => {
+      const d = new Date();
+      const mois = ['janvier', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'aout', 'septembre', 'octobre', 'novembre', 'decembre'];
+      return `${d.getDate()} ${mois[d.getMonth()]} ${d.getFullYear()}`;
+    })(),
+    date_annee: String(new Date().getFullYear()),
   };
 
   return data;
@@ -183,6 +189,12 @@ async function collectBasicData(tenantId, userId) {
       fax: '',
     },
     date: new Date().toLocaleDateString('fr-FR'),
+    date_jour_long: (() => {
+      const d = new Date();
+      const mois = ['janvier', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'aout', 'septembre', 'octobre', 'novembre', 'decembre'];
+      return `${d.getDate()} ${mois[d.getMonth()]} ${d.getFullYear()}`;
+    })(),
+    date_annee: String(new Date().getFullYear()),
   };
 }
 

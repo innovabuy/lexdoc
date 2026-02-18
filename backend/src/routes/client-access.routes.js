@@ -155,7 +155,7 @@ router.post('/invite', async (req, res, next) => {
             'Client',
           folderTitle: folder.title,
           tenantName: folder.tenant.name,
-          activationLink: `${process.env.CLIENT_PORTAL_URL || process.env.FRONTEND_URL || 'http://localhost:4002'}/activate/${activationToken}`,
+          activationLink: `${process.env.CLIENT_PORTAL_URL || process.env.FRONTEND_URL}/activate/${activationToken}`,
           expiresIn: '7 days',
         });
       } catch (emailError) {
@@ -188,7 +188,7 @@ router.post('/invite', async (req, res, next) => {
           'Client',
         folderTitle: folder.title,
         tenantName: folder.tenant.name,
-        activationLink: `${process.env.CLIENT_PORTAL_URL || process.env.FRONTEND_URL || 'http://localhost:4002'}/activate/${activationToken}`,
+        activationLink: `${process.env.CLIENT_PORTAL_URL || process.env.FRONTEND_URL}/activate/${activationToken}`,
         expiresIn: '7 days',
       });
     } catch (emailError) {
@@ -258,7 +258,7 @@ router.post('/:id/resend', async (req, res, next) => {
           'Client',
         folderTitle: access.folder.title,
         tenantName: access.folder.tenant.name,
-        activationLink: `${process.env.CLIENT_PORTAL_URL || process.env.FRONTEND_URL || 'http://localhost:4002'}/activate/${activationToken}`,
+        activationLink: `${process.env.CLIENT_PORTAL_URL || process.env.FRONTEND_URL}/activate/${activationToken}`,
         expiresIn: '7 days',
       });
     } catch (emailError) {

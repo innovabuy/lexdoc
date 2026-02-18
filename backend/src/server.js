@@ -28,18 +28,18 @@ app.use(helmet());
 
 // CORS - Multiple origins support
 const allowedOrigins = [
-  // Environment variables (prioritaires)
   process.env.FRONTEND_URL,
+  process.env.CLIENT_PORTAL_URL,
   process.env.FRONTEND_CLIENT_URL,
-  // Production (ports 4001/4002)
-  'http://localhost:4001',
-  'http://localhost:4002',
-  'http://31.97.57.103:4001',
-  'http://31.97.57.103:4002',
-  // Development (Vite ports 5173/5174)
-  'http://localhost:5173',
-  'http://localhost:5174',
 ].filter(Boolean);
+
+// In development, also allow localhost origins
+if (process.env.NODE_ENV !== 'production') {
+  allowedOrigins.push(
+    'http://localhost:4001', 'http://localhost:4002',
+    'http://localhost:5173', 'http://localhost:5174',
+  );
+}
 
 app.use(
   cors({
@@ -112,8 +112,8 @@ app.use(errorHandler);
 const server = app.listen(PORT, '0.0.0.0', () => {
   logger.info(`🚀 LexDoc API started on port ${PORT}`);
   logger.info(`   Environment: ${process.env.NODE_ENV}`);
-  logger.info(`   API URL: http://localhost:${PORT}`);
-  logger.info(`   Health: http://localhost:${PORT}/health`);
+  logger.info(`   API URL: http://0.0.0.0:${PORT}`);
+  logger.info(`   Health: http://0.0.0.0:${PORT}/health`);
 
   // Start scheduled jobs
   if (process.env.NODE_ENV !== 'test') {

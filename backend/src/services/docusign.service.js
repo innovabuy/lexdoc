@@ -10,7 +10,7 @@ const DOCUSIGN_CONFIG = {
   secretKey: process.env.DOCUSIGN_SECRET_KEY || '',
   accountId: process.env.DOCUSIGN_ACCOUNT_ID || '',
   redirectUri: process.env.DOCUSIGN_REDIRECT_URI || '',
-  webhookUrl: process.env.DOCUSIGN_WEBHOOK_URL || `${process.env.API_URL || 'http://localhost:4000'}/api/webhooks/docusign`,
+  webhookUrl: process.env.DOCUSIGN_WEBHOOK_URL || `${process.env.API_URL || process.env.FRONTEND_URL || ''}/api/webhooks/docusign`,
   demoMode: process.env.DOCUSIGN_DEMO_MODE === 'true',
 };
 

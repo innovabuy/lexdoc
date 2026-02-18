@@ -63,11 +63,11 @@ router.get('/callback', async (req, res, next) => {
     }
 
     // Redirect to frontend integrations page
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const frontendUrl = process.env.FRONTEND_URL;
     return res.redirect(`${frontendUrl}/parametres/integrations?docusign=connected`);
   } catch (error) {
     logger.error('DocuSign callback failed', { error: error.message });
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const frontendUrl = process.env.FRONTEND_URL;
     return res.redirect(`${frontendUrl}/parametres/integrations?docusign=error`);
   }
 });
