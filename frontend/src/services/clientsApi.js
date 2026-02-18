@@ -47,3 +47,8 @@ export async function sendClientForm(id) {
 export async function deleteClient(id) {
   await api.delete(`/clients/${id}`);
 }
+
+export async function inviteExtranet(id) {
+  const { data } = await api.post(`/clients/${id}/invite-extranet`);
+  return data.data;
+}

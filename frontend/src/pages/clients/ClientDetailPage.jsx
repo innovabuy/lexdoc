@@ -3,8 +3,9 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, Send, Edit3, ChevronDown, ChevronRight,
   Save, FolderOpen, Clock, User, Phone, Heart, Users as UsersIcon,
+  Globe, CheckCircle, RefreshCw,
 } from 'lucide-react';
-import { getClient, updateClient, sendClientForm } from '../../services/clientsApi';
+import { getClient, updateClient, sendClientForm, inviteExtranet } from '../../services/clientsApi';
 import CompletenessAlert from '../../components/clients/CompletenessAlert';
 import { useToast } from '../../contexts/ToastContext';
 import './ClientDetailPage.css';
@@ -252,6 +253,7 @@ export default function ClientDetailPage() {
   const [client, setClient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [inviting, setInviting] = useState(false);
   const [activeTab, setActiveTab] = useState('informations');
 
   const fetchClient = useCallback(async () => {
@@ -289,6 +291,19 @@ export default function ClientDetailPage() {
       toast.success(result.message || 'Formulaire envoyé');
     } catch (err) {
       toast.error(err.response?.data?.error?.message || "Erreur lors de l'envoi");
+    }
+  };
+
+  const handleInviteExtranet = async () => {
+    setInviting(true);
+    try {
+      const result = await inviteExtranet(id);
+      toast.success(`Invitation envoyée à ${result.email} (${result.foldersCount} dossier${result.foldersCount > 1 ? 's' : ''})`);
+      await fetchClient();
+    } catch (err) {
+      toast.error(err.response?.data?.error?.message || "Erreur lors de l'invitation extranet");
+    } finally {
+      setInviting(false);
     }
   };
 
@@ -343,6 +358,24 @@ export default function ClientDetailPage() {
           </div>
 
           <div className="detail-header-actions">
+            {client.email && (
+              client.profileSubmittedAt ? (
+                <span className="detail-action-btn detail-action-btn--success" style={{ cursor: 'default', opacity: 0.85, background: '#dcfce7', color: '#166534', border: '1px solid #bbf7d0' }}>
+                  <CheckCircle size={16} />
+                  Extranet actif
+                </span>
+              ) : client.hasExternet ? (
+                <button className="detail-action-btn detail-action-btn--outline" onClick={handleInviteExtranet} disabled={inviting}>
+                  <RefreshCw size={16} className={inviting ? 'spin' : ''} />
+                  {inviting ? 'Envoi...' : 'Reinviter extranet'}
+                </button>
+              ) : (
+                <button className="detail-action-btn detail-action-btn--primary" onClick={handleInviteExtranet} disabled={inviting} style={{ background: '#0066ff', color: '#fff', border: 'none' }}>
+                  <Globe size={16} />
+                  {inviting ? 'Envoi...' : 'Inviter a l\'extranet'}
+                </button>
+              )
+            )}
             <button className="detail-action-btn detail-action-btn--outline" onClick={handleSendForm}>
               <Send size={16} />
               Envoyer le formulaire

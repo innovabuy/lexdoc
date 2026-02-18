@@ -609,7 +609,7 @@ router.post('/:id/invite-extranet', async (req, res, next) => {
 
     // Send invitation email — use the first folder's activation token (the one verify-token/activate will look up)
     const emailToken = firstFolderToken || primaryToken;
-    const activationUrl = `${process.env.CLIENT_PORTAL_URL || 'http://localhost:5173'}/extranet/activate/${emailToken}`;
+    const activationUrl = `${process.env.CLIENT_PORTAL_URL || process.env.FRONTEND_URL || 'http://localhost:5173'}/extranet/activate/${emailToken}`;
     try {
       await emailService.sendClientInvitation({
         to: client.email,
