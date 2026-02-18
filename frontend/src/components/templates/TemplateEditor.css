@@ -169,6 +169,34 @@
 }
 .te-lib-block-add:hover { background: #EFF6FF; border-color: #93C5FD; color: #2563EB; }
 
+/* Library block buttons container */
+.te-lib-block-btns { display: flex; gap: 2px; align-items: center; flex-shrink: 0; }
+.te-lib-block-action {
+  width: 22px; height: 22px; border-radius: 0.25rem;
+  border: none; background: transparent; color: #9CA3AF;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.te-lib-block-action:hover { background: #EFF6FF; color: #2563EB; }
+.te-lib-block-action--danger:hover { background: #FEE2E2; color: #DC2626; }
+
+/* Personalise block card highlight */
+.te-lib-block--perso { border-color: #DDD6FE; }
+.te-lib-block--perso:hover { border-color: #A78BFA; }
+
+/* Personalise dot */
+.te-lib-dot-personalise { background: #7C3AED; }
+
+/* Add perso button inside section */
+.te-add-perso-btn {
+  display: flex; align-items: center; gap: 0.25rem;
+  width: 100%; padding: 0.375rem 0.5rem; margin-top: 0.25rem;
+  border: 1px dashed #D1D5DB; border-radius: 0.375rem;
+  background: transparent; color: #7C3AED; font-size: 0.6875rem;
+  cursor: pointer; transition: all 0.15s; font-weight: 500;
+}
+.te-add-perso-btn:hover { border-color: #A78BFA; background: #F5F3FF; }
+
 .te-lib-block-preview {
   padding: 0 0.5rem 0.375rem 1.125rem;
   font-size: 0.6875rem; color: #9CA3AF;
@@ -188,6 +216,19 @@
   font-size: 0.5625rem; font-weight: 500; font-family: monospace;
 }
 .te-var-more { background: #F3F4F6; color: #6B7280; }
+
+/* Variable badges (blue, rounded) */
+.te-var-badge {
+  display: inline-flex; padding: 0.125rem 0.5rem;
+  background: #DBEAFE; color: #1E40AF; border-radius: 999px;
+  font-size: 0.6875rem; font-weight: 500; font-family: monospace;
+  white-space: nowrap;
+}
+.te-var-badge-inline {
+  display: inline;
+  background: #DBEAFE; color: #1E40AF; border-radius: 4px;
+  padding: 0 3px; font-weight: 600;
+}
 
 /* ── Right panel: Composition ── */
 .te-panel-right {
@@ -408,19 +449,41 @@
 .te-vars-toggle:hover { background: #F3F4F6; color: #374151; }
 .te-vars-toggle--active { background: #EFF6FF; border-color: #93C5FD; color: #2563EB; }
 
+/* ── Title input for free blocks ── */
+.te-comp-block-title-input {
+  border: none; background: transparent; outline: none;
+  font: inherit; padding: 0; width: 100%; min-width: 0;
+  font-size: 0.875rem; font-weight: 500; color: #111827;
+}
+.te-comp-block-title-input::placeholder { color: #9CA3AF; }
+
 /* ── Free block: editable content in composition ── */
 .te-free-block-editor {
-  padding: 0.625rem 0.75rem;
+  padding: 0;
+  border-top: 1px solid #F3F4F6;
+}
+.te-free-block-toolbar {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  background: #F9FAFB; border-bottom: 1px solid #F3F4F6;
+}
+.te-free-block-var-count {
+  font-size: 0.6875rem; color: #6B7280;
+  margin-left: auto;
+}
+.te-free-block-vars {
+  display: flex; gap: 4px; flex-wrap: wrap;
+  padding: 0.375rem 0.75rem 0.5rem;
   border-top: 1px solid #F3F4F6;
 }
 .te-free-block-textarea {
-  width: 100%; min-height: 80px; padding: 0.5rem;
-  border: 1px solid #D1D5DB; border-radius: 0.375rem;
+  width: 100%; min-height: 80px; padding: 0.5rem 0.75rem;
+  border: none; border-radius: 0;
   font-size: 0.8125rem; color: #111827; line-height: 1.6;
   font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
-  resize: vertical; transition: border-color 0.15s;
+  resize: vertical; outline: none;
 }
-.te-free-block-textarea:focus { outline: none; border-color: #93C5FD; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+.te-free-block-textarea:focus { background: #FEFCE8; }
 .te-free-block-actions {
   display: flex; gap: 0.375rem; margin-top: 0.375rem; justify-content: flex-end;
 }
@@ -435,3 +498,13 @@
   cursor: pointer; transition: all 0.15s;
 }
 .te-add-free-block:hover { border-color: #93C5FD; color: #2563EB; background: #F8FAFF; }
+
+/* Save preview */
+.te-save-preview {
+  font-size: 0.75rem; color: #374151; line-height: 1.5;
+  white-space: pre-wrap; word-break: break-word;
+  font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+  margin: 0; padding: 0.5rem;
+  background: #F9FAFB; border: 1px solid #E5E7EB;
+  border-radius: 0.375rem; max-height: 120px; overflow-y: auto;
+}

@@ -841,8 +841,10 @@ model BuilderBlock {
   variables    Json?
   tags         String[]      @default([])
 
+  description  String?
   isMandatory  Boolean       @default(false)
   isSystem     Boolean       @default(false)
+  isPersonalise Boolean      @default(false)
   displayOrder Int?
   usageCount   Int           @default(0)
 
@@ -853,6 +855,7 @@ model BuilderBlock {
   @@index([tenantId])
   @@index([category])
   @@index([isSystem])
+  @@index([isPersonalise])
   @@map("builder_blocks")
 }
 
@@ -906,9 +909,11 @@ enum BlockCategory {
   FAITS
   MOYENS
   DISPOSITIF
+  CONCLUSION
   SIGNATURE
   CLAUSE
   CUSTOM
+  AUTRE
 }
 
 enum OutputFormat {

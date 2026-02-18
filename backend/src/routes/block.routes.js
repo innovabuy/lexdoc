@@ -40,10 +40,12 @@ router.get('/', async (req, res, next) => {
         category: true,
         title: true,
         content: true,
+        description: true,
         variables: true,
         tags: true,
         isMandatory: true,
         isSystem: true,
+        isPersonalise: true,
         displayOrder: true,
         usageCount: true,
         createdAt: true,
@@ -52,13 +54,15 @@ router.get('/', async (req, res, next) => {
 
     // Group by type for the editor
     const system = blocks.filter(b => b.isSystem);
-    const standard = blocks.filter(b => !b.isSystem && !b.tags?.includes('custom'));
-    const custom = blocks.filter(b => !b.isSystem && b.tags?.includes('custom'));
+    const personalise = blocks.filter(b => b.isPersonalise && !b.isSystem);
+    const standard = blocks.filter(b => !b.isSystem && !b.isPersonalise && !b.tags?.includes('custom'));
+    const custom = blocks.filter(b => !b.isSystem && !b.isPersonalise && b.tags?.includes('custom'));
 
     return successResponse(res, {
       blocks,
       grouped: {
         system,
+        personalise,
         standard,
         custom,
       },
@@ -71,9 +75,24 @@ router.get('/', async (req, res, next) => {
 // POST /api/blocks — create custom block
 router.post('/', async (req, res, next) => {
   try {
-    const { title, content, category, variables, tags, displayOrder } = req.body;
+    const { title, content, category, description, variables, tags, displayOrder, isPersonalise } = req.body;
     if (!title) throw new BadRequestError('title is required');
     if (!content) throw new BadRequestError('content is required');
+
+    // Auto-extract variables from content if not explicitly provided
+    let finalVars = variables || null;
+    if (!variables && content) {
+      const regex = /\{\{([^}]+)\}\}/g;
+      const vars = new Set();
+      let match;
+      while ((match = regex.exec(content)) !== null) {
+        const v = match[1].trim().split(' ')[0];
+        if (!v.startsWith('#') && !v.startsWith('/') && v !== 'else' && !v.startsWith('@') && v !== 'this') {
+          vars.add(v);
+        }
+      }
+      if (vars.size > 0) finalVars = Array.from(vars);
+    }
 
     const block = await prisma.builderBlock.create({
       data: {
@@ -81,10 +100,12 @@ router.post('/', async (req, res, next) => {
         category: category || 'CUSTOM',
         title,
         content,
-        variables: variables || null,
+        description: description || null,
+        variables: finalVars,
         tags: tags || ['custom'],
         isMandatory: false,
         isSystem: false,
+        isPersonalise: isPersonalise === true,
         displayOrder: displayOrder || 50,
         createdById: req.user.id,
       },
@@ -104,7 +125,22 @@ router.put('/:id', async (req, res, next) => {
     });
     if (!existing) throw new NotFoundError('Block not found or cannot be edited');
 
-    const { title, content, category, variables, tags, displayOrder } = req.body;
+    const { title, content, category, description, variables, tags, displayOrder } = req.body;
+
+    // Auto-extract variables if content changed
+    let finalVars = variables;
+    if (content !== undefined && variables === undefined) {
+      const regex = /\{\{([^}]+)\}\}/g;
+      const vars = new Set();
+      let match;
+      while ((match = regex.exec(content)) !== null) {
+        const v = match[1].trim().split(' ')[0];
+        if (!v.startsWith('#') && !v.startsWith('/') && v !== 'else' && !v.startsWith('@') && v !== 'this') {
+          vars.add(v);
+        }
+      }
+      finalVars = vars.size > 0 ? Array.from(vars) : existing.variables;
+    }
 
     const block = await prisma.builderBlock.update({
       where: { id: req.params.id },
@@ -112,7 +148,8 @@ router.put('/:id', async (req, res, next) => {
         ...(title !== undefined && { title }),
         ...(content !== undefined && { content }),
         ...(category !== undefined && { category }),
-        ...(variables !== undefined && { variables }),
+        ...(description !== undefined && { description }),
+        ...(finalVars !== undefined && { variables: finalVars }),
         ...(tags !== undefined && { tags }),
         ...(displayOrder !== undefined && { displayOrder }),
       },
