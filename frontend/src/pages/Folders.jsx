@@ -251,7 +251,7 @@ function buildDateTree(folders) {
 // ============================================================
 
 function TreeGroupNode({ node, expanded, onToggle, onNavigate }) {
-  const isOpen = expanded[node.key] !== false;
+  const isOpen = !!expanded[node.key];
 
   return (
     <div className="tree-node">
@@ -428,15 +428,13 @@ export default function Folders() {
   // ── Build tree ──
   const tree = useMemo(() => buildGroupedTree(allFolders, groupBy), [allFolders, groupBy]);
 
-  // Default-expand level-0 nodes when tree changes
+  // Default: all nodes collapsed when tree changes
   useEffect(() => {
-    const init = {};
-    tree.forEach(node => { init[node.key] = true; });
-    setExpanded(init);
+    setExpanded({});
   }, [tree]);
 
   const toggleNode = (key) => {
-    setExpanded(prev => ({ ...prev, [key]: prev[key] === undefined ? false : !prev[key] }));
+    setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
   // ── Create ──
