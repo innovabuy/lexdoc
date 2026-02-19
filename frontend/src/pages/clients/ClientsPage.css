@@ -464,12 +464,12 @@
 .clients-view-btn--active:hover { background: #0052cc; color: #fff; }
 
 /* ============================================
-   Hierarchical Tree View
+   Tree Views (Alpha + Folder)
    ============================================ */
 .clients-tree-view {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .clients-tree-loading,
@@ -480,180 +480,102 @@
   font-size: 0.875rem;
 }
 
-.client-tree-card {
+/* Group header (letter or folder type) */
+.tree-group {
   background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   overflow: hidden;
-  transition: box-shadow 0.15s;
 }
-.client-tree-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-.client-tree-card--expanded { border-color: #93c5fd; }
 
-.client-tree-header {
+.tree-group-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 16px;
+  border: none;
+  background: #f8fafc;
   cursor: pointer;
+  font-family: inherit;
   transition: background 0.1s;
 }
-.client-tree-header:hover { background: #f8fafc; }
+.tree-group-header:hover { background: #f1f5f9; }
 
-.client-tree-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
-  min-width: 0;
-}
-
-.client-tree-chevron {
+.tree-group-chevron {
   flex-shrink: 0;
   color: #94a3b8;
   transition: transform 0.15s;
 }
-.client-tree-chevron--open { transform: rotate(90deg); }
+.tree-group-chevron--open { transform: rotate(90deg); }
 
-.client-tree-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: #eff6ff;
-  color: #2563eb;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-
-.client-tree-info { flex: 1; min-width: 0; }
-
-.client-tree-name-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.client-tree-name {
-  font-weight: 600;
-  font-size: 0.9375rem;
-  color: #0f172a;
-  cursor: pointer;
-}
-.client-tree-name:hover { color: #0066ff; text-decoration: underline; }
-
-.client-tree-completeness {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.client-tree-bar {
-  width: 48px;
-  height: 5px;
-  background: #e2e8f0;
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.client-tree-bar-fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.3s;
-}
-
-.client-tree-percent {
-  font-size: 0.6875rem;
-  font-weight: 600;
-}
-
-.client-tree-sub {
-  display: block;
-  font-size: 0.8125rem;
-  color: #94a3b8;
-  margin-top: 2px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.client-tree-body {
-  border-top: 1px solid #e2e8f0;
-  padding: 12px 16px 12px 62px;
-}
-
-.client-tree-folder-loading,
-.client-tree-no-folders {
-  font-size: 0.8125rem;
-  color: #94a3b8;
-  padding: 4px 0;
-}
-
-.client-tree-folders {
-  display: flex;
-  flex-direction: column;
-}
-
-.client-tree-folder {
-  position: relative;
-  padding-left: 20px;
-  padding-bottom: 4px;
-}
-.client-tree-folder::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: #d1d5db;
-}
-.client-tree-folder--last::before {
-  bottom: calc(100% - 18px);
-}
-.client-tree-folder-line {
-  position: absolute;
-  left: 0;
-  top: 14px;
-  width: 14px;
-  height: 1px;
-  background: #d1d5db;
-  display: block;
-}
-
-.client-tree-folder-content {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.1s;
-}
-.client-tree-folder-content:hover { background: #f0f9ff; }
-
-.client-tree-folder-icon {
+.tree-group-folder-icon {
   color: #f59e0b;
   flex-shrink: 0;
 }
 
-.client-tree-folder-info { flex: 1; min-width: 0; }
-
-.client-tree-folder-title {
-  display: block;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #1e293b;
+.tree-group-letter {
+  font-weight: 700;
+  font-size: 0.9375rem;
+  color: #0f172a;
 }
 
-.client-tree-folder-meta {
-  display: block;
-  font-size: 0.75rem;
+.tree-group-count {
+  font-size: 0.8125rem;
   color: #94a3b8;
+  font-weight: 400;
+}
+
+.tree-group-body {
+  border-top: 1px solid #f1f5f9;
+}
+
+/* Client row inside a tree group */
+.tree-client-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px 8px 40px;
+  cursor: pointer;
+  transition: background 0.1s;
+  flex-wrap: wrap;
+}
+.tree-client-row:hover { background: #f8fafc; }
+.tree-client-row:not(:last-child) { border-bottom: 1px solid #f8fafc; }
+
+.tree-client-icon { font-size: 1rem; flex-shrink: 0; }
+
+.tree-client-name {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #0f172a;
+  white-space: nowrap;
+}
+
+.tree-client-email {
+  font-size: 0.8125rem;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.tree-client-folders {
+  font-size: 0.8125rem;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.tree-client-dash {
+  color: #cbd5e1;
+  font-size: 0.8125rem;
+}
+
+.tree-client-folder-title {
+  font-size: 0.8125rem;
+  color: #334155;
+  white-space: nowrap;
 }
 
 /* Responsive */
