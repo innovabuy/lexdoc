@@ -1,36 +1,36 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import api from '../services/api';
-import { useToast } from '../contexts/ToastContext';
+import { useState, useEffect } from'react';
+import { Link } from'react-router-dom';
+import api from'../services/api';
+import { useToast } from'../contexts/ToastContext';
 
-const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+const DAYS = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
 const MONTHS = [
-  'Janvier', 'Fevrier', 'Mars', 'Avril', 'Mai', 'Juin',
-  'Juillet', 'Aout', 'Septembre', 'Octobre', 'Novembre', 'Decembre'
+  'Janvier','Fevrier','Mars','Avril','Mai','Juin',
+  'Juillet','Aout','Septembre','Octobre','Novembre','Decembre'
 ];
 
 const TYPE_LABELS = {
-  DEADLINE: 'Echeance',
-  HEARING: 'Audience',
-  MEETING: 'Rendez-vous',
-  REMINDER: 'Rappel',
-  TASK: 'Tache',
-  OTHER: 'Autre',
+  DEADLINE:'Echeance',
+  HEARING:'Audience',
+  MEETING:'Rendez-vous',
+  REMINDER:'Rappel',
+  TASK:'Tache',
+  OTHER:'Autre',
 };
 
 const PRIORITY_COLORS = {
-  LOW: 'bg-gray-100 text-gray-700',
-  NORMAL: 'bg-blue-100 text-blue-700',
-  HIGH: 'bg-orange-100 text-orange-700',
-  URGENT: 'bg-red-100 text-red-700',
+  LOW:'bg-gray-100 text-gray-700',
+  NORMAL:'bg-blue-100 text-blue-700',
+  HIGH:'bg-orange-100 text-orange-700',
+  URGENT:'bg-red-100 text-red-700',
 };
 
 const STATUS_COLORS = {
-  PENDING: 'border-l-blue-500',
-  IN_PROGRESS: 'border-l-yellow-500',
-  COMPLETED: 'border-l-green-500',
-  CANCELLED: 'border-l-gray-400',
-  OVERDUE: 'border-l-red-500',
+  PENDING:'border-l-blue-500',
+  IN_PROGRESS:'border-l-yellow-500',
+  COMPLETED:'border-l-green-500',
+  CANCELLED:'border-l-gray-400',
+  OVERDUE:'border-l-red-500',
 };
 
 export default function Calendar() {
@@ -119,12 +119,12 @@ export default function Calendar() {
     const days = [];
 
     // Previous month's days
-    const prevLastDay = new Date(year, month, 0).getDate();
-    for (let i = startingDay - 1; i >= 0; i--) {
-      days.push({ day: prevLastDay - i, isCurrentMonth: false, date: null });
-    }
+ const prevLastDay = new Date(year, month, 0).getDate();
+ for (let i = startingDay - 1; i >= 0; i--) {
+ days.push({ day: prevLastDay - i, isCurrentMonth: false, date: null });
+ }
 
-    // Current month's days
+ // Current month's days
     for (let i = 1; i <= daysInMonth; i++) {
       const date = new Date(year, month, i);
       const dateKey = date.toISOString().split('T')[0];
@@ -138,105 +138,105 @@ export default function Calendar() {
     }
 
     // Next month's days
-    const remainingDays = 42 - days.length;
-    for (let i = 1; i <= remainingDays; i++) {
-      days.push({ day: i, isCurrentMonth: false, date: null });
-    }
+ const remainingDays = 42 - days.length;
+ for (let i = 1; i <= remainingDays; i++) {
+ days.push({ day: i, isCurrentMonth: false, date: null });
+ }
 
-    return days;
-  };
+ return days;
+ };
 
-  const handleDayClick = (day) => {
-    if (day.isCurrentMonth && day.date) {
-      setSelectedDate(day.date);
-      setEditingDeadline(null);
-      setShowModal(true);
-    }
-  };
+ const handleDayClick = (day) => {
+ if (day.isCurrentMonth && day.date) {
+ setSelectedDate(day.date);
+ setEditingDeadline(null);
+ setShowModal(true);
+ }
+ };
 
-  const handleSaveDeadline = async (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
+ const handleSaveDeadline = async (e) => {
+ e.preventDefault();
+ const formData = new FormData(e.target);
 
-    const deadlineData = {
-      title: formData.get('title'),
-      description: formData.get('description'),
-      dueDate: formData.get('dueDate'),
-      dueTime: formData.get('dueTime') || null,
-      type: formData.get('type'),
-      priority: formData.get('priority'),
-      folderId: formData.get('folderId') || null,
-    };
+ const deadlineData = {
+ title: formData.get('title'),
+ description: formData.get('description'),
+ dueDate: formData.get('dueDate'),
+ dueTime: formData.get('dueTime') || null,
+ type: formData.get('type'),
+ priority: formData.get('priority'),
+ folderId: formData.get('folderId') || null,
+ };
 
-    try {
-      if (editingDeadline) {
-        await api.put(`/deadlines/${editingDeadline.id}`, deadlineData);
-        success('Echeance mise a jour');
-      } else {
-        await api.post('/deadlines', deadlineData);
-        success('Echeance creee');
-      }
-      setShowModal(false);
-      fetchCalendarData();
-      fetchUpcoming();
-    } catch (err) {
-      showError(err.response?.data?.message || 'Erreur');
-    }
-  };
+ try {
+ if (editingDeadline) {
+ await api.put(`/deadlines/${editingDeadline.id}`, deadlineData);
+ success('Echeance mise a jour');
+ } else {
+ await api.post('/deadlines', deadlineData);
+ success('Echeance creee');
+ }
+ setShowModal(false);
+ fetchCalendarData();
+ fetchUpcoming();
+ } catch (err) {
+ showError(err.response?.data?.message ||'Erreur');
+ }
+ };
 
-  const handleCompleteDeadline = async (id) => {
-    try {
-      await api.post(`/deadlines/${id}/complete`);
-      success('Echeance terminee');
-      fetchCalendarData();
-      fetchUpcoming();
-      fetchOverdue();
-    } catch (err) {
-      showError('Erreur');
-    }
-  };
+ const handleCompleteDeadline = async (id) => {
+ try {
+ await api.post(`/deadlines/${id}/complete`);
+ success('Echeance terminee');
+ fetchCalendarData();
+ fetchUpcoming();
+ fetchOverdue();
+ } catch (err) {
+ showError('Erreur');
+ }
+ };
 
-  const handleDeleteDeadline = async (id) => {
-    if (!confirm('Supprimer cette echeance ?')) return;
-    try {
-      await api.delete(`/deadlines/${id}`);
-      success('Echeance supprimee');
-      fetchCalendarData();
-      fetchUpcoming();
-    } catch (err) {
-      showError('Erreur');
-    }
-  };
+ const handleDeleteDeadline = async (id) => {
+ if (!confirm('Supprimer cette echeance ?')) return;
+ try {
+ await api.delete(`/deadlines/${id}`);
+ success('Echeance supprimee');
+ fetchCalendarData();
+ fetchUpcoming();
+ } catch (err) {
+ showError('Erreur');
+ }
+ };
 
-  return (
-    <>
-      <div className="flex gap-6">
-        {/* Main Calendar */}
-        <div className="flex-1">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-              <div className="flex items-center gap-4">
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                  {MONTHS[currentDate.getMonth()]} {currentDate.getFullYear()}
-                </h1>
-                <button
-                  onClick={goToToday}
-                  className="px-3 py-1 text-sm bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 rounded-lg hover:bg-blue-200"
-                >
-                  Aujourd'hui
+ return (
+ <>
+ <div className="flex gap-6">
+ {/* Main Calendar */}
+ <div className="flex-1">
+ <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+ {/* Header */}
+ <div className="flex items-center justify-between p-4 border-b border-gray-200">
+ <div className="flex items-center gap-4">
+ <h1 className="text-xl font-bold text-gray-900">
+ {MONTHS[currentDate.getMonth()]} {currentDate.getFullYear()}
+ </h1>
+ <button
+ onClick={goToToday}
+ className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"
+ >
+ Aujourd'hui
                 </button>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={prevMonth}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                  className="p-2 hover:bg-gray-100 rounded-lg"
                 >
                   ←
                 </button>
                 <button
                   onClick={nextMonth}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                  className="p-2 hover:bg-gray-100 rounded-lg"
                 >
                   →
                 </button>
@@ -248,7 +248,7 @@ export default function Calendar() {
               {/* Day Headers */}
               <div className="grid grid-cols-7 mb-2">
                 {DAYS.map((day) => (
-                  <div key={day} className="text-center text-sm font-medium text-gray-500 dark:text-gray-400 py-2">
+                  <div key={day} className="text-center text-sm font-medium text-gray-500 py-2">
                     {day}
                   </div>
                 ))}
@@ -261,12 +261,12 @@ export default function Calendar() {
                     key={index}
                     onClick={() => handleDayClick(day)}
                     className={`min-h-24 p-1 border rounded-lg cursor-pointer transition-colors ${
-                      day.isCurrentMonth
-                        ? 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700'
-                        : 'bg-gray-50 dark:bg-gray-900 text-gray-400'
-                    } ${day.isToday ? 'ring-2 ring-blue-500' : 'border-gray-200 dark:border-gray-700'}`}
+ day.isCurrentMonth
+ ?'bg-white hover:bg-gray-50'
+ :'bg-gray-50 text-gray-400'
+ } ${day.isToday ?'ring-2 ring-blue-500' :'border-gray-200'}`}
                   >
-                    <div className={`text-sm font-medium ${day.isToday ? 'text-blue-600' : ''}`}>
+                    <div className={`text-sm font-medium ${day.isToday ?'text-blue-600' :''}`}>
                       {day.day}
                     </div>
                     {day.deadlines?.slice(0, 3).map((deadline) => (
@@ -305,14 +305,14 @@ export default function Calendar() {
 
           {/* Overdue */}
           {overdueDeadlines.length > 0 && (
-            <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-4 border border-red-200 dark:border-red-800">
-              <h3 className="font-semibold text-red-800 dark:text-red-300 mb-3">
+            <div className="bg-red-50 rounded-xl p-4 border border-red-200">
+              <h3 className="font-semibold text-red-800 mb-3">
                 En retard ({overdueDeadlines.length})
               </h3>
               <div className="space-y-2">
                 {overdueDeadlines.slice(0, 5).map((d) => (
                   <div key={d.id} className="flex items-center justify-between text-sm">
-                    <span className="text-red-700 dark:text-red-400 truncate flex-1">{d.title}</span>
+                    <span className="text-red-700 truncate flex-1">{d.title}</span>
                     <button
                       onClick={() => handleCompleteDeadline(d.id)}
                       className="text-green-600 hover:text-green-700 ml-2"
@@ -327,8 +327,8 @@ export default function Calendar() {
           )}
 
           {/* Upcoming */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-3">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+            <h3 className="font-semibold text-gray-900 mb-3">
               A venir (14 jours)
             </h3>
             {upcomingDeadlines.length === 0 ? (
@@ -338,10 +338,10 @@ export default function Calendar() {
                 {upcomingDeadlines.map((d) => (
                   <div
                     key={d.id}
-                    className={`flex items-start gap-2 p-2 rounded-lg border-l-2 ${STATUS_COLORS[d.status]} bg-gray-50 dark:bg-gray-700`}
+                    className={`flex items-start gap-2 p-2 rounded-lg border-l-2 ${STATUS_COLORS[d.status]} bg-gray-50 `}
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm text-gray-900 dark:text-white truncate">{d.title}</p>
+                      <p className="font-medium text-sm text-gray-900 truncate">{d.title}</p>
                       <p className="text-xs text-gray-500">
                         {new Date(d.dueDate).toLocaleDateString('fr-FR')}
                         {d.dueTime && ` a ${d.dueTime}`}
@@ -364,100 +364,100 @@ export default function Calendar() {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg mx-4">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                {editingDeadline ? 'Modifier l\'echeance' : 'Nouvelle echeance'}
-              </h3>
-              <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-gray-700">✕</button>
-            </div>
-            <form onSubmit={handleSaveDeadline} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Titre *</label>
-                <input
-                  type="text"
-                  name="title"
-                  required
-                  defaultValue={editingDeadline?.title}
-                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date *</label>
-                  <input
-                    type="date"
-                    name="dueDate"
-                    required
-                    defaultValue={editingDeadline?.dueDate?.split('T')[0] || selectedDate}
-                    className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Heure</label>
-                  <input
-                    type="time"
-                    name="dueTime"
-                    defaultValue={editingDeadline?.dueTime}
-                    className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type</label>
-                  <select
-                    name="type"
-                    defaultValue={editingDeadline?.type || 'DEADLINE'}
-                    className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
-                  >
-                    {Object.entries(TYPE_LABELS).map(([value, label]) => (
-                      <option key={value} value={value}>{label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Priorite</label>
-                  <select
-                    name="priority"
-                    defaultValue={editingDeadline?.priority || 'NORMAL'}
-                    className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
-                  >
-                    <option value="LOW">Basse</option>
-                    <option value="NORMAL">Normale</option>
-                    <option value="HIGH">Haute</option>
-                    <option value="URGENT">Urgente</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Dossier</label>
-                <select
-                  name="folderId"
-                  defaultValue={editingDeadline?.folderId || ''}
-                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
-                >
-                  <option value="">Aucun</option>
-                  {folders.map((f) => (
-                    <option key={f.id} value={f.id}>{f.reference} - {f.title}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
-                <textarea
-                  name="description"
-                  rows={2}
-                  defaultValue={editingDeadline?.description}
-                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
-                />
-              </div>
-              <div className="flex justify-end gap-2 pt-4">
-                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-gray-600 hover:text-gray-800">
-                  Annuler
-                </button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                  {editingDeadline ? 'Modifier' : 'Creer'}
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">
+                {editingDeadline ?'Modifier l\'echeance' :'Nouvelle echeance'}
+ </h3>
+ <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-gray-700">✕</button>
+ </div>
+ <form onSubmit={handleSaveDeadline} className="p-6 space-y-4">
+ <div>
+ <label className="block text-sm font-medium text-gray-700 mb-1">Titre *</label>
+ <input
+ type="text"
+ name="title"
+ required
+ defaultValue={editingDeadline?.title}
+ className="w-full px-3 py-2 border rounded-lg"
+ />
+ </div>
+ <div className="grid grid-cols-2 gap-4">
+ <div>
+ <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
+ <input
+ type="date"
+ name="dueDate"
+ required
+ defaultValue={editingDeadline?.dueDate?.split('T')[0] || selectedDate}
+ className="w-full px-3 py-2 border rounded-lg"
+ />
+ </div>
+ <div>
+ <label className="block text-sm font-medium text-gray-700 mb-1">Heure</label>
+ <input
+ type="time"
+ name="dueTime"
+ defaultValue={editingDeadline?.dueTime}
+ className="w-full px-3 py-2 border rounded-lg"
+ />
+ </div>
+ </div>
+ <div className="grid grid-cols-2 gap-4">
+ <div>
+ <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+ <select
+ name="type"
+ defaultValue={editingDeadline?.type ||'DEADLINE'}
+ className="w-full px-3 py-2 border rounded-lg"
+ >
+ {Object.entries(TYPE_LABELS).map(([value, label]) => (
+ <option key={value} value={value}>{label}</option>
+ ))}
+ </select>
+ </div>
+ <div>
+ <label className="block text-sm font-medium text-gray-700 mb-1">Priorite</label>
+ <select
+ name="priority"
+ defaultValue={editingDeadline?.priority ||'NORMAL'}
+ className="w-full px-3 py-2 border rounded-lg"
+ >
+ <option value="LOW">Basse</option>
+ <option value="NORMAL">Normale</option>
+ <option value="HIGH">Haute</option>
+ <option value="URGENT">Urgente</option>
+ </select>
+ </div>
+ </div>
+ <div>
+ <label className="block text-sm font-medium text-gray-700 mb-1">Dossier</label>
+ <select
+ name="folderId"
+ defaultValue={editingDeadline?.folderId ||''}
+ className="w-full px-3 py-2 border rounded-lg"
+ >
+ <option value="">Aucun</option>
+ {folders.map((f) => (
+ <option key={f.id} value={f.id}>{f.reference} - {f.title}</option>
+ ))}
+ </select>
+ </div>
+ <div>
+ <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+ <textarea
+ name="description"
+ rows={2}
+ defaultValue={editingDeadline?.description}
+ className="w-full px-3 py-2 border rounded-lg"
+ />
+ </div>
+ <div className="flex justify-end gap-2 pt-4">
+ <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-gray-600 hover:text-gray-800">
+ Annuler
+ </button>
+ <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+ {editingDeadline ?'Modifier' :'Creer'}
                 </button>
               </div>
             </form>

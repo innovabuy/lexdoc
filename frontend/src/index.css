@@ -25,9 +25,6 @@ body {
     @apply bg-gray-50 text-gray-900;
   }
 
-  .dark body {
-    @apply bg-gray-900 text-gray-100;
-  }
 }
 
 @layer components {
@@ -45,44 +42,6 @@ body {
 
   .card {
     @apply bg-white rounded-xl shadow-sm border border-gray-200 p-6;
-    @apply dark:bg-gray-800 dark:border-gray-700;
-  }
-
-  /* Form elements dark mode */
-  input[type="text"],
-  input[type="email"],
-  input[type="password"],
-  input[type="number"],
-  input[type="search"],
-  input[type="date"],
-  select,
-  textarea {
-    @apply dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400;
-  }
-
-  /* Table dark mode */
-  table {
-    @apply dark:bg-gray-800;
-  }
-
-  thead {
-    @apply dark:bg-gray-700;
-  }
-
-  th {
-    @apply dark:text-gray-300;
-  }
-
-  td {
-    @apply dark:text-gray-200;
-  }
-
-  tr {
-    @apply dark:border-gray-700;
-  }
-
-  tbody tr:hover {
-    @apply dark:bg-gray-700;
   }
 }
 
@@ -102,129 +61,6 @@ body {
   }
 }
 
-/* Dark mode color scheme */
-.dark {
-  color-scheme: dark;
-}
-
-/* Scrollbar styling for dark mode */
-.dark ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.dark ::-webkit-scrollbar-track {
-  background: #1f2937;
-}
-
-.dark ::-webkit-scrollbar-thumb {
-  background: #4b5563;
-  border-radius: 4px;
-}
-
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: #6b7280;
-}
-
-/* Common element dark mode overrides */
-.dark .bg-white {
-  @apply bg-gray-800;
-}
-
-.dark .bg-gray-50 {
-  @apply bg-gray-900;
-}
-
-.dark .bg-gray-100 {
-  @apply bg-gray-800;
-}
-
-.dark .text-gray-900 {
-  @apply text-gray-100;
-}
-
-.dark .text-gray-800 {
-  @apply text-gray-200;
-}
-
-.dark .text-gray-700 {
-  @apply text-gray-300;
-}
-
-.dark .text-gray-600 {
-  @apply text-gray-400;
-}
-
-.dark .text-gray-500 {
-  @apply text-gray-400;
-}
-
-.dark .border-gray-200 {
-  @apply border-gray-700;
-}
-
-.dark .border-gray-300 {
-  @apply border-gray-600;
-}
-
-.dark .shadow-sm {
-  @apply shadow-gray-900/30;
-}
-
-.dark .shadow {
-  @apply shadow-gray-900/50;
-}
-
-.dark .shadow-lg {
-  @apply shadow-gray-900/60;
-}
-
-/* Status badges - keep colors in dark mode */
-.dark .bg-green-100 {
-  @apply bg-green-900/50;
-}
-
-.dark .bg-blue-100 {
-  @apply bg-blue-900/50;
-}
-
-.dark .bg-yellow-100 {
-  @apply bg-yellow-900/50;
-}
-
-.dark .bg-red-100 {
-  @apply bg-red-900/50;
-}
-
-.dark .bg-purple-100 {
-  @apply bg-purple-900/50;
-}
-
-.dark .bg-orange-100 {
-  @apply bg-orange-900/50;
-}
-
-.dark .bg-amber-50 {
-  @apply bg-amber-900/30;
-}
-
-.dark .border-amber-200 {
-  @apply border-amber-700;
-}
-
-/* Modal/overlay backgrounds */
-.dark .bg-black\/50 {
-  @apply bg-black/70;
-}
-
-/* Hover states */
-.dark .hover\:bg-gray-50:hover {
-  @apply bg-gray-700;
-}
-
-.dark .hover\:bg-gray-100:hover {
-  @apply bg-gray-700;
-}
 
 /* ============================================
    PWA & Mobile Optimizations
@@ -364,16 +200,6 @@ body {
   );
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
-}
-
-.dark .skeleton {
-  background: linear-gradient(
-    90deg,
-    #374151 25%,
-    #4b5563 50%,
-    #374151 75%
-  );
-  background-size: 200% 100%;
 }
 
 /* Offline indicator */

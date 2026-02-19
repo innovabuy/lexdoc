@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import api from '../../services/api';
-import { useToast } from '../../contexts/ToastContext';
+import { useState, useEffect } from'react';
+import api from'../../services/api';
+import { useToast } from'../../contexts/ToastContext';
 
 export default function NotificationSettings() {
   const { success, error: showError } = useToast();
@@ -12,7 +12,7 @@ export default function NotificationSettings() {
     emailDeadlines: true,
     emailMessages: true,
     emailDigest: false,
-    digestFrequency: 'DAILY',
+    digestFrequency:'DAILY',
     pushEnabled: true,
     pushSignatures: true,
     pushDocuments: true,
@@ -72,18 +72,18 @@ export default function NotificationSettings() {
     <>
       <div className="max-w-3xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-bold text-gray-900">
             Parametres de notifications
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-gray-600 mt-1">
             Gerez vos preferences de notifications par email et push
           </p>
         </div>
 
         <div className="space-y-6">
           {/* Email Notifications */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
               Notifications par email
             </h2>
 
@@ -113,7 +113,7 @@ export default function NotificationSettings() {
                 onChange={() => handleToggle('emailMessages')}
               />
 
-              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="pt-4 border-t border-gray-200">
                 <ToggleItem
                   label="Resume quotidien"
                   description="Recevoir un resume par email au lieu de notifications individuelles"
@@ -123,13 +123,13 @@ export default function NotificationSettings() {
 
                 {prefs.emailDigest && (
                   <div className="ml-12 mt-3">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Frequence
                     </label>
                     <select
                       value={prefs.digestFrequency}
                       onChange={(e) => handleChange('digestFrequency', e.target.value)}
-                      className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900"
                     >
                       <option value="DAILY">Quotidien</option>
                       <option value="WEEKLY">Hebdomadaire</option>
@@ -141,8 +141,8 @@ export default function NotificationSettings() {
           </div>
 
           {/* Push Notifications */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
               Notifications push
             </h2>
 
@@ -188,7 +188,7 @@ export default function NotificationSettings() {
               disabled={saving}
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
-              {saving ? 'Sauvegarde...' : 'Sauvegarder les preferences'}
+              {saving ?'Sauvegarde...' :'Sauvegarder les preferences'}
             </button>
           </div>
         </div>
@@ -201,21 +201,21 @@ function ToggleItem({ label, description, checked, onChange }) {
   return (
     <div className="flex items-center justify-between">
       <div className="flex-1">
-        <p className="font-medium text-gray-900 dark:text-white">{label}</p>
+        <p className="font-medium text-gray-900">{label}</p>
         {description && (
-          <p className="text-sm text-gray-500 dark:text-gray-400">{description}</p>
+          <p className="text-sm text-gray-500">{description}</p>
         )}
       </div>
       <button
         onClick={onChange}
         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-          checked ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
-        }`}
+ checked ?'bg-blue-600' :'bg-gray-300'
+ }`}
       >
         <span
           className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-            checked ? 'translate-x-6' : 'translate-x-1'
-          }`}
+ checked ?'translate-x-6' :'translate-x-1'
+ }`}
         />
       </button>
     </div>

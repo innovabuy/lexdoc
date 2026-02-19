@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import api from '../services/api';
-import DocumentUploader from '../components/documents/DocumentUploader';
-import DocumentVersions from '../components/documents/DocumentVersions';
-import DocumentPreview from '../components/documents/DocumentPreview';
+import { useState, useEffect, useCallback, useMemo } from'react';
+import { useSearchParams } from'react-router-dom';
+import api from'../services/api';
+import DocumentUploader from'../components/documents/DocumentUploader';
+import DocumentVersions from'../components/documents/DocumentVersions';
+import DocumentPreview from'../components/documents/DocumentPreview';
 
 // Hook for debouncing
 function useDebounce(value, delay) {
@@ -69,7 +69,7 @@ export default function Documents() {
 
   const fetchFolders = useCallback(async () => {
     try {
-      const params = currentFolderId ? `?parentId=${currentFolderId}` : '?parentId=root';
+      const params = currentFolderId ? `?parentId=${currentFolderId}` :'?parentId=root';
       const { data } = await api.get(`/folders${params}`);
       setFolders(data.data || []);
     } catch (error) {
@@ -113,13 +113,13 @@ export default function Documents() {
     try {
       setUploading(true);
       await api.post('/documents', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: {'Content-Type':'multipart/form-data' },
       });
       setShowUploadModal(false);
       fetchDocuments();
       e.target.reset();
     } catch (error) {
-      alert(error.response?.data?.error?.message || 'Erreur upload');
+      alert(error.response?.data?.error?.message ||'Erreur upload');
     } finally {
       setUploading(false);
     }
@@ -128,7 +128,7 @@ export default function Documents() {
   const handleDownload = async (doc) => {
     try {
       const response = await api.get(`/documents/${doc.id}/download`, {
-        responseType: 'blob',
+        responseType:'blob',
       });
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
@@ -144,7 +144,7 @@ export default function Documents() {
   };
 
   const handleDelete = async (doc) => {
-    if (!confirm(`Supprimer "${doc.name}" ?`)) return;
+    if (!confirm(`Supprimer"${doc.name}" ?`)) return;
     try {
       await api.delete(`/documents/${doc.id}`);
       fetchDocuments();
@@ -162,38 +162,38 @@ export default function Documents() {
   };
 
   const statusColors = {
-    DRAFT: 'bg-gray-100 text-gray-600',
-    PENDING_REVIEW: 'bg-orange-100 text-orange-700',
-    PENDING_SIGNATURE: 'bg-yellow-100 text-yellow-700',
-    SIGNED: 'bg-green-100 text-green-700',
-    SENT: 'bg-blue-100 text-blue-700',
-    ARCHIVED: 'bg-purple-100 text-purple-700',
-    CANCELLED: 'bg-red-100 text-red-700',
+    DRAFT:'bg-gray-100 text-gray-600',
+    PENDING_REVIEW:'bg-orange-100 text-orange-700',
+    PENDING_SIGNATURE:'bg-yellow-100 text-yellow-700',
+    SIGNED:'bg-green-100 text-green-700',
+    SENT:'bg-blue-100 text-blue-700',
+    ARCHIVED:'bg-purple-100 text-purple-700',
+    CANCELLED:'bg-red-100 text-red-700',
   };
 
   const statusLabels = {
-    DRAFT: 'Brouillon',
-    PENDING_REVIEW: 'En révision',
-    PENDING_SIGNATURE: 'En attente signature',
-    SIGNED: 'Signé',
-    SENT: 'Envoyé',
-    ARCHIVED: 'Archivé',
-    CANCELLED: 'Annulé',
+    DRAFT:'Brouillon',
+    PENDING_REVIEW:'En révision',
+    PENDING_SIGNATURE:'En attente signature',
+    SIGNED:'Signé',
+    SENT:'Envoyé',
+    ARCHIVED:'Archivé',
+    CANCELLED:'Annulé',
   };
 
   const typeLabels = {
-    CONTRACT: 'Contrat',
-    DEED: 'Acte',
-    LETTER: 'Courrier',
-    INVOICE: 'Facture',
-    RECEIPT: 'Reçu',
-    CERTIFICATE: 'Certificat',
-    REPORT: 'Rapport',
-    MINUTES: 'PV',
-    AMENDMENT: 'Avenant',
-    MEMORANDUM: 'Note',
-    POWER_OF_ATTORNEY: 'Procuration',
-    OTHER: 'Autre',
+    CONTRACT:'Contrat',
+    DEED:'Acte',
+    LETTER:'Courrier',
+    INVOICE:'Facture',
+    RECEIPT:'Reçu',
+    CERTIFICATE:'Certificat',
+    REPORT:'Rapport',
+    MINUTES:'PV',
+    AMENDMENT:'Avenant',
+    MEMORANDUM:'Note',
+    POWER_OF_ATTORNEY:'Procuration',
+    OTHER:'Autre',
   };
 
   const documentTypes = Object.keys(typeLabels);
@@ -214,7 +214,7 @@ export default function Documents() {
                 <span className="mx-2">/</span>
                 <button
                   onClick={() => navigateToFolder(folder.id)}
-                  className={idx === breadcrumb.length - 1 ? 'text-gray-800 font-medium' : 'hover:text-blue-600'}
+                  className={idx === breadcrumb.length - 1 ?'text-gray-800 font-medium' :'hover:text-blue-600'}
                 >
                   {folder.title}
                 </button>
@@ -239,19 +239,19 @@ export default function Documents() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
+      <div className="bg-white rounded-lg shadow p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <input
             type="text"
             placeholder="Rechercher..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <select
             value={selectedType}
             onChange={(e) => setSelectedType(e.target.value)}
-            className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">Tous les types</option>
             {documentTypes.map((type) => (
@@ -261,7 +261,7 @@ export default function Documents() {
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">Tous les statuts</option>
             {Object.keys(statusLabels).map((status) => (
@@ -288,7 +288,7 @@ export default function Documents() {
                 onClick={() => navigateToFolder(folder.id)}
                 className="p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow text-left"
               >
-                <div className="text-3xl mb-2" style={{ color: folder.color || '#3B82F6' }}>
+                <div className="text-3xl mb-2" style={{ color: folder.color ||'#3B82F6' }}>
                   📁
                 </div>
                 <p className="font-medium text-gray-800 truncate">{folder.title}</p>
@@ -347,7 +347,7 @@ export default function Documents() {
                               onClick={() => setShowVersionsModal(doc)}
                               className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
                             >
-                              v{doc.version || 1} · {doc.versionsCount || 0} version{(doc.versionsCount || 0) !== 1 ? 's' : ''}
+                              v{doc.version || 1} · {doc.versionsCount || 0} version{(doc.versionsCount || 0) !== 1 ?'s' :''}
                             </button>
                           )}
                         </div>
@@ -359,7 +359,7 @@ export default function Documents() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded text-sm ${statusColors[doc.status] || 'bg-gray-100'}`}>
+                      <span className={`px-2 py-1 rounded text-sm ${statusColors[doc.status] ||'bg-gray-100'}`}>
                         {statusLabels[doc.status] || doc.status}
                       </span>
                     </td>
@@ -512,23 +512,23 @@ function FolderModal({ parentId, onClose, onCreated }) {
       });
       onCreated();
     } catch (error) {
-      alert(error.response?.data?.error?.message || 'Erreur création dossier');
+      alert(error.response?.data?.error?.message ||'Erreur création dossier');
     } finally {
       setLoading(false);
     }
   };
 
   const folderTypes = [
-    { value: 'LITIGATION', label: 'Contentieux' },
-    { value: 'CONTRACT', label: 'Contrat' },
-    { value: 'BUSINESS', label: 'Affaires' },
-    { value: 'FAMILY', label: 'Famille' },
-    { value: 'REAL_ESTATE', label: 'Immobilier' },
-    { value: 'LABOR', label: 'Travail' },
-    { value: 'INTELLECTUAL', label: 'Propriété intellectuelle' },
-    { value: 'ADMINISTRATIVE', label: 'Administratif' },
-    { value: 'CRIMINAL', label: 'Pénal' },
-    { value: 'OTHER', label: 'Autre' },
+    { value:'LITIGATION', label:'Contentieux' },
+    { value:'CONTRACT', label:'Contrat' },
+    { value:'BUSINESS', label:'Affaires' },
+    { value:'FAMILY', label:'Famille' },
+    { value:'REAL_ESTATE', label:'Immobilier' },
+    { value:'LABOR', label:'Travail' },
+    { value:'INTELLECTUAL', label:'Propriété intellectuelle' },
+    { value:'ADMINISTRATIVE', label:'Administratif' },
+    { value:'CRIMINAL', label:'Pénal' },
+    { value:'OTHER', label:'Autre' },
   ];
 
   return (
@@ -558,7 +558,7 @@ function FolderModal({ parentId, onClose, onCreated }) {
               <option value="">Sélectionner un client</option>
               {clients.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.type === 'COMPANY' ? c.companyName : `${c.firstName} ${c.lastName}`}
+                  {c.type ==='COMPANY' ? c.companyName : `${c.firstName} ${c.lastName}`}
                 </option>
               ))}
             </select>
@@ -601,7 +601,7 @@ function FolderModal({ parentId, onClose, onCreated }) {
               disabled={loading}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
             >
-              {loading ? 'Création...' : 'Créer'}
+              {loading ?'Création...' :'Créer'}
             </button>
           </div>
         </form>
@@ -611,19 +611,19 @@ function FolderModal({ parentId, onClose, onCreated }) {
 }
 
 function getFileIcon(mimeType) {
-  if (!mimeType) return '📄';
-  if (mimeType.includes('pdf')) return '📕';
-  if (mimeType.includes('word') || mimeType.includes('document')) return '📘';
-  if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return '📗';
-  if (mimeType.includes('image')) return '🖼️';
-  if (mimeType.includes('text')) return '📝';
-  return '📄';
+  if (!mimeType) return'📄';
+  if (mimeType.includes('pdf')) return'📕';
+  if (mimeType.includes('word') || mimeType.includes('document')) return'📘';
+  if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return'📗';
+  if (mimeType.includes('image')) return'🖼️';
+  if (mimeType.includes('text')) return'📝';
+  return'📄';
 }
 
 function formatFileSize(bytes) {
-  if (!bytes) return '0 B';
+  if (!bytes) return'0 B';
   const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const sizes = ['B','KB','MB','GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) +'' + sizes[i];
 }

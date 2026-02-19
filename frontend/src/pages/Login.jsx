@@ -1,7 +1,7 @@
-import { useState, useContext, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { AuthContext } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
+import { useState, useContext, useEffect } from'react';
+import { useNavigate } from'react-router-dom';
+import { AuthContext } from'../contexts/AuthContext';
+import { useTheme } from'../contexts/ThemeContext';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -30,12 +30,12 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 transition-colors">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 transition-colors">
       {/* Theme toggle */}
       <button
         onClick={toggleTheme}
-        className="absolute top-4 right-4 p-2 rounded-lg text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-400 transition-colors"
-        title={isDark ? 'Mode clair' : 'Mode sombre'}
+        className="absolute top-4 right-4 p-2 rounded-lg text-gray-500 hover:bg-gray-200 transition-colors"
+        title={isDark ?'Mode clair' :'Mode sombre'}
       >
         {isDark ? (
           <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
@@ -50,17 +50,17 @@ export default function Login() {
 
       <div className="card max-w-md w-full">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">LexDoc</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-2">Connectez-vous a votre espace</p>
+          <h1 className="text-3xl font-bold text-gray-900">LexDoc</h1>
+          <p className="text-gray-500 mt-2">Connectez-vous a votre espace</p>
         </div>
         {error && (
-          <div className="bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 p-3 rounded-lg mb-4">
+          <div className="bg-red-100 text-red-700 p-3 rounded-lg mb-4">
             {error}
           </div>
         )}
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Email
             </label>
             <input
@@ -68,11 +68,11 @@ export default function Login() {
               placeholder="votre@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Mot de passe
             </label>
             <input
@@ -80,7 +80,7 @@ export default function Login() {
               placeholder="********"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
           <button type="submit" className="btn btn-primary w-full py-3">

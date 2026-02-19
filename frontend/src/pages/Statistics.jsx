@@ -1,37 +1,37 @@
-import { useState, useEffect } from 'react';
-import api from '../services/api';
+import { useState, useEffect } from'react';
+import api from'../services/api';
 
 const TYPE_LABELS = {
-  CONTRACT: 'Contrat',
-  DEED: 'Acte',
-  LETTER: 'Courrier',
-  INVOICE: 'Facture',
-  CERTIFICATE: 'Certificat',
-  REPORT: 'Rapport',
-  OTHER: 'Autre',
-  LITIGATION: 'Contentieux',
-  BUSINESS: 'Affaires',
-  FAMILY: 'Famille',
-  REAL_ESTATE: 'Immobilier',
-  LABOR: 'Travail',
-  INTELLECTUAL: 'PI',
-  ADMINISTRATIVE: 'Admin',
-  CRIMINAL: 'Penal',
+  CONTRACT:'Contrat',
+  DEED:'Acte',
+  LETTER:'Courrier',
+  INVOICE:'Facture',
+  CERTIFICATE:'Certificat',
+  REPORT:'Rapport',
+  OTHER:'Autre',
+  LITIGATION:'Contentieux',
+  BUSINESS:'Affaires',
+  FAMILY:'Famille',
+  REAL_ESTATE:'Immobilier',
+  LABOR:'Travail',
+  INTELLECTUAL:'PI',
+  ADMINISTRATIVE:'Admin',
+  CRIMINAL:'Penal',
 };
 
 const STATUS_LABELS = {
-  DRAFT: 'Brouillon',
-  PENDING_SIGNATURE: 'En attente',
-  SIGNED: 'Signe',
-  SENT: 'Envoye',
-  ARCHIVED: 'Archive',
-  OPEN: 'Ouvert',
-  IN_PROGRESS: 'En cours',
-  PENDING: 'En attente',
-  CLOSED: 'Ferme',
+  DRAFT:'Brouillon',
+  PENDING_SIGNATURE:'En attente',
+  SIGNED:'Signe',
+  SENT:'Envoye',
+  ARCHIVED:'Archive',
+  OPEN:'Ouvert',
+  IN_PROGRESS:'En cours',
+  PENDING:'En attente',
+  CLOSED:'Ferme',
 };
 
-const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16'];
+const COLORS = ['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#06B6D4','#84CC16'];
 
 export default function Statistics() {
   const [period, setPeriod] = useState('30');
@@ -88,11 +88,11 @@ export default function Statistics() {
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Statistiques</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Statistiques</h1>
           <select
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
-            className="px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
+            className="px-4 py-2 border rounded-lg"
           >
             <option value="7">7 derniers jours</option>
             <option value="30">30 derniers jours</option>
@@ -111,8 +111,8 @@ export default function Statistics() {
         {/* Charts Row 1 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Documents Timeline */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
               Documents crees ({period} jours)
             </h2>
             <div className="h-48">
@@ -121,8 +121,8 @@ export default function Statistics() {
           </div>
 
           {/* Activity Timeline */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
               Activite ({period} jours)
             </h2>
             <div className="h-48">
@@ -134,8 +134,8 @@ export default function Statistics() {
         {/* Charts Row 2 */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Document Types */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
               Types de documents
             </h2>
             <PieChart
@@ -147,8 +147,8 @@ export default function Statistics() {
           </div>
 
           {/* Folder Types */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
               Types de dossiers
             </h2>
             <PieChart
@@ -160,8 +160,8 @@ export default function Statistics() {
           </div>
 
           {/* Folder Status */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
               Statut des dossiers
             </h2>
             <PieChart
@@ -176,8 +176,8 @@ export default function Statistics() {
         {/* Stats Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Client Stats */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
               Clients
             </h2>
             <div className="grid grid-cols-2 gap-4">
@@ -191,18 +191,18 @@ export default function Statistics() {
           </div>
 
           {/* Top Actions */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
               Actions les plus frequentes
             </h2>
             <div className="space-y-2">
               {stats.activity?.topActions?.slice(0, 6).map((action, i) => (
                 <div key={action.action} className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-300">
+                  <span className="text-sm text-gray-600">
                     {formatAction(action.action)}
                   </span>
                   <div className="flex items-center gap-2">
-                    <div className="w-32 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
                       <div
                         className="h-full rounded-full"
                         style={{
@@ -211,7 +211,7 @@ export default function Statistics() {
                         }}
                       />
                     </div>
-                    <span className="text-sm font-medium text-gray-900 dark:text-white w-12 text-right">
+                    <span className="text-sm font-medium text-gray-900 w-12 text-right">
                       {action.count}
                     </span>
                   </div>
@@ -256,22 +256,22 @@ export default function Statistics() {
 // KPI Card Component
 function KPICard({ title, value, icon, color }) {
   const colorClasses = {
-    blue: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
-    green: 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400',
-    orange: 'bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400',
-    purple: 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
-    pink: 'bg-pink-50 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400',
+    blue:'bg-blue-50 text-blue-600',
+    green:'bg-green-50 text-green-600',
+    orange:'bg-orange-50 text-orange-600',
+    purple:'bg-purple-50 text-purple-600',
+    pink:'bg-pink-50 text-pink-600',
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
       <div className="flex items-center gap-3">
         <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg ${colorClasses[color]}`}>
           {icon}
         </div>
         <div>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">{title}</p>
+          <p className="text-2xl font-bold text-gray-900">{value}</p>
+          <p className="text-xs text-gray-500">{title}</p>
         </div>
       </div>
     </div>
@@ -281,15 +281,15 @@ function KPICard({ title, value, icon, color }) {
 // Stat Box Component
 function StatBox({ label, value }) {
   return (
-    <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 text-center">
-      <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
-      <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
+    <div className="bg-gray-50 rounded-lg p-3 text-center">
+      <p className="text-2xl font-bold text-gray-900">{value}</p>
+      <p className="text-xs text-gray-500">{label}</p>
     </div>
   );
 }
 
 // Simple Line Chart (SVG-based)
-function LineChart({ data, color = '#3B82F6' }) {
+function LineChart({ data, color ='#3B82F6' }) {
   if (!data || data.length === 0) {
     return <div className="flex items-center justify-center h-full text-gray-400">Pas de donnees</div>;
   }
@@ -299,7 +299,7 @@ function LineChart({ data, color = '#3B82F6' }) {
     const x = (i / (data.length - 1 || 1)) * 100;
     const y = 100 - (d.count / maxValue) * 80;
     return `${x},${y}`;
-  }).join(' ');
+  }).join('');
 
   return (
     <svg viewBox="0 0 100 100" className="w-full h-full" preserveAspectRatio="none">
@@ -368,8 +368,8 @@ function PieChart({ data }) {
         {data.slice(0, 5).map((d, i) => (
           <div key={i} className="flex items-center gap-2 text-sm">
             <div className="w-3 h-3 rounded" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-            <span className="text-gray-600 dark:text-gray-300 truncate flex-1">{d.label}</span>
-            <span className="text-gray-900 dark:text-white font-medium">{d.value}</span>
+            <span className="text-gray-600 truncate flex-1">{d.label}</span>
+            <span className="text-gray-900 font-medium">{d.value}</span>
           </div>
         ))}
       </div>
@@ -387,15 +387,15 @@ function polarToCartesian(cx, cy, r, angle) {
 
 function formatAction(action) {
   const labels = {
-    DOCUMENT_UPLOADED: 'Document televerse',
-    DOCUMENT_VIEWED: 'Document consulte',
-    DOCUMENT_DOWNLOADED: 'Document telecharge',
-    DOCUMENT_UPDATED: 'Document modifie',
-    FOLDER_CREATED: 'Dossier cree',
-    FOLDER_UPDATED: 'Dossier modifie',
-    SIGNATURE_REQUESTED: 'Signature demandee',
-    SIGNATURE_COMPLETED: 'Document signe',
-    LOGIN: 'Connexion',
+    DOCUMENT_UPLOADED:'Document televerse',
+    DOCUMENT_VIEWED:'Document consulte',
+    DOCUMENT_DOWNLOADED:'Document telecharge',
+    DOCUMENT_UPDATED:'Document modifie',
+    FOLDER_CREATED:'Dossier cree',
+    FOLDER_UPDATED:'Dossier modifie',
+    SIGNATURE_REQUESTED:'Signature demandee',
+    SIGNATURE_COMPLETED:'Document signe',
+    LOGIN:'Connexion',
   };
   return labels[action] || action;
 }

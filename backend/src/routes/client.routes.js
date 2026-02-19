@@ -148,7 +148,7 @@ router.get('/', async (req, res, next) => {
         include: {
           folders: {
             where: { deletedAt: null },
-            select: { id: true, status: true },
+            select: { id: true, title: true, type: true, nature: true, status: true, reference: true },
           },
         },
       }),
@@ -162,12 +162,15 @@ router.get('/', async (req, res, next) => {
         (f) => f.status !== 'ARCHIVED' && f.status !== 'CLOSED'
       ).length;
       const result = omitSensitiveFields(c, ['extranetPassword']);
+      const includeFolders = req.query.includeFolders === 'true';
+      const folderData = c.folders;
       delete result.folders;
       return {
         ...result,
         completeness: { percent, level },
         activeFolderCount: activeFolders,
-        totalFolderCount: c.folders.length,
+        totalFolderCount: c.folders ? c.folders.length : 0,
+        ...(includeFolders && { folders: folderData }),
       };
     });
 
@@ -461,6 +464,58 @@ router.get('/:id/folders', async (req, res, next) => {
       orderBy: { createdAt: 'desc' },
     });
     return res.json({ success: true, data: folders });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get client timeline (aggregated from all client folders)
+router.get('/:id/timeline', async (req, res, next) => {
+  try {
+    const client = await prisma.client.findFirst({
+      where: { id: req.params.id, tenantId: req.tenant.id, deletedAt: null },
+    });
+
+    if (!client) {
+      throw new NotFoundError('Client not found');
+    }
+
+    // Get all folders for this client
+    const folders = await prisma.folder.findMany({
+      where: { clientId: req.params.id, tenantId: req.tenant.id },
+      select: { id: true, title: true },
+    });
+
+    const folderIds = folders.map(f => f.id);
+
+    if (folderIds.length === 0) {
+      return successResponse(res, []);
+    }
+
+    // Get timeline events from all folders
+    const events = await prisma.timelineEvent.findMany({
+      where: { folderId: { in: folderIds } },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+      include: {
+        user: { select: { id: true, firstName: true, lastName: true } },
+        folder: { select: { id: true, title: true } },
+      },
+    });
+
+    // Enrich with userName and folderTitle
+    const enriched = events.map(evt => ({
+      id: evt.id,
+      type: evt.type,
+      description: evt.description,
+      metadata: evt.metadata,
+      createdAt: evt.createdAt,
+      folderId: evt.folderId,
+      folderTitle: evt.folder?.title || '',
+      userName: evt.user ? `${evt.user.firstName || ''} ${evt.user.lastName || ''}`.trim() : '',
+    }));
+
+    return successResponse(res, enriched);
   } catch (error) {
     next(error);
   }
