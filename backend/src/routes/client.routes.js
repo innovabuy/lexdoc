@@ -567,6 +567,20 @@ router.post('/:id/send-form', async (req, res, next) => {
       });
     }
 
+    // Send form completion email
+    const formLink = `${process.env.CLIENT_PORTAL_URL || process.env.FRONTEND_URL}/extranet/activate/${token}`;
+    try {
+      await emailService.sendFormCompletionEmail({
+        to: client.email,
+        clientName: client.companyName || `${client.firstName || ''} ${client.lastName || ''}`.trim() || 'Client',
+        tenantName: req.tenant.name,
+        formLink,
+        expiresIn: '7 jours',
+      });
+    } catch (emailError) {
+      logger.error('Failed to send form completion email:', emailError);
+    }
+
     logger.info('Client form sent', { clientId: client.id, email: client.email });
 
     return successResponse(res, {

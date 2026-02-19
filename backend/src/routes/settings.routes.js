@@ -254,9 +254,9 @@ router.get('/subscription', async (req, res, next) => {
 
     return successResponse(res, {
       subscriptionTier: tenant.subscriptionTier || 'TRIAL',
-      maxUsers: tenant.maxUsers || 5,
-      maxClients: tenant.maxClients || 50,
-      maxStorage: tenant.maxStorage || 1073741824, // 1GB default
+      maxUsers: Number(tenant.maxUsers || 5),
+      maxClients: Number(tenant.maxClients || 50),
+      maxStorage: Number(tenant.maxStorage || 1073741824), // 1GB default
       trialEndsAt: tenant.trialEndsAt,
       subscribedAt: tenant.subscribedAt,
       currentUsers: userCount,

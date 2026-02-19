@@ -209,6 +209,54 @@ class EmailService {
     });
   }
 
+  async sendFormCompletionEmail({ to, clientName, tenantName, formLink, expiresIn }) {
+    const subject = `${tenantName} - Formulaire de complétude à remplir`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #0066ff; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+          .button { display: inline-block; background: #0066ff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
+          .footer { text-align: center; color: #666; font-size: 12px; margin-top: 20px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>${tenantName}</h1>
+          </div>
+          <div class="content">
+            <p>Bonjour ${clientName},</p>
+            <p>Votre cabinet vous invite à compléter vos informations personnelles via un formulaire en ligne sécurisé.</p>
+            <p>Ces informations sont nécessaires pour le bon suivi de votre dossier.</p>
+            <p style="text-align: center;">
+              <a href="${formLink}" class="button">Compléter mes informations</a>
+            </p>
+            <p><small>Ce lien expire dans ${expiresIn}.</small></p>
+            <p>Cordialement,<br>${tenantName}</p>
+          </div>
+          <div class="footer">
+            <p>Cet email a été envoyé automatiquement via LexDoc.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    await this.transporter.sendMail({
+      from: process.env.SMTP_FROM || 'noreply@lexdoc.fr',
+      to,
+      subject,
+      html,
+    });
+  }
+
   async sendDocumentReady({ to, clientName, documentName, tenantName, portalLink }) {
     const subject = `${tenantName} - Nouveau document disponible`;
 

@@ -88,7 +88,7 @@ const create = async (req, res, next) => {
       throw new BadRequestError('File is required');
     }
 
-    const { folderId, name, type, description, tags, category } = req.body;
+    const { folderId, name, type, description, tags } = req.body;
 
     if (!folderId) {
       throw new BadRequestError('Folder ID is required');
@@ -364,7 +364,7 @@ const download = async (req, res, next) => {
 const update = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, description, tags, category, status, folderId } = req.body;
+    const { name, description, tags, status, folderId } = req.body;
 
     const document = await prisma.document.findFirst({
       where: {
@@ -415,7 +415,7 @@ const update = async (req, res, next) => {
         tenantId: req.tenant.id,
         ipAddress: req.ip || req.connection?.remoteAddress,
         userAgent: req.get('user-agent'),
-        changes: { name, description, tags, category, status, folderId },
+        changes: { name, description, tags, status, folderId },
       },
     });
 
