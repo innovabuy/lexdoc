@@ -276,6 +276,13 @@ body {
   font-size: 1.25rem;
 }
 
+.sidebar-logo-img {
+  height: 32px;
+  width: auto;
+  max-width: 120px;
+  object-fit: contain;
+}
+
 .sidebar-logo-text {
   font-size: 1.25rem;
   font-weight: 700;

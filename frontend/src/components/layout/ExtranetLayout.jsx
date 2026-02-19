@@ -1,6 +1,7 @@
 import { useContext } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { ExtranetAuthContext } from '../../contexts/ExtranetAuthContext';
+import api from '../../services/api';
 import './ExtranetLayout.css';
 
 export default function ExtranetLayout() {
@@ -8,6 +9,9 @@ export default function ExtranetLayout() {
   const navigate = useNavigate();
 
   const tenantName = access?.tenant?.name || 'Cabinet';
+  const tenantLogoUrl = access?.tenant?.id && access?.tenant?.logo
+    ? `${api.defaults.baseURL}/extranet/tenant/${access.tenant.id}/logo`
+    : null;
   const clientName = access?.client
     ? `${access.client.firstName || ''} ${access.client.lastName || ''}`.trim() || access.client.companyName || ''
     : access?.email || '';
@@ -23,7 +27,9 @@ export default function ExtranetLayout() {
       <header className="ext-header">
         <div className="ext-header-inner">
           <div className="ext-header-left">
-            <span className="ext-logo-icon">&#x1F537;</span>
+            {tenantLogoUrl
+              ? <img src={tenantLogoUrl} alt={tenantName} className="ext-logo-img" />
+              : <span className="ext-logo-icon">&#x1F537;</span>}
             <span className="ext-logo-text">{tenantName}</span>
           </div>
 

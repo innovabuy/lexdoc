@@ -1,6 +1,7 @@
 import { useContext, useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { AuthContext } from '../../contexts/AuthContext';
+import api from '../../services/api';
 import {
   LayoutDashboard,
   Users,
@@ -114,6 +115,19 @@ export default function Sidebar() {
     return () => { document.body.style.overflow = ''; };
   }, [mobileOpen]);
 
+  // Fetch cabinet logo
+  const [cabinetLogoUrl, setCabinetLogoUrl] = useState(null);
+  useEffect(() => {
+    if (!user) return;
+    api.get('/settings/logo', { responseType: 'blob', validateStatus: s => s < 500 })
+      .then(res => {
+        if (res.status === 200 && res.data?.size > 0) {
+          setCabinetLogoUrl(URL.createObjectURL(res.data));
+        }
+      })
+      .catch(() => {});
+  }, [user]);
+
   const initials = user
     ? `${(user.firstName || '')[0] || ''}${(user.lastName || '')[0] || ''}`.toUpperCase()
     : '?';
@@ -130,7 +144,9 @@ export default function Sidebar() {
     <div className="sidebar-inner">
       {/* Logo */}
       <div className="sidebar-logo">
-        <span className="sidebar-logo-icon">&#x1F537;</span>
+        {cabinetLogoUrl
+          ? <img src={cabinetLogoUrl} alt="Logo" className="sidebar-logo-img" />
+          : <span className="sidebar-logo-icon">&#x1F537;</span>}
         <span className="sidebar-logo-text">LexDoc</span>
         {mobileOpen && (
           <button className="sidebar-close-btn" onClick={closeMobile}>

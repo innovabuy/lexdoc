@@ -33,6 +33,13 @@
   font-size: 20px;
 }
 
+.ext-logo-img {
+  height: 32px;
+  width: auto;
+  max-width: 140px;
+  object-fit: contain;
+}
+
 .ext-logo-text {
   font-size: 18px;
   font-weight: 700;
