@@ -75,6 +75,32 @@ const authenticateClient = async (req, res, next) => {
 // PUBLIC ROUTES (no auth required)
 // ============================================================================
 
+// Serve tenant logo by tenant ID (public, for extranet pages)
+router.get('/tenant/:tenantId/logo', async (req, res, next) => {
+  try {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: req.params.tenantId },
+      select: { logo: true },
+    });
+    if (!tenant?.logo) {
+      return res.status(404).json({ success: false, error: { message: 'No logo found' } });
+    }
+
+    const storageService = require('../services/storage.service');
+    const buffer = await storageService.downloadFile(tenant.logo);
+    const ext = tenant.logo.split('.').pop().toLowerCase();
+    const mimeMap = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', svg: 'image/svg+xml', webp: 'image/webp', gif: 'image/gif' };
+    const contentType = mimeMap[ext] || 'application/octet-stream';
+
+    res.set('Content-Type', contentType);
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.set('Content-Length', buffer.length);
+    return res.send(buffer);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Activate account (set password)
 router.post('/activate', async (req, res, next) => {
   try {

@@ -219,15 +219,23 @@ router.delete('/logo', requireAdmin, async (req, res, next) => {
   }
 });
 
-// GET /api/settings/logo — Get logo URL
+// GET /api/settings/logo — Serve logo image directly
 router.get('/logo', async (req, res, next) => {
   try {
     const tenant = await prisma.tenant.findUnique({ where: { id: req.tenant.id } });
     if (!tenant?.logo) {
       return res.status(404).json({ success: false, error: { message: 'No logo found' } });
     }
-    const url = await storageService.generatePresignedUrl(tenant.logo, 3600);
-    return res.redirect(url);
+
+    const buffer = await storageService.downloadFile(tenant.logo);
+    const ext = tenant.logo.split('.').pop().toLowerCase();
+    const mimeMap = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', svg: 'image/svg+xml', webp: 'image/webp', gif: 'image/gif' };
+    const contentType = mimeMap[ext] || 'application/octet-stream';
+
+    res.set('Content-Type', contentType);
+    res.set('Cache-Control', 'public, max-age=3600');
+    res.set('Content-Length', buffer.length);
+    return res.send(buffer);
   } catch (error) {
     next(error);
   }

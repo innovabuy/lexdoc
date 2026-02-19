@@ -1,8 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
+import api from '../../services/api';
 import * as extranetApi from '../../services/extranetApi';
 import ExtranetProfileWizard from './ExtranetProfileWizard';
 import './ExtranetProfileWizard.css';
+
+function getTenantLogoUrl(tenantId) {
+  if (!tenantId) return null;
+  return `${api.defaults.baseURL}/extranet/tenant/${tenantId}/logo`;
+}
 
 export default function ExtranetFormPage() {
   const { token } = useParams();
@@ -72,7 +78,7 @@ export default function ExtranetFormPage() {
       <div className="efp-container">
         {tenant && (
           <div className="efp-header">
-            {tenant.logo && <img src={tenant.logo} alt={tenant.name} className="efp-logo" />}
+            {tenant.logo && <img src={getTenantLogoUrl(tenant.id)} alt={tenant.name} className="efp-logo" />}
             <span className="efp-tenant-name">{tenant.name}</span>
           </div>
         )}
@@ -91,7 +97,7 @@ export default function ExtranetFormPage() {
     <div className="efp-container">
       {tenant && (
         <div className="efp-header">
-          {tenant.logo && <img src={tenant.logo} alt={tenant.name} className="efp-logo" />}
+          {tenant.logo && <img src={getTenantLogoUrl(tenant.id)} alt={tenant.name} className="efp-logo" />}
           <span className="efp-tenant-name">{tenant.name}</span>
         </div>
       )}
