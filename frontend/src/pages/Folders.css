@@ -133,8 +133,8 @@
 }
 .folders-view-btn:not(:last-child) { border-right: 1px solid #e2e8f0; }
 .folders-view-btn:hover { background: #f8fafc; }
-.folders-view-btn--active { background: #2563eb; color: #fff; }
-.folders-view-btn--active:hover { background: #1d4ed8; }
+.folders-view-btn--active { background: #f97316; color: #fff; }
+.folders-view-btn--active:hover { background: #ea580c; color: #fff; }
 
 /* Loading & Empty */
 .folders-loading {
