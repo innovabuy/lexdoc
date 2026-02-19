@@ -48,12 +48,11 @@ export default function CabinetSettings() {
         setLegalInfo(null);
       }
 
-      // Try to get logo URL
+      // Fetch logo as blob
       if (d.tenant?.logo) {
         try {
-          const logoResp = await api.get('/settings/logo', { maxRedirects: 0, validateStatus: s => s < 400 });
-          // The response will be a redirect, but axios follows it
-          setLogoUrl(`${api.defaults.baseURL}/settings/logo?t=${Date.now()}`);
+          const logoResp = await api.get('/settings/logo', { responseType: 'blob' });
+          setLogoUrl(URL.createObjectURL(logoResp.data));
         } catch {
           setLogoUrl(null);
         }
@@ -125,7 +124,9 @@ export default function CabinetSettings() {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       success('Logo mis à jour');
-      setLogoUrl(`${api.defaults.baseURL}/settings/logo?t=${Date.now()}`);
+      // Fetch the new logo as blob to display it
+      const logoResp = await api.get('/settings/logo', { responseType: 'blob' });
+      setLogoUrl(URL.createObjectURL(logoResp.data));
     } catch (e) {
       showError('Erreur lors de l\'upload du logo');
     }
