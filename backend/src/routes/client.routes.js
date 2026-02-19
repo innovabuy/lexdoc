@@ -640,16 +640,19 @@ router.post('/:id/invite-extranet', async (req, res, next) => {
             tokenExpiresAt,
           },
         });
-      } else if (!existing.isActivated) {
+      } else {
+        // Reset access (whether activated or not) with a new token
         const folderToken = crypto.randomBytes(32).toString('hex');
         if (!firstFolderToken) firstFolderToken = folderToken;
         await prisma.clientAccess.update({
           where: { id: existing.id },
-          data: { activationToken: folderToken, tokenExpiresAt },
+          data: {
+            activationToken: folderToken,
+            tokenExpiresAt,
+            isActivated: false,
+            passwordHash: null,
+          },
         });
-      } else {
-        // Already activated — use its token reference if first
-        if (!firstFolderToken) firstFolderToken = existing.activationToken;
       }
     }
 

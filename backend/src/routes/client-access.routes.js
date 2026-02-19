@@ -133,17 +133,19 @@ router.post('/invite', async (req, res, next) => {
     });
 
     if (existingAccess) {
-      if (existingAccess.isActivated) {
-        throw new BadRequestError('This email already has access to this folder');
-      }
-      // Resend invitation for non-activated access
+      // Reset access (whether activated or not) with a new token
       const activationToken = crypto.randomBytes(32).toString('hex');
       const tokenExpiresAt = new Date();
       tokenExpiresAt.setDate(tokenExpiresAt.getDate() + 7); // 7 days
 
       await prisma.clientAccess.update({
         where: { id: existingAccess.id },
-        data: { activationToken, tokenExpiresAt },
+        data: {
+          activationToken,
+          tokenExpiresAt,
+          isActivated: false,
+          passwordHash: null,
+        },
       });
 
       // Send invitation email
@@ -230,23 +232,27 @@ router.post('/:id/resend', async (req, res, next) => {
       where: {
         id: req.params.id,
         folder: { tenantId: req.tenant.id },
-        isActivated: false,
       },
       include: {
         folder: { include: { client: true, tenant: true } },
       },
     });
 
-    if (!access) throw new NotFoundError('Client access not found or already activated');
+    if (!access) throw new NotFoundError('Client access not found');
 
-    // Generate new token
+    // Generate new token and reset account
     const activationToken = crypto.randomBytes(32).toString('hex');
     const tokenExpiresAt = new Date();
     tokenExpiresAt.setDate(tokenExpiresAt.getDate() + 7);
 
     await prisma.clientAccess.update({
       where: { id: req.params.id },
-      data: { activationToken, tokenExpiresAt },
+      data: {
+        activationToken,
+        tokenExpiresAt,
+        isActivated: false,
+        passwordHash: null,
+      },
     });
 
     // Send invitation email
