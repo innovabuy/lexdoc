@@ -156,6 +156,9 @@ export default function FolderDetailPage() {
   const [duplicateInfo, setDuplicateInfo] = useState(null);
   const [templateGenerating, setTemplateGenerating] = useState(false);
 
+  // Edit metadata modal
+  const [editMetaDoc, setEditMetaDoc] = useState(null);
+
   // Signature / Registered mail modals
   const [signatureDoc, setSignatureDoc] = useState(null);
   const [registeredMailDoc, setRegisteredMailDoc] = useState(null);
@@ -243,6 +246,16 @@ export default function FolderDetailPage() {
       fetchDocs();
     } catch {
       showError('Erreur');
+    }
+  };
+
+  const handleDuplicate = async (doc) => {
+    try {
+      await api.post(`/documents/${doc.id}/duplicate`);
+      success('Document duplique avec succes');
+      fetchDocs();
+    } catch (e) {
+      showError(e.response?.data?.message || 'Erreur lors de la duplication');
     }
   };
 
@@ -503,6 +516,8 @@ export default function FolderDetailPage() {
               onCreateFromTemplate={() => setShowTemplateSelect(true)}
               onSendForSignature={(doc) => setSignatureDoc(doc)}
               onSendRegistered={(doc, type) => { setRegisteredMailDoc(doc); setRegisteredMailType(type || 'LRAR'); }}
+              onDuplicate={handleDuplicate}
+              onEditMeta={(doc) => setEditMetaDoc(doc)}
               contextMenu={contextMenu}
               setContextMenu={setContextMenu}
               showNewCat={showNewCat}
@@ -533,6 +548,24 @@ export default function FolderDetailPage() {
           onClose={() => setShowUpload(false)}
           onSuccess={() => { setShowUpload(false); fetchDocs(); success('Document televerse'); }}
           onError={(msg) => showError(msg)}
+        />
+      )}
+
+      {/* Edit Metadata Modal */}
+      {editMetaDoc && (
+        <EditMetadataModal
+          doc={editMetaDoc}
+          onClose={() => setEditMetaDoc(null)}
+          onSave={async (data) => {
+            try {
+              await api.put(`/documents/${editMetaDoc.id}`, data);
+              success('Document modifie');
+              setEditMetaDoc(null);
+              fetchDocs();
+            } catch (e) {
+              showError(e.response?.data?.message || 'Erreur de mise a jour');
+            }
+          }}
         />
       )}
 
@@ -803,7 +836,7 @@ function InfoTab({ folder, editField, editValue, setEditField, setEditValue, han
 function DocumentsTab({
   docData, loading, expandedCats, setExpandedCats,
   onToggleExtranet, onDownload, onPreview, onUpload, onCreateFromTemplate,
-  onSendForSignature, onSendRegistered,
+  onSendForSignature, onSendRegistered, onDuplicate, onEditMeta,
   contextMenu, setContextMenu,
   showNewCat, setShowNewCat, newCatName, setNewCatName, onAddCategory,
 }) {
@@ -916,6 +949,8 @@ function DocumentsTab({
                             onToggleExtranet={onToggleExtranet}
                             onSendForSignature={onSendForSignature}
                             onSendRegistered={onSendRegistered}
+                            onDuplicate={onDuplicate}
+                            onEditMeta={onEditMeta}
                             contextMenu={contextMenu}
                             setContextMenu={setContextMenu}
                           />
@@ -967,6 +1002,8 @@ function DocumentsTab({
                         onToggleExtranet={onToggleExtranet}
                         onSendForSignature={onSendForSignature}
                         onSendRegistered={onSendRegistered}
+                        onDuplicate={onDuplicate}
+                        onEditMeta={onEditMeta}
                         contextMenu={contextMenu}
                         setContextMenu={setContextMenu}
                       />
@@ -983,7 +1020,7 @@ function DocumentsTab({
 }
 
 /* ── Document Row ── */
-function DocumentRow({ doc, onPreview, onDownload, onToggleExtranet, onSendForSignature, onSendRegistered, contextMenu, setContextMenu }) {
+function DocumentRow({ doc, onPreview, onDownload, onToggleExtranet, onSendForSignature, onSendRegistered, onDuplicate, onEditMeta, contextMenu, setContextMenu }) {
   const iconType = getDocIcon(doc.mimeType);
   const iconColors = {
     pdf: '#EF4444', word: '#2563EB', excel: '#16A34A', image: '#8B5CF6', doc: '#6B7280',
@@ -1039,6 +1076,14 @@ function DocumentRow({ doc, onPreview, onDownload, onToggleExtranet, onSendForSi
           {showMenu && (
             <>
               <div className="fdp-ctx-menu">
+                <button className="fdp-ctx-item" onClick={() => { setShowMenu(false); onDuplicate(doc); }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                  Dupliquer
+                </button>
+                <button className="fdp-ctx-item" onClick={() => { setShowMenu(false); onEditMeta(doc); }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  Modifier
+                </button>
                 <button className="fdp-ctx-item" onClick={() => { setShowMenu(false); onSendForSignature(doc); }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                   Envoyer a la signature
@@ -1295,6 +1340,100 @@ function TimelineTab({ events, loading, onRefresh }) {
             ))}
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════
+   EDIT METADATA MODAL
+   ══════════════════════════════════════════════════════ */
+function EditMetadataModal({ doc, onClose, onSave }) {
+  const [name, setName] = useState(doc.name || '');
+  const [type, setType] = useState(doc.type || 'OTHER');
+  const [description, setDescription] = useState(doc.description || '');
+  const [tagsText, setTagsText] = useState((doc.tags || []).join(', '));
+  const [saving, setSaving] = useState(false);
+
+  const docTypes = [
+    { value: 'COURRIER', label: 'Courrier' },
+    { value: 'CONTRAT', label: 'Contrat' },
+    { value: 'CONCLUSIONS', label: 'Conclusions' },
+    { value: 'PIECE', label: 'Piece' },
+    { value: 'ACTE', label: 'Acte' },
+    { value: 'FACTURE', label: 'Facture' },
+    { value: 'OTHER', label: 'Autre' },
+  ];
+
+  const handleSubmit = async () => {
+    setSaving(true);
+    const tagsArray = tagsText.split(',').map(t => t.trim()).filter(Boolean);
+    await onSave({ name, type, description, tags: tagsArray.join(',') });
+    setSaving(false);
+  };
+
+  return (
+    <div className="fdp-modal-overlay" onClick={onClose}>
+      <div className="fdp-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="fdp-modal-header">
+          <h2>Modifier le document</h2>
+          <button onClick={onClose} className="fdp-modal-close">&times;</button>
+        </div>
+        <div className="fdp-modal-body">
+          <div className="fdp-upload-fields">
+            <div className="fdp-field">
+              <label>Nom</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="fdp-input"
+                autoFocus
+              />
+            </div>
+            <div className="fdp-field">
+              <label>Type</label>
+              <select
+                value={type}
+                onChange={(e) => setType(e.target.value)}
+                className="fdp-input"
+              >
+                {docTypes.map(dt => (
+                  <option key={dt.value} value={dt.value}>{dt.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="fdp-field">
+              <label>Description</label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="fdp-input"
+                rows={3}
+              />
+            </div>
+            <div className="fdp-field">
+              <label>Tags (separes par des virgules)</label>
+              <input
+                type="text"
+                value={tagsText}
+                onChange={(e) => setTagsText(e.target.value)}
+                placeholder="tag1, tag2, tag3"
+                className="fdp-input"
+              />
+            </div>
+          </div>
+        </div>
+        <div className="fdp-modal-footer">
+          <button onClick={onClose} className="fdp-btn fdp-btn-secondary">Annuler</button>
+          <button
+            onClick={handleSubmit}
+            disabled={saving || !name.trim()}
+            className="fdp-btn fdp-btn-primary"
+          >
+            {saving ? 'Enregistrement...' : 'Enregistrer'}
+          </button>
+        </div>
       </div>
     </div>
   );

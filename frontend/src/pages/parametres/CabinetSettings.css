@@ -126,7 +126,29 @@
   cursor: pointer; padding: 2px;
 }
 
+/* Legal info preview */
+.cab-legal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+.cab-legal-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cab-legal-label {
+  font-size: 0.75rem;
+  color: #6B7280;
+  font-weight: 500;
+}
+.cab-legal-value {
+  font-size: 0.875rem;
+  color: #111827;
+}
+
 @media (max-width: 640px) {
   .cab-row, .cab-row-3 { grid-template-columns: 1fr; }
   .cab-logo-area { flex-direction: column; align-items: flex-start; }
+  .cab-legal-grid { grid-template-columns: 1fr; }
 }

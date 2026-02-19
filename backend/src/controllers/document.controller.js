@@ -848,6 +848,93 @@ const toggleExtranet = async (req, res, next) => {
   }
 };
 
+/**
+ * Duplicate a document (copy S3 object + create new record)
+ */
+const duplicate = async (req, res, next) => {
+  try {
+    const document = await prisma.document.findFirst({
+      where: {
+        id: req.params.id,
+        tenantId: req.tenant.id,
+        deletedAt: null,
+      },
+    });
+
+    if (!document) {
+      throw new NotFoundError('Document not found');
+    }
+
+    // Copy the S3 object to a new key
+    const newObjectKey = `${req.tenant.id}/documents/${Date.now()}-copie-${document.filename}`;
+    await storageService.copyFile(document.objectKey, newObjectKey);
+
+    // Create a new document record with same metadata
+    const newDoc = await prisma.document.create({
+      data: {
+        name: 'Copie de ' + document.name,
+        description: document.description,
+        type: document.type,
+        category: document.category,
+        tags: document.tags,
+        filename: newObjectKey.split('/').pop(),
+        originalName: document.originalName,
+        mimeType: document.mimeType,
+        size: document.size,
+        checksum: document.checksum,
+        bucketName: document.bucketName,
+        objectKey: newObjectKey,
+        isEncrypted: document.isEncrypted,
+        folderId: document.folderId,
+        tenantId: req.tenant.id,
+        createdById: req.user.id,
+        status: 'DRAFT',
+      },
+      include: {
+        folder: { select: { id: true, title: true } },
+        createdBy: { select: { firstName: true, lastName: true } },
+      },
+    });
+
+    // Create audit log
+    await prisma.auditLog.create({
+      data: {
+        action: 'DOCUMENT_DUPLICATED',
+        entityType: 'Document',
+        entityId: newDoc.id,
+        userId: req.user.id,
+        tenantId: req.tenant.id,
+        ipAddress: req.ip || req.connection?.remoteAddress,
+        userAgent: req.get('user-agent'),
+        metadata: { sourceDocumentId: document.id },
+      },
+    });
+
+    // Timeline event
+    if (document.folderId) {
+      await timeline.addEvent({
+        folderId: document.folderId,
+        type: 'document_cree',
+        description: `Document "${newDoc.name}" dupliqué depuis "${document.name}"`,
+        userId: req.user.id,
+        documentId: newDoc.id,
+        metadata: { sourceDocumentId: document.id },
+      });
+    }
+
+    logger.info('Document duplicated', {
+      sourceId: document.id,
+      newDocumentId: newDoc.id,
+      userId: req.user.id,
+      tenantId: req.tenant.id,
+    });
+
+    return successResponse(res, omitSensitiveFields(newDoc), 'Document duplicated successfully', 201);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   list,
   create,
@@ -863,4 +950,5 @@ module.exports = {
   bulkDownload,
   bulkDelete,
   toggleExtranet,
+  duplicate,
 };

@@ -1235,6 +1235,15 @@ router.get('/me/folders/:folderId/documents', authenticateClient, async (req, re
         createdAt: true,
         originalName: true,
         size: true,
+        signatures: {
+          select: {
+            id: true,
+            signerEmail: true,
+            signerName: true,
+            signatureUrl: true,
+            status: true,
+          },
+        },
       },
     });
 
@@ -1242,6 +1251,7 @@ router.get('/me/folders/:folderId/documents', authenticateClient, async (req, re
     const serializable = documents.map(d => ({
       ...d,
       size: d.size != null ? Number(d.size) : null,
+      signatures: d.signatures || [],
     }));
 
     return successResponse(res, serializable);

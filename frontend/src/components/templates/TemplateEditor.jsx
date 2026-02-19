@@ -66,6 +66,63 @@ function extractVarsFromText(text) {
   return Array.from(vars);
 }
 
+/* ── Highlighted textarea with variable syntax coloring ── */
+function HighlightedTextarea({ value, onChange, onFocus, placeholder, rows, textareaRef }) {
+  const highlightRef = useRef(null);
+
+  const handleScroll = (e) => {
+    if (highlightRef.current) {
+      highlightRef.current.scrollTop = e.target.scrollTop;
+      highlightRef.current.scrollLeft = e.target.scrollLeft;
+    }
+  };
+
+  const getHighlightedHtml = (text) => {
+    if (!text) return '';
+    // Escape HTML first
+    let html = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    // Highlight block helpers (#if, #each, /if, /each) in green
+    html = html.replace(/(\{\{)(#(?:if|each|unless)|\/(?:if|each|unless))(\s[^}]*)?(}})/g,
+      '<span class="te-hl-block">$1$2$3$4</span>');
+
+    // Highlight helpers (uppercase, lowercase, etc.) in violet
+    html = html.replace(/(\{\{)((?:uppercase|lowercase|formatDate|formatCurrency)\s+[^}]*)(}})/g,
+      '<span class="te-hl-helper">$1$2$3</span>');
+
+    // Highlight regular variables in blue (must not start with # or /)
+    html = html.replace(/(\{\{)([^}#/][^}]*)(}})/g,
+      '<span class="te-hl-var">$1$2$3</span>');
+
+    // Add trailing newline to keep heights in sync
+    html += '\n';
+    return html;
+  };
+
+  return (
+    <div className="te-highlighted-wrap">
+      <div
+        ref={highlightRef}
+        className="te-highlighted-backdrop"
+        dangerouslySetInnerHTML={{ __html: getHighlightedHtml(value || '') }}
+      />
+      <textarea
+        ref={textareaRef}
+        className="te-highlighted-textarea"
+        value={value}
+        onChange={onChange}
+        onFocus={onFocus}
+        onScroll={handleScroll}
+        placeholder={placeholder}
+        rows={rows}
+      />
+    </div>
+  );
+}
+
 export default function TemplateEditor({ templateId, onClose, onSaved }) {
   const [template, setTemplate] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -864,9 +921,8 @@ function SortableBlock({ item, index, onRemove, onContentChange, onTitleChange, 
                   <span className="te-free-block-var-count">{contentVars.length} variable{contentVars.length > 1 ? 's' : ''}</span>
                 )}
               </div>
-              <textarea
-                ref={freeBlockRef}
-                className="te-free-block-textarea"
+              <HighlightedTextarea
+                textareaRef={freeBlockRef}
                 value={item.content}
                 onChange={(e) => onContentChange(e.target.value)}
                 onFocus={onFocus}

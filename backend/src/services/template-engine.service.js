@@ -2,6 +2,7 @@ const Docxtemplater = require('docxtemplater');
 const PizZip = require('pizzip');
 const prisma = require('../config/database');
 const logger = require('../config/logger');
+const storageService = require('./storage.service');
 
 /**
  * Collect all available data for template rendering from a folder
@@ -46,11 +47,35 @@ async function collectData(folderId, tenantId) {
 
   const postulant = persons.find(p => p.role === 'POSTULANT') || {};
 
+  // Generate presigned URL for logo
+  let logoUrl = '';
+  if (tenant.logo) {
+    try {
+      logoUrl = await storageService.generatePresignedUrl(tenant.logo, 3600);
+    } catch (e) {
+      logger.warn('Failed to generate presigned URL for logo', { error: e.message });
+    }
+  }
+
   // Build full address for client
   const clientAddress = [client.address, client.addressLine2, client.postalCode, client.city]
     .filter(Boolean).join(', ');
 
+  const [avocatLegalInfo, logoBuffer] = await Promise.all([
+    prisma.avocatLegalInfo.findUnique({ where: { tenantId } }).catch(() => null),
+    tenant.logo
+      ? storageService.downloadFile(tenant.logo).catch((e) => {
+          logger.warn('Failed to download logo binary', { error: e.message });
+          return null;
+        })
+      : Promise.resolve(null),
+  ]);
+
   const data = {
+    _branding: {
+      logoBuffer,
+      mentionsLegales: avocatLegalInfo?.mentionsLegales || null,
+    },
     cabinet: {
       nom: tenant.name || '',
       raison_sociale: tenant.legalName || tenant.name || '',
@@ -60,7 +85,7 @@ async function collectData(folderId, tenantId) {
       siret: tenant.siret || '',
       toque: tenant.toque || '',
       barreau: tenant.barreau || '',
-      logo: tenant.logo || '',
+      logo: logoUrl,
       site: tenant.website || '',
       cp: tenant.postalCode || '',
       ville: tenant.city || '',
@@ -161,6 +186,16 @@ async function collectBasicData(tenantId, userId) {
     });
   }
 
+  // Generate presigned URL for logo
+  let logoUrl = '';
+  if (tenant.logo) {
+    try {
+      logoUrl = await storageService.generatePresignedUrl(tenant.logo, 3600);
+    } catch (e) {
+      // Silently fail — logo just won't appear
+    }
+  }
+
   return {
     cabinet: {
       nom: tenant.name || '',
@@ -173,7 +208,7 @@ async function collectBasicData(tenantId, userId) {
       siret: tenant.siret || '',
       toque: tenant.toque || '',
       barreau: tenant.barreau || '',
-      logo: tenant.logo || '',
+      logo: logoUrl,
       site: tenant.website || '',
     },
     avocat: {
@@ -260,10 +295,228 @@ function generateDocument(templateBuffer, data) {
 
   doc.render(renderData);
 
-  return doc.getZip().generate({
+  const buffer = doc.getZip().generate({
     type: 'nodebuffer',
     compression: 'DEFLATE',
   });
+
+  if (data._branding) {
+    return applyBranding(buffer, data);
+  }
+
+  return buffer;
+}
+
+/**
+ * Post-process a DOCX buffer to inject branding: logo in header, mentions légales in footer.
+ */
+function applyBranding(docBuffer, data) {
+  const branding = data._branding;
+  if (!branding) return docBuffer;
+
+  const hasLogo = !!branding.logoBuffer;
+  const hasMentions = !!branding.mentionsLegales;
+  if (!hasLogo && !hasMentions) return docBuffer;
+
+  const zip = new PizZip(docBuffer);
+
+  if (hasLogo) {
+    zip.file('word/media/image1.png', branding.logoBuffer);
+
+    zip.file('word/header1.xml', [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"',
+      '       xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"',
+      '       xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"',
+      '       xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"',
+      '       xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">',
+      '  <w:p>',
+      '    <w:pPr><w:jc w:val="left"/></w:pPr>',
+      '    <w:r>',
+      '      <w:drawing>',
+      '        <wp:inline distT="0" distB="0" distL="0" distR="0">',
+      '          <wp:extent cx="1800000" cy="600000"/>',
+      '          <wp:docPr id="1" name="Logo"/>',
+      '          <a:graphic>',
+      '            <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">',
+      '              <pic:pic>',
+      '                <pic:nvPicPr>',
+      '                  <pic:cNvPr id="1" name="image1.png"/>',
+      '                  <pic:cNvPicPr/>',
+      '                </pic:nvPicPr>',
+      '                <pic:blipFill>',
+      '                  <a:blip r:embed="rId1"/>',
+      '                  <a:stretch><a:fillRect/></a:stretch>',
+      '                </pic:blipFill>',
+      '                <pic:spPr>',
+      '                  <a:xfrm>',
+      '                    <a:off x="0" y="0"/>',
+      '                    <a:ext cx="1800000" cy="600000"/>',
+      '                  </a:xfrm>',
+      '                  <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>',
+      '                </pic:spPr>',
+      '              </pic:pic>',
+      '            </a:graphicData>',
+      '          </a:graphic>',
+      '        </wp:inline>',
+      '      </w:drawing>',
+      '    </w:r>',
+      '  </w:p>',
+      '</w:hdr>',
+    ].join('\n'));
+
+    zip.file('word/_rels/header1.xml.rels', [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+      '  <Relationship Id="rId1"',
+      '    Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"',
+      '    Target="../media/image1.png"/>',
+      '</Relationships>',
+    ].join('\n'));
+  }
+
+  if (hasMentions) {
+    const escapedMentions = branding.mentionsLegales
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    zip.file('word/footer1.xml', [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">',
+      '  <w:p>',
+      '    <w:pPr>',
+      '      <w:jc w:val="center"/>',
+      '      <w:rPr><w:sz w:val="16"/><w:szCs w:val="16"/></w:rPr>',
+      '    </w:pPr>',
+      '    <w:r>',
+      '      <w:rPr><w:sz w:val="16"/><w:szCs w:val="16"/></w:rPr>',
+      `      <w:t xml:space="preserve">${escapedMentions}</w:t>`,
+      '    </w:r>',
+      '  </w:p>',
+      '</w:ftr>',
+    ].join('\n'));
+  }
+
+  ensureContentTypes(zip);
+  ensureDocumentRels(zip, hasLogo, hasMentions);
+  ensureSectPr(zip, hasLogo, hasMentions);
+
+  return zip.generate({ type: 'nodebuffer', compression: 'DEFLATE' });
+}
+
+function ensureContentTypes(zip) {
+  const ctFile = '[Content_Types].xml';
+  const ctXml = zip.file(ctFile)?.asText();
+  if (!ctXml) return;
+
+  let updated = ctXml;
+
+  if (!updated.includes('Extension="png"')) {
+    updated = updated.replace(
+      '</Types>',
+      '  <Default Extension="png" ContentType="image/png"/>\n</Types>'
+    );
+  }
+
+  if (!updated.includes('PartName="/word/header1.xml"') && zip.file('word/header1.xml')) {
+    updated = updated.replace(
+      '</Types>',
+      '  <Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>\n</Types>'
+    );
+  }
+
+  if (!updated.includes('PartName="/word/footer1.xml"') && zip.file('word/footer1.xml')) {
+    updated = updated.replace(
+      '</Types>',
+      '  <Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>\n</Types>'
+    );
+  }
+
+  zip.file(ctFile, updated);
+}
+
+function ensureDocumentRels(zip, hasLogo, hasMentions) {
+  const relsPath = 'word/_rels/document.xml.rels';
+  let relsXml = zip.file(relsPath)?.asText();
+  if (!relsXml) return;
+
+  const headerType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/header';
+  const footerType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer';
+
+  const existingIds = [...relsXml.matchAll(/Id="(rId\d+)"/g)].map(m => m[1]);
+  let nextId = Math.max(0, ...existingIds.map(id => parseInt(id.replace('rId', ''), 10))) + 1;
+
+  let headerRelId = null;
+  let footerRelId = null;
+
+  if (hasLogo && !relsXml.includes('Target="header1.xml"')) {
+    headerRelId = `rId${nextId++}`;
+    relsXml = relsXml.replace(
+      '</Relationships>',
+      `  <Relationship Id="${headerRelId}" Type="${headerType}" Target="header1.xml"/>\n</Relationships>`
+    );
+  } else if (hasLogo) {
+    const match = relsXml.match(/Id="(rId\d+)"[^>]*Target="header1\.xml"/);
+    if (match) headerRelId = match[1];
+  }
+
+  if (hasMentions && !relsXml.includes('Target="footer1.xml"')) {
+    footerRelId = `rId${nextId++}`;
+    relsXml = relsXml.replace(
+      '</Relationships>',
+      `  <Relationship Id="${footerRelId}" Type="${footerType}" Target="footer1.xml"/>\n</Relationships>`
+    );
+  } else if (hasMentions) {
+    const match = relsXml.match(/Id="(rId\d+)"[^>]*Target="footer1\.xml"/);
+    if (match) footerRelId = match[1];
+  }
+
+  zip.file(relsPath, relsXml);
+
+  zip._brandingRels = { headerRelId, footerRelId };
+}
+
+function ensureSectPr(zip, hasLogo, hasMentions) {
+  const docPath = 'word/document.xml';
+  let docXml = zip.file(docPath)?.asText();
+  if (!docXml) return;
+
+  const { headerRelId, footerRelId } = zip._brandingRels || {};
+
+  let headerRef = '';
+  if (hasLogo && headerRelId && !docXml.includes('w:headerReference')) {
+    headerRef = `<w:headerReference w:type="default" r:id="${headerRelId}"/>`;
+  }
+
+  let footerRef = '';
+  if (hasMentions && footerRelId && !docXml.includes('w:footerReference')) {
+    footerRef = `<w:footerReference w:type="default" r:id="${footerRelId}"/>`;
+  }
+
+  if (!headerRef && !footerRef) {
+    delete zip._brandingRels;
+    return;
+  }
+
+  const refs = headerRef + footerRef;
+
+  if (docXml.includes('<w:sectPr')) {
+    docXml = docXml.replace(/<w:sectPr([^>]*?)(\/>|>)/, (match, attrs, closing) => {
+      if (closing === '/>') {
+        return `<w:sectPr${attrs}>${refs}</w:sectPr>`;
+      }
+      return `<w:sectPr${attrs}>${refs}`;
+    });
+  } else {
+    docXml = docXml.replace(
+      '</w:body>',
+      `<w:sectPr>${refs}</w:sectPr></w:body>`
+    );
+  }
+
+  zip.file(docPath, docXml);
+  delete zip._brandingRels;
 }
 
 /**
@@ -274,7 +527,9 @@ function flattenObject(obj, prefix) {
   const result = {};
   for (const [key, value] of Object.entries(obj)) {
     const newKey = prefix ? `${prefix}_${key}` : key;
-    if (value && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
+    if (key === '_branding' || Buffer.isBuffer(value)) {
+      continue;
+    } else if (value && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
       Object.assign(result, flattenObject(value, newKey));
     } else if (!Array.isArray(value)) {
       result[newKey] = value;
@@ -307,6 +562,7 @@ module.exports = {
   collectBasicData,
   findMissingFields,
   generateDocument,
+  applyBranding,
   mergeAdditionalData,
   getNestedValue,
   flattenObject,

@@ -154,6 +154,21 @@
   cursor: not-allowed;
 }
 
+.exf-sign-btn {
+  padding: 6px 16px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.exf-sign-btn:hover {
+  background: #1d4ed8;
+}
+
 @media (max-width: 640px) {
   .exf-row {
     flex-wrap: wrap;

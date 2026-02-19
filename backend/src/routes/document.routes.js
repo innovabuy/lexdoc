@@ -61,4 +61,7 @@ router.post('/:id/restore', documentController.restore);
 // Extranet visibility toggle
 router.patch('/:id/extranet', documentController.toggleExtranet);
 
+// Duplicate document
+router.post('/:id/duplicate', documentController.duplicate);
+
 module.exports = router;

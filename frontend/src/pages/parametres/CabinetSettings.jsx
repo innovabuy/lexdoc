@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../contexts/ToastContext';
 import api from '../../services/api';
 import {
-  Building2, Mail, Shield, Bell, Upload, Trash2, ChevronDown, Save, Image,
+  Building2, Mail, Shield, Bell, Upload, Trash2, ChevronDown, Save, Image, Scale,
 } from 'lucide-react';
 import './CabinetSettings.css';
 
 export default function CabinetSettings() {
+  const navigate = useNavigate();
   const { success, error: showError } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -14,8 +16,11 @@ export default function CabinetSettings() {
 
   // Sections open/closed
   const [sections, setSections] = useState({
-    info: true, email: false, reminders: false, security: false,
+    info: true, email: false, reminders: false, security: false, legal: false,
   });
+
+  // Legal info preview
+  const [legalInfo, setLegalInfo] = useState(null);
 
   // Tenant data
   const [tenant, setTenant] = useState({});
@@ -34,6 +39,14 @@ export default function CabinetSettings() {
       const d = data.data;
       setTenant(d.tenant || {});
       setSettings(d.settings || {});
+
+      // Fetch legal info
+      try {
+        const legalResp = await api.get('/legal-info');
+        setLegalInfo(legalResp.data?.data || null);
+      } catch {
+        setLegalInfo(null);
+      }
 
       // Try to get logo URL
       if (d.tenant?.logo) {
@@ -413,6 +426,76 @@ export default function CabinetSettings() {
                 <div className="cab-toggle-thumb" />
               </label>
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* Section 5: Informations légales & mentions */}
+      <div className="cab-section">
+        <div className="cab-section-header" onClick={() => toggleSection('legal')}>
+          <span className="cab-section-icon"><Scale size={18} /></span>
+          <span className="cab-section-title">Informations legales & mentions</span>
+          <ChevronDown size={16} className={`cab-section-chevron ${sections.legal ? 'open' : ''}`} />
+        </div>
+        {sections.legal && (
+          <div className="cab-section-body">
+            {legalInfo ? (
+              <div className="cab-legal-preview">
+                <div className="cab-legal-grid">
+                  {legalInfo.barreau && (
+                    <div className="cab-legal-item">
+                      <span className="cab-legal-label">Barreau</span>
+                      <span className="cab-legal-value">{legalInfo.barreau}</span>
+                    </div>
+                  )}
+                  {legalInfo.numeroToque && (
+                    <div className="cab-legal-item">
+                      <span className="cab-legal-label">Toque</span>
+                      <span className="cab-legal-value">{legalInfo.numeroToque}</span>
+                    </div>
+                  )}
+                  {legalInfo.assuranceRC && (
+                    <div className="cab-legal-item">
+                      <span className="cab-legal-label">Assurance RC</span>
+                      <span className="cab-legal-value">{legalInfo.assuranceRC}</span>
+                    </div>
+                  )}
+                  {legalInfo.rcs && (
+                    <div className="cab-legal-item">
+                      <span className="cab-legal-label">RCS</span>
+                      <span className="cab-legal-value">{legalInfo.rcs}</span>
+                    </div>
+                  )}
+                  {legalInfo.tvaIntra && (
+                    <div className="cab-legal-item">
+                      <span className="cab-legal-label">TVA Intracommunautaire</span>
+                      <span className="cab-legal-value">{legalInfo.tvaIntra}</span>
+                    </div>
+                  )}
+                </div>
+                {!legalInfo.barreau && !legalInfo.numeroToque && !legalInfo.assuranceRC && (
+                  <p className="cab-hint">Aucune information legale configuree.</p>
+                )}
+                <button
+                  className="cab-btn cab-btn-secondary"
+                  style={{ marginTop: '1rem' }}
+                  onClick={() => navigate('/settings/legal-info')}
+                >
+                  Gerer les mentions legales completes &rarr;
+                </button>
+              </div>
+            ) : (
+              <div>
+                <p className="cab-hint">Les mentions legales n'ont pas encore ete configurees.</p>
+                <button
+                  className="cab-btn cab-btn-secondary"
+                  style={{ marginTop: '0.75rem' }}
+                  onClick={() => navigate('/settings/legal-info')}
+                >
+                  Configurer les mentions legales &rarr;
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

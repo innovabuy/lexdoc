@@ -10,9 +10,14 @@ export default function ExtranetFolderView() {
   const [folderTitle, setFolderTitle] = useState('');
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(null);
+  const [clientEmail, setClientEmail] = useState('');
 
   useEffect(() => {
     loadDocuments();
+    extranetApi.getMe().then((res) => {
+      const me = res.data?.data || res.data;
+      if (me?.email) setClientEmail(me.email);
+    }).catch(() => {});
   }, [folderId]);
 
   const loadDocuments = async () => {
@@ -125,6 +130,19 @@ export default function ExtranetFolderView() {
               >
                 {downloading === doc.id ? '...' : 'Télécharger'}
               </button>
+              {doc.status === 'PENDING_SIGNATURE' && (() => {
+                const sig = doc.signatures?.find(
+                  (s) => s.status === 'PENDING' && s.signerEmail === clientEmail && s.signatureUrl
+                );
+                return sig ? (
+                  <button
+                    className="exf-sign-btn"
+                    onClick={() => window.open(sig.signatureUrl, '_blank')}
+                  >
+                    Signer
+                  </button>
+                ) : null;
+              })()}
             </div>
           ))}
         </div>

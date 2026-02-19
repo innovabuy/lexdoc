@@ -508,3 +508,76 @@
   background: #F9FAFB; border: 1px solid #E5E7EB;
   border-radius: 0.375rem; max-height: 120px; overflow-y: auto;
 }
+
+/* ── Highlighted textarea overlay ── */
+.te-highlighted-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.te-highlighted-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow: auto;
+  color: transparent;
+  pointer-events: none;
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+
+.te-highlighted-textarea {
+  position: relative;
+  width: 100%;
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  resize: vertical;
+  background: transparent;
+  color: #1e293b;
+  caret-color: #1e293b;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.te-highlighted-textarea:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.te-highlighted-textarea::placeholder {
+  color: #94a3b8;
+}
+
+/* Highlighting colors */
+.te-hl-var {
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.08);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.te-hl-helper {
+  color: #7c3aed;
+  background: rgba(124, 58, 237, 0.08);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.te-hl-block {
+  color: #059669;
+  background: rgba(5, 150, 105, 0.08);
+  border-radius: 2px;
+  padding: 0 1px;
+}
