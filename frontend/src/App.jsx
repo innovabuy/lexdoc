@@ -39,6 +39,7 @@ const Backups = lazy(() => import('./pages/settings/Backups'));
 const FolderCategories = lazy(() => import('./pages/settings/FolderCategories'));
 const TemplateCategories = lazy(() => import('./pages/settings/TemplateCategories'));
 const NotificationSettings = lazy(() => import('./pages/settings/NotificationSettings'));
+const AbonnementSettings = lazy(() => import('./pages/parametres/AbonnementSettings'));
 
 // Extranet pages
 const ExtranetLogin = lazy(() => import('./pages/extranet/ExtranetLogin'));
@@ -120,6 +121,7 @@ export default function App() {
                 <Route path="parametres/arborescences" element={<ArborescencesSettings />} />
                 <Route path="parametres/integrations" element={<IntegrationsSettings />} />
                 <Route path="parametres/utilisateurs" element={<UtilisateursSettings />} />
+                <Route path="parametres/abonnement" element={<AbonnementSettings />} />
 
                 {/* Legacy routes kept for backward compatibility (no sidebar nav item) */}
                 <Route path="folders" element={<Navigate to="/dossiers" replace />} />

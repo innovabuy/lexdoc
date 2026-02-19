@@ -16,6 +16,7 @@ import {
   GitBranch,
   Puzzle,
   UserCog,
+  CreditCard,
   ChevronDown,
   ChevronRight,
   LogOut,
@@ -44,6 +45,7 @@ const settingsNav = [
   { name: 'Arborescences', href: '/parametres/arborescences', icon: GitBranch },
   { name: 'Intégrations', href: '/parametres/integrations', icon: Puzzle },
   { name: 'Utilisateurs', href: '/parametres/utilisateurs', icon: UserCog },
+  { name: 'Abonnement', href: '/parametres/abonnement', icon: CreditCard },
 ];
 
 function NavItem({ item, onClick }) {

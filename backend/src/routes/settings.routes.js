@@ -233,4 +233,39 @@ router.get('/logo', async (req, res, next) => {
   }
 });
 
+// GET /api/settings/subscription — Get subscription info
+router.get('/subscription', async (req, res, next) => {
+  try {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: req.tenant.id },
+    });
+
+    const [userCount, clientCount] = await Promise.all([
+      prisma.user.count({ where: { tenantId: req.tenant.id } }),
+      prisma.client.count({ where: { tenantId: req.tenant.id, deletedAt: null } }),
+    ]);
+
+    // Estimate storage used (sum of document sizes)
+    const storageResult = await prisma.document.aggregate({
+      where: { tenantId: req.tenant.id },
+      _sum: { size: true },
+    });
+    const storageUsedBytes = Number(storageResult._sum.size || 0);
+
+    return successResponse(res, {
+      subscriptionTier: tenant.subscriptionTier || 'TRIAL',
+      maxUsers: tenant.maxUsers || 5,
+      maxClients: tenant.maxClients || 50,
+      maxStorage: tenant.maxStorage || 1073741824, // 1GB default
+      trialEndsAt: tenant.trialEndsAt,
+      subscribedAt: tenant.subscribedAt,
+      currentUsers: userCount,
+      currentClients: clientCount,
+      storageUsed: storageUsedBytes,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

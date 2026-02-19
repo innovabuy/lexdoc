@@ -12,6 +12,7 @@ const storageService = require('../services/storage.service');
 const { sanitizeFilename } = require('../utils/helpers');
 const logger = require('../config/logger');
 const { getGroupedVariables } = require('../config/template-variables');
+const htmlToPdfService = require('../services/html-to-pdf.service');
 
 router.use(authenticate);
 router.use(enforceTenant);
@@ -575,6 +576,82 @@ router.post('/generate', async (req, res, next) => {
     }
 
     return successResponse(res, result, 'Document generated successfully');
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Generate PDF from template
+router.post('/generate-pdf', async (req, res, next) => {
+  try {
+    const { templateId, variables: userVariables, folderId } = req.body;
+
+    if (!templateId) {
+      throw new BadRequestError('templateId is required');
+    }
+
+    // Same pipeline as /generate to get HTML
+    let contextData = {};
+    if (folderId) {
+      contextData = await templateEngine.collectData(folderId, req.tenant.id);
+    } else {
+      contextData = await templateEngine.collectBasicData(req.tenant.id, req.user.id);
+    }
+
+    const variables = { ...contextData, ...(userVariables || {}) };
+
+    const result = await documentGenerator.generateDocument(
+      templateId,
+      variables,
+      req.tenant.id
+    );
+
+    // Convert HTML to PDF
+    const pdfBuffer = await htmlToPdfService.convertHtmlToPdf(result.content);
+
+    // If folderId provided, save the PDF to the folder
+    if (folderId) {
+      const folder = await prisma.folder.findFirst({
+        where: { id: folderId, tenantId: req.tenant.id },
+      });
+
+      if (folder) {
+        const docName = `${result.templateName || 'Document'} - ${new Date().toLocaleDateString('fr-FR')}`;
+        const filename = sanitizeFilename(`${docName}.pdf`);
+        const objectKey = `${req.tenant.id}/documents/${Date.now()}-${filename}`;
+
+        const uploaded = await storageService.uploadFile(pdfBuffer, objectKey, {
+          originalName: filename,
+          mimeType: 'application/pdf',
+        }, true);
+
+        await prisma.document.create({
+          data: {
+            name: docName,
+            description: `PDF genere depuis le template: ${result.templateName}`,
+            type: result.documentType || 'OTHER',
+            filename: objectKey.split('/').pop(),
+            originalName: filename,
+            mimeType: 'application/pdf',
+            size: BigInt(pdfBuffer.length),
+            checksum: uploaded.checksum,
+            bucketName: uploaded.bucket,
+            objectKey: uploaded.objectKey,
+            isEncrypted: uploaded.isEncrypted,
+            folderId,
+            tenantId: req.tenant.id,
+            createdById: req.user.id,
+            status: 'DRAFT',
+          },
+        });
+      }
+    }
+
+    // Return PDF as base64
+    return successResponse(res, {
+      pdf: pdfBuffer.toString('base64'),
+      filename: `${result.templateName || 'Document'}.pdf`,
+    }, 'PDF generated successfully');
   } catch (error) {
     next(error);
   }

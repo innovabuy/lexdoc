@@ -19,6 +19,8 @@ export default function Dashboard() {
   const [recentDocs, setRecentDocs] = useState([]);
   const [recentFolders, setRecentFolders] = useState([]);
   const [pendingItems, setPendingItems] = useState([]);
+  const [upcomingDeadlines, setUpcomingDeadlines] = useState([]);
+  const [overdueDeadlines, setOverdueDeadlines] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -27,12 +29,14 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     try {
-      const [docsRes, signaturesRes, clientsRes, foldersRes, requestsRes] = await Promise.all([
+      const [docsRes, signaturesRes, clientsRes, foldersRes, requestsRes, upcomingRes, overdueRes] = await Promise.all([
         api.get('/documents?pageSize=5'),
         api.get('/signatures?pageSize=100'),
         api.get('/clients'),
         api.get('/folders?pageSize=5'),
         api.get('/document-requests?status=PENDING&pageSize=5'),
+        api.get('/deadlines/upcoming?days=7').catch(() => ({ data: { data: [] } })),
+        api.get('/deadlines/overdue').catch(() => ({ data: { data: [] } })),
       ]);
 
       const docs = docsRes.data.data || [];
@@ -40,6 +44,8 @@ export default function Dashboard() {
       const clients = clientsRes.data.data || [];
       const folders = foldersRes.data.data || [];
       const requests = requestsRes.data.data || [];
+      const upcoming = upcomingRes.data.data || [];
+      const overdue = overdueRes.data.data || [];
 
       const pendingSigs = signatures.filter(s => s.status === 'PENDING');
       const signedSigs = signatures.filter(s => s.status === 'SIGNED');
@@ -57,9 +63,20 @@ export default function Dashboard() {
 
       setRecentDocs(docs);
       setRecentFolders(folders.slice(0, 5));
+      setUpcomingDeadlines(upcoming);
+      setOverdueDeadlines(overdue);
 
       // Build pending items list
       const items = [];
+      overdue.slice(0, 3).forEach(d => {
+        items.push({
+          id: `deadline-${d.id}`,
+          type: 'deadline',
+          title: `Echeance depassee: ${d.title || d.type} — ${d.folder?.title || 'Dossier'}`,
+          link: d.folderId ? `/dossiers/${d.folderId}` : '/dossiers',
+          priority: 'high',
+        });
+      });
       pendingSigs.slice(0, 3).forEach(s => {
         items.push({
           id: s.id,
@@ -176,6 +193,7 @@ export default function Dashboard() {
           <StatCard title="Clients" value={stats.totalClients} icon="👥" color="green" />
           <StatCard title="Signatures en attente" value={stats.pendingSignatures} icon="⏳" color="orange" highlight={stats.pendingSignatures > 0} />
           <StatCard title="Demandes en cours" value={stats.pendingRequests} icon="📨" color="pink" highlight={stats.pendingRequests > 0} />
+          <StatCard title="Echeances" value={upcomingDeadlines.length} icon="📅" color="emerald" highlight={overdueDeadlines.length > 0} />
         </div>
 
         {/* Two Column Layout */}
@@ -245,6 +263,65 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <FolderStatusBadge status={folder.status} />
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Upcoming Deadlines */}
+          <div className="bg-white rounded-xl shadow-sm border p-6 lg:col-span-2">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Echeances a venir</h2>
+              {overdueDeadlines.length > 0 && (
+                <span className="text-sm text-red-600 font-medium">{overdueDeadlines.length} en retard</span>
+              )}
+            </div>
+            {upcomingDeadlines.length === 0 && overdueDeadlines.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <span className="text-3xl block mb-2">📅</span>
+                Aucune echeance a venir
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {overdueDeadlines.map((d) => (
+                  <Link
+                    key={`overdue-${d.id}`}
+                    to={d.folderId ? `/dossiers/${d.folderId}` : '/dossiers'}
+                    className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-100 hover:border-red-300 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="w-2 h-2 rounded-full bg-red-500" />
+                      <div>
+                        <p className="font-medium text-gray-900 text-sm">{d.title || d.type}</p>
+                        <p className="text-xs text-gray-500">
+                          {d.folder?.title || 'Dossier'}{d.assignee ? ` — ${d.assignee.firstName} ${d.assignee.lastName}` : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-medium text-red-600">
+                      {d.dueDate ? new Date(d.dueDate).toLocaleDateString('fr-FR') : ''}
+                    </span>
+                  </Link>
+                ))}
+                {upcomingDeadlines.map((d) => (
+                  <Link
+                    key={`upcoming-${d.id}`}
+                    to={d.folderId ? `/dossiers/${d.folderId}` : '/dossiers'}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="w-2 h-2 rounded-full bg-amber-500" />
+                      <div>
+                        <p className="font-medium text-gray-900 text-sm">{d.title || d.type}</p>
+                        <p className="text-xs text-gray-500">
+                          {d.folder?.title || 'Dossier'}{d.assignee ? ` — ${d.assignee.firstName} ${d.assignee.lastName}` : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-medium text-gray-600">
+                      {d.dueDate ? new Date(d.dueDate).toLocaleDateString('fr-FR') : ''}
+                    </span>
                   </Link>
                 ))}
               </div>

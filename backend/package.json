@@ -46,6 +46,7 @@
     "nodemailer": "^7.0.13",
     "pdfkit": "^0.17.2",
     "pizzip": "^3.2.0",
+    "puppeteer": "^24.37.4",
     "web-push": "^3.6.7",
     "winston": "^3.11.0",
     "winston-daily-rotate-file": "^5.0.0",

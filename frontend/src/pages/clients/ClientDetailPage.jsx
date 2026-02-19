@@ -8,6 +8,7 @@ import {
 import { getClient, updateClient, sendClientForm, inviteExtranet, archiveClient, deleteClient } from '../../services/clientsApi';
 import CompletenessAlert from '../../components/clients/CompletenessAlert';
 import { useToast } from '../../contexts/ToastContext';
+import api from '../../services/api';
 import './ClientDetailPage.css';
 
 const formatDateField = (d) => {
@@ -233,12 +234,137 @@ function TabDossiers({ folders }) {
 // ============================================================
 // Tab: Timeline
 // ============================================================
+const typeColors = {
+  dossier_cree: '#10B981', dossier_modifie: '#059669', dossier_statut: '#F59E0B',
+  dossier_cloture: '#6B7280', dossier_archive: '#6B7280', dossier_reouvert: '#10B981',
+  document_cree: '#3B82F6', document_modifie: '#6366F1', document_supprime: '#EF4444',
+  document_signe: '#10B981', document_genere: '#8B5CF6',
+  personne_ajoutee: '#8B5CF6', personne_supprimee: '#EF4444',
+  echeance_creee: '#F59E0B', echeance_terminee: '#10B981',
+  email_envoye: '#F59E0B', signature_demandee: '#3B82F6',
+  lrar_envoye: '#EF4444', ar_recu: '#10B981',
+  extranet_invitation: '#06B6D4', extranet_relance: '#06B6D4',
+  formulaire_envoye: '#F59E0B',
+};
+
+function relativeTime(d) {
+  if (!d) return '';
+  const now = new Date();
+  const date = new Date(d);
+  const mins = Math.floor((now - date) / 60000);
+  if (mins < 1) return "A l'instant";
+  if (mins < 60) return `Il y a ${mins} min`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `Il y a ${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `Il y a ${days}j`;
+  return new Date(d).toLocaleDateString('fr-FR');
+}
+
 function TabTimeline({ clientId }) {
-  // Timeline events will be loaded from folder-based events in the future
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [typeFilter, setTypeFilter] = useState('');
+
+  const fetchTimeline = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data } = await api.get(`/clients/${clientId}/timeline`);
+      setEvents(data.data || []);
+    } catch {
+      setEvents([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [clientId]);
+
+  useEffect(() => {
+    fetchTimeline();
+  }, [fetchTimeline]);
+
+  if (loading) {
+    return (
+      <div className="detail-tab-content detail-tab-empty">
+        <div style={{ width: 24, height: 24, border: '3px solid #e2e8f0', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
+      </div>
+    );
+  }
+
+  if (!events || events.length === 0) {
+    return (
+      <div className="detail-tab-content detail-tab-empty">
+        <Clock size={32} style={{ color: '#cbd5e1' }} />
+        <p>Aucun evenement dans la timeline</p>
+      </div>
+    );
+  }
+
+  const uniqueTypes = [...new Set(events.map(e => e.type))];
+  const filtered = typeFilter ? events.filter(e => e.type === typeFilter) : events;
+
+  // Group by date
+  const grouped = {};
+  filtered.forEach(evt => {
+    const key = new Date(evt.createdAt).toLocaleDateString('fr-FR', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    });
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(evt);
+  });
+
   return (
-    <div className="detail-tab-content detail-tab-empty">
-      <Clock size={32} style={{ color: '#cbd5e1' }} />
-      <p>Timeline en construction — Phase 2</p>
+    <div className="detail-tab-content" style={{ padding: '1rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <h3 style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#1e293b' }}>Historique client</h3>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <select
+            value={typeFilter}
+            onChange={e => setTypeFilter(e.target.value)}
+            style={{ fontSize: '0.8rem', padding: '4px 8px', borderRadius: 6, border: '1px solid #e2e8f0' }}
+          >
+            <option value="">Tous ({events.length})</option>
+            {uniqueTypes.map(t => (
+              <option key={t} value={t}>{t} ({events.filter(e => e.type === t).length})</option>
+            ))}
+          </select>
+          <button onClick={fetchTimeline} style={{ fontSize: '0.8rem', padding: '4px 12px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer' }}>
+            Actualiser
+          </button>
+        </div>
+      </div>
+
+      <div style={{ position: 'relative' }}>
+        {Object.entries(grouped).map(([date, evts]) => (
+          <div key={date} style={{ marginBottom: '1.5rem' }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'capitalize', marginBottom: '0.5rem', paddingLeft: 28 }}>
+              {date}
+            </div>
+            {evts.map(evt => (
+              <div key={evt.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 8, paddingLeft: 4 }}>
+                <div style={{
+                  width: 20, height: 20, borderRadius: '50%', flexShrink: 0, marginTop: 2,
+                  backgroundColor: typeColors[evt.type] || '#9CA3AF',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#fff' }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: '0.8125rem', color: '#1e293b', margin: 0, lineHeight: 1.4 }}>{evt.description}</p>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 2, flexWrap: 'wrap' }}>
+                    {evt.folderTitle && (
+                      <Link to={`/dossiers/${evt.folderId}`} style={{ fontSize: '0.6875rem', color: '#3b82f6', textDecoration: 'none' }}>
+                        {evt.folderTitle}
+                      </Link>
+                    )}
+                    {evt.userName && <span style={{ fontSize: '0.6875rem', color: '#94a3b8' }}>{evt.userName}</span>}
+                    <span style={{ fontSize: '0.6875rem', color: '#94a3b8' }}>{relativeTime(evt.createdAt)}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
