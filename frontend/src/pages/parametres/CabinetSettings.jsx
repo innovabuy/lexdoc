@@ -13,6 +13,7 @@ export default function CabinetSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef(null);
+  const sigImageInputRef = useRef(null);
 
   // Sections open/closed
   const [sections, setSections] = useState({
@@ -28,6 +29,8 @@ export default function CabinetSettings() {
   const [settings, setSettings] = useState({});
   // Logo URL
   const [logoUrl, setLogoUrl] = useState(null);
+  // Signature image URL
+  const [sigImageUrl, setSigImageUrl] = useState(null);
 
   const toggleSection = (key) => {
     setSections((s) => ({ ...s, [key]: !s[key] }));
@@ -55,6 +58,16 @@ export default function CabinetSettings() {
           setLogoUrl(URL.createObjectURL(logoResp.data));
         } catch {
           setLogoUrl(null);
+        }
+      }
+
+      // Fetch signature image as blob
+      if (d.settings?.emailSignatureImage) {
+        try {
+          const sigResp = await api.get('/settings/email-signature-image', { responseType: 'blob' });
+          setSigImageUrl(URL.createObjectURL(sigResp.data));
+        } catch {
+          setSigImageUrl(null);
         }
       }
     } catch (e) {
@@ -129,6 +142,36 @@ export default function CabinetSettings() {
       setLogoUrl(URL.createObjectURL(logoResp.data));
     } catch (e) {
       showError('Erreur lors de l\'upload du logo');
+    }
+  };
+
+  // Signature image upload
+  const handleSigImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      await api.post('/settings/email-signature-image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      success('Image de signature mise à jour');
+      const sigResp = await api.get('/settings/email-signature-image', { responseType: 'blob' });
+      setSigImageUrl(URL.createObjectURL(sigResp.data));
+    } catch (e) {
+      showError("Erreur lors de l'upload de l'image");
+    }
+  };
+
+  const handleDeleteSigImage = async () => {
+    try {
+      await api.delete('/settings/email-signature-image');
+      setSigImageUrl(null);
+      success('Image de signature supprimée');
+    } catch (e) {
+      showError('Erreur');
     }
   };
 
@@ -307,6 +350,37 @@ export default function CabinetSettings() {
                 rows={4}
               />
               <span className="cab-hint">HTML autorisé. Cette signature sera ajoutée à tous les emails envoyés.</span>
+            </div>
+
+            <div className="cab-field">
+              <label>Image de signature</label>
+              <div className="cab-logo-area">
+                <div className="cab-sig-preview">
+                  {sigImageUrl ? (
+                    <img src={sigImageUrl} alt="Signature" />
+                  ) : (
+                    <span className="cab-logo-placeholder"><Image size={20} /></span>
+                  )}
+                </div>
+                <div className="cab-logo-actions">
+                  <input
+                    type="file"
+                    ref={sigImageInputRef}
+                    style={{ display: 'none' }}
+                    accept="image/png,image/jpeg"
+                    onChange={handleSigImageUpload}
+                  />
+                  <button className="cab-btn cab-btn-secondary cab-btn-sm" onClick={() => sigImageInputRef.current?.click()}>
+                    <Upload size={14} /> {sigImageUrl ? 'Changer' : 'Uploader'}
+                  </button>
+                  {sigImageUrl && (
+                    <button className="cab-btn cab-btn-danger cab-btn-sm" onClick={handleDeleteSigImage}>
+                      <Trash2 size={14} /> Supprimer
+                    </button>
+                  )}
+                  <span className="cab-hint">PNG ou JPEG. Max 5 Mo. Cette image sera intégrée dans la signature des emails.</span>
+                </div>
+              </div>
             </div>
           </div>
         )}

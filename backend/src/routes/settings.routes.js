@@ -241,6 +241,74 @@ router.get('/logo', async (req, res, next) => {
   }
 });
 
+// POST /api/settings/email-signature-image — Upload email signature image (ADMIN only)
+router.post('/email-signature-image', requireAdmin, upload.single('image'), async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: { message: 'No file uploaded' } });
+    }
+
+    const ext = req.file.mimetype === 'image/svg+xml' ? 'svg' : req.file.mimetype.split('/')[1];
+    const objectKey = `${req.tenant.id}/email/signature-${Date.now()}.${ext}`;
+    await storageService.uploadFile(req.file.buffer, objectKey, {}, false);
+
+    // Delete old image if exists
+    const currentSettings = await prisma.tenantSettings.findUnique({ where: { tenantId: req.tenant.id } });
+    if (currentSettings?.emailSignatureImage) {
+      try { await storageService.deleteFile(currentSettings.emailSignatureImage); } catch (e) { /* ignore */ }
+    }
+
+    await prisma.tenantSettings.upsert({
+      where: { tenantId: req.tenant.id },
+      update: { emailSignatureImage: objectKey },
+      create: { tenantId: req.tenant.id, emailSignatureImage: objectKey },
+    });
+
+    return successResponse(res, { emailSignatureImage: objectKey }, 'Signature image uploaded');
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DELETE /api/settings/email-signature-image — Remove email signature image (ADMIN only)
+router.delete('/email-signature-image', requireAdmin, async (req, res, next) => {
+  try {
+    const settings = await prisma.tenantSettings.findUnique({ where: { tenantId: req.tenant.id } });
+    if (settings?.emailSignatureImage) {
+      try { await storageService.deleteFile(settings.emailSignatureImage); } catch (e) { /* ignore */ }
+      await prisma.tenantSettings.update({
+        where: { tenantId: req.tenant.id },
+        data: { emailSignatureImage: null },
+      });
+    }
+    return successResponse(res, null, 'Signature image deleted');
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/settings/email-signature-image — Serve email signature image
+router.get('/email-signature-image', async (req, res, next) => {
+  try {
+    const settings = await prisma.tenantSettings.findUnique({ where: { tenantId: req.tenant.id } });
+    if (!settings?.emailSignatureImage) {
+      return res.status(404).json({ success: false, error: { message: 'No signature image found' } });
+    }
+
+    const buffer = await storageService.downloadFile(settings.emailSignatureImage);
+    const ext = settings.emailSignatureImage.split('.').pop().toLowerCase();
+    const mimeMap = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', svg: 'image/svg+xml', webp: 'image/webp', gif: 'image/gif' };
+    const contentType = mimeMap[ext] || 'application/octet-stream';
+
+    res.set('Content-Type', contentType);
+    res.set('Cache-Control', 'public, max-age=3600');
+    res.set('Content-Length', buffer.length);
+    return res.send(buffer);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // GET /api/settings/subscription — Get subscription info
 router.get('/subscription', async (req, res, next) => {
   try {

@@ -1035,9 +1035,10 @@ model TenantSettings {
   
   defaultSignatureDeadlineDays Int @default(7)
   
-  emailFromName   String?
-  emailReplyTo    String?
-  emailSignature  String? @db.Text
+  emailFromName        String?
+  emailReplyTo         String?
+  emailSignature       String? @db.Text
+  emailSignatureImage  String?
   
   lrarSenderName    String?
   lrarSenderAddress String?
