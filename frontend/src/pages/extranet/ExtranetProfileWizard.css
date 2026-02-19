@@ -416,3 +416,65 @@ select.epw-field-input {
     padding: 20px;
   }
 }
+
+/* ExtranetFormPage (standalone form container) */
+.efp-container {
+  min-height: 100vh;
+  background: #f8fafc;
+  padding: 24px;
+}
+
+.efp-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 700px;
+  margin: 0 auto 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.efp-logo {
+  height: 36px;
+  width: auto;
+  object-fit: contain;
+}
+
+.efp-tenant-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.efp-error-card {
+  max-width: 500px;
+  margin: 60px auto;
+  text-align: center;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 48px 32px;
+}
+
+.efp-error-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.efp-error-card h2 {
+  font-size: 22px;
+  color: #1e293b;
+  margin-bottom: 12px;
+}
+
+.efp-error-card p {
+  font-size: 15px;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.efp-hint {
+  font-size: 13px;
+  color: #94a3b8;
+  margin-top: 16px;
+}

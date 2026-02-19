@@ -568,7 +568,7 @@ router.post('/:id/send-form', async (req, res, next) => {
     }
 
     // Send form completion email
-    const formLink = `${process.env.CLIENT_PORTAL_URL || process.env.FRONTEND_URL}/extranet/activate/${token}`;
+    const formLink = `${process.env.CLIENT_PORTAL_URL || process.env.FRONTEND_URL}/extranet/form/${token}`;
     try {
       await emailService.sendFormCompletionEmail({
         to: client.email,

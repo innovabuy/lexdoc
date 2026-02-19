@@ -47,6 +47,7 @@ const ExtranetActivate = lazy(() => import('./pages/extranet/ExtranetActivate'))
 const ExtranetDashboard = lazy(() => import('./pages/extranet/ExtranetDashboard'));
 const ExtranetProfileWizard = lazy(() => import('./pages/extranet/ExtranetProfileWizard'));
 const ExtranetFolderView = lazy(() => import('./pages/extranet/ExtranetFolderView'));
+const ExtranetFormPage = lazy(() => import('./pages/extranet/ExtranetFormPage'));
 
 function PageLoader() {
   return (
@@ -147,6 +148,7 @@ export default function App() {
               {/* ============================================ */}
               <Route path="/extranet/login" element={<ExtranetLogin />} />
               <Route path="/extranet/activate/:token" element={<ExtranetActivate />} />
+              <Route path="/extranet/form/:token" element={<ExtranetFormPage />} />
 
               {/* Protected extranet routes with ExtranetLayout */}
               <Route element={<ExtranetPrivateRoute><ExtranetLayout /></ExtranetPrivateRoute>}>

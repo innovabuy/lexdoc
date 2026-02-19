@@ -12,7 +12,7 @@ const STEPS = [
   { num: 5, label: 'Vérification' },
 ];
 
-export default function ExtranetProfileWizard() {
+export default function ExtranetProfileWizard({ apiOverrides, clientNameOverride, onComplete }) {
   const { access } = useContext(ExtranetAuthContext);
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0); // 0 = accueil
@@ -23,9 +23,17 @@ export default function ExtranetProfileWizard() {
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
-  const clientName = access?.client
+  // Use overrides if provided, else default JWT-based functions
+  const api = {
+    getProfile: apiOverrides?.getProfile || extranetApi.getProfile,
+    getCompleteness: apiOverrides?.getCompleteness || extranetApi.getCompleteness,
+    saveStep: apiOverrides?.saveStep || extranetApi.saveStep,
+    submitProfile: apiOverrides?.submitProfile || extranetApi.submitProfile,
+  };
+
+  const clientName = clientNameOverride || (access?.client
     ? (access.client.firstName || '').trim()
-    : '';
+    : '');
 
   useEffect(() => {
     loadProfile();
@@ -35,8 +43,8 @@ export default function ExtranetProfileWizard() {
     setLoading(true);
     try {
       const [profRes, compRes] = await Promise.all([
-        extranetApi.getProfile(),
-        extranetApi.getCompleteness(),
+        api.getProfile(),
+        api.getCompleteness(),
       ]);
       const profData = profRes.data?.data || profRes.data;
       const compData = compRes.data?.data || compRes.data;
@@ -64,7 +72,7 @@ export default function ExtranetProfileWizard() {
           data[f.key] = profile[f.key];
         }
       }
-      const res = await extranetApi.saveStep(stepNum, data);
+      const res = await api.saveStep(stepNum, data);
       const result = res.data?.data || res.data;
       setCompleteness((prev) => ({ ...prev, percent: result.percent }));
       return true;
@@ -96,8 +104,12 @@ export default function ExtranetProfileWizard() {
     setSaving(true);
     setError('');
     try {
-      await extranetApi.submitProfile();
-      setSubmitted(true);
+      await api.submitProfile();
+      if (onComplete) {
+        onComplete();
+      } else {
+        setSubmitted(true);
+      }
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Erreur lors de la soumission');
     } finally {

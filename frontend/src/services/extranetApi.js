@@ -31,3 +31,10 @@ export const downloadDocument = (docId) => authed.get(`/extranet/me/documents/${
 
 // Me
 export const getMe = () => authed.get('/extranet/me');
+
+// Form-token (no JWT, token-based)
+export const verifyFormToken = (token) => api.get(`/extranet/form/verify/${token}`);
+export const getFormProfile = (token) => api.get(`/extranet/form/${token}/profile`);
+export const getFormCompleteness = (token) => api.get(`/extranet/form/${token}/completeness`);
+export const saveFormStep = (token, step, data) => api.patch(`/extranet/form/${token}/step/${step}`, data);
+export const submitFormProfile = (token) => api.post(`/extranet/form/${token}/submit`);

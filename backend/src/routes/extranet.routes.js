@@ -995,6 +995,239 @@ function getProfileCurrentStep(client) {
   return 5;
 }
 
+// ============================================================================
+// FORM-TOKEN ROUTES (invitation link, no password required)
+// ============================================================================
+
+const authenticateFormToken = async (req, res, next) => {
+  try {
+    const token = req.params.token;
+    if (!token) throw new BadRequestError('Token is required');
+
+    const client = await prisma.client.findFirst({
+      where: {
+        invitationToken: token,
+        invitationExpiresAt: { gt: new Date() },
+      },
+      include: {
+        tenant: { select: { id: true, name: true, logo: true, primaryColor: true } },
+      },
+    });
+
+    if (!client) {
+      throw new NotFoundError('Lien invalide ou expiré');
+    }
+
+    req.formClient = client;
+    req.tenant = client.tenant;
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Verify form token
+router.get('/form/verify/:token', async (req, res, next) => {
+  try {
+    const token = req.params.token;
+    if (!token) throw new BadRequestError('Token is required');
+
+    const client = await prisma.client.findFirst({
+      where: {
+        invitationToken: token,
+        invitationExpiresAt: { gt: new Date() },
+      },
+      include: {
+        tenant: { select: { id: true, name: true, logo: true, primaryColor: true } },
+      },
+    });
+
+    if (!client) {
+      return res.status(404).json({ success: false, error: { message: 'Lien invalide ou expiré' } });
+    }
+
+    return successResponse(res, {
+      valid: true,
+      clientName: client.companyName || `${client.firstName || ''} ${client.lastName || ''}`.trim(),
+      tenant: client.tenant,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get profile via form token
+router.get('/form/:token/profile', authenticateFormToken, async (req, res, next) => {
+  try {
+    const client = req.formClient;
+    const safeClient = { ...client };
+    delete safeClient.extranetPassword;
+    delete safeClient.invitationToken;
+    delete safeClient.invitationExpiresAt;
+    delete safeClient.tenant;
+    return successResponse(res, safeClient);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get completeness via form token
+router.get('/form/:token/completeness', authenticateFormToken, async (req, res, next) => {
+  try {
+    const client = req.formClient;
+    const percent = calculateProfileCompletion(client);
+    const missing = getProfileMissingFields(client);
+    const step = getProfileCurrentStep(client);
+    return successResponse(res, { percent, missing, step, profileLastStep: client.profileLastStep });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Save step via form token
+router.patch('/form/:token/step/:step', authenticateFormToken, async (req, res, next) => {
+  try {
+    const step = parseInt(req.params.step);
+    if (step < 1 || step > 4) throw new BadRequestError('Step must be between 1 and 4');
+
+    const stepConfig = STEP_FIELDS[step];
+    const client = req.formClient;
+
+    const updateData = {};
+    for (const field of stepConfig.allowed) {
+      if (req.body[field] !== undefined) {
+        if (DATE_FIELDS.includes(field)) {
+          updateData[field] = req.body[field] ? new Date(req.body[field]) : null;
+        } else if (INT_FIELDS.includes(field)) {
+          updateData[field] = req.body[field] != null ? parseInt(req.body[field]) : null;
+        } else {
+          updateData[field] = req.body[field] === '' ? null : req.body[field];
+        }
+      }
+    }
+
+    const newStep = Math.max(client.profileLastStep || 0, step);
+    const updated = await prisma.client.update({
+      where: { id: client.id },
+      data: { ...updateData, profileLastStep: newStep },
+    });
+
+    const percent = calculateProfileCompletion(updated);
+    await prisma.client.update({
+      where: { id: client.id },
+      data: { profileCompletionPercent: percent },
+    });
+
+    // Timeline event on first folder
+    const firstFolder = await prisma.folder.findFirst({
+      where: { clientId: client.id },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (firstFolder) {
+      await prisma.timelineEvent.create({
+        data: {
+          folderId: firstFolder.id,
+          type: 'extranet_profile_step',
+          description: `Client a complété l'étape ${stepConfig.label} (formulaire)`,
+          metadata: { step, percent },
+        },
+      });
+    }
+
+    // Notify cabinet users
+    const tenantId = req.tenant.id;
+    const users = await prisma.user.findMany({
+      where: { tenantId, isActive: true, role: { in: ['ADMIN', 'LAWYER'] } },
+      select: { id: true },
+    });
+
+    const clientName = `${client.firstName || ''} ${client.lastName || ''}`.trim() || 'Client';
+    for (const user of users) {
+      await notificationService.create({
+        userId: user.id,
+        tenantId,
+        type: 'CLIENT_STEP_COMPLETED',
+        title: 'Fiche client mise à jour',
+        message: `${clientName} a complété l'étape "${stepConfig.label}" (${percent}%)`,
+        entityType: 'Client',
+        entityId: client.id,
+        link: `/clients/${client.id}`,
+        sendEmail: false,
+      });
+    }
+
+    return successResponse(res, { step, percent, profileLastStep: newStep });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Submit profile via form token
+router.post('/form/:token/submit', authenticateFormToken, async (req, res, next) => {
+  try {
+    const client = req.formClient;
+
+    const updated = await prisma.client.update({
+      where: { id: client.id },
+      data: {
+        profileSubmittedAt: new Date(),
+        profileSubmittedVersion: (client.profileSubmittedVersion || 0) + 1,
+        profileCompletionPercent: calculateProfileCompletion(client),
+        invitationToken: null,
+        invitationExpiresAt: null,
+      },
+    });
+
+    // Cancel pending profile reminders
+    await prisma.clientReminder.updateMany({
+      where: { clientId: client.id, status: 'pending', type: 'profile_completion' },
+      data: { status: 'cancelled' },
+    });
+
+    // Timeline event
+    const firstFolder = await prisma.folder.findFirst({
+      where: { clientId: client.id },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (firstFolder) {
+      await prisma.timelineEvent.create({
+        data: {
+          folderId: firstFolder.id,
+          type: 'extranet_profile_submitted',
+          description: 'Client a soumis sa fiche complète (formulaire)',
+          metadata: { version: updated.profileSubmittedVersion },
+        },
+      });
+    }
+
+    // Notify cabinet users
+    const tenantId = req.tenant.id;
+    const users = await prisma.user.findMany({
+      where: { tenantId, isActive: true, role: { in: ['ADMIN', 'LAWYER'] } },
+      select: { id: true },
+    });
+
+    const clientName = `${client.firstName || ''} ${client.lastName || ''}`.trim() || 'Client';
+    for (const user of users) {
+      await notificationService.create({
+        userId: user.id,
+        tenantId,
+        type: 'CLIENT_PROFILE_COMPLETE',
+        title: 'Fiche client complète',
+        message: `${clientName} a soumis sa fiche d'informations complète`,
+        entityType: 'Client',
+        entityId: client.id,
+        link: `/clients/${client.id}`,
+        sendEmail: true,
+      });
+    }
+
+    return successResponse(res, { submitted: true, version: updated.profileSubmittedVersion });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Get full client profile
 router.get('/me/profile', authenticateClient, async (req, res, next) => {
   try {
