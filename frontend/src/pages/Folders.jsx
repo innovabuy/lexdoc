@@ -526,28 +526,33 @@ export default function Folders() {
             </select>
           )}
 
-          <div className="folders-view-toggle">
-            <button
-              onClick={() => setViewMode('tree')}
-              className={`folders-view-btn ${viewMode === 'tree' ? 'folders-view-btn--active' : ''}`}
-              title="Arborescence"
-            >
-              <GitBranch size={16} />
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`folders-view-btn ${viewMode === 'list' ? 'folders-view-btn--active' : ''}`}
-              title="Liste"
-            >
-              <List size={16} />
-            </button>
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`folders-view-btn ${viewMode === 'grid' ? 'folders-view-btn--active' : ''}`}
-              title="Grille"
-            >
-              <LayoutGrid size={16} />
-            </button>
+          <div className="folders-view-wrapper">
+            <span className="folders-view-label">
+              {viewMode === 'tree' ? 'Arborescence' : viewMode === 'list' ? 'Liste' : 'Grille'}
+            </span>
+            <div className="folders-view-toggle">
+              <button
+                onClick={() => setViewMode('tree')}
+                className={`folders-view-btn ${viewMode === 'tree' ? 'folders-view-btn--active' : ''}`}
+                title="Arborescence"
+              >
+                <GitBranch size={16} />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`folders-view-btn ${viewMode === 'list' ? 'folders-view-btn--active' : ''}`}
+                title="Liste"
+              >
+                <List size={16} />
+              </button>
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`folders-view-btn ${viewMode === 'grid' ? 'folders-view-btn--active' : ''}`}
+                title="Grille"
+              >
+                <LayoutGrid size={16} />
+              </button>
+            </div>
           </div>
         </div>
       </div>

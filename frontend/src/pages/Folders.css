@@ -100,6 +100,18 @@
 .folders-select:focus { border-color: #3b82f6; }
 
 /* View Toggle */
+.folders-view-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.folders-view-label {
+  font-size: 13px;
+  color: #64748b;
+  white-space: nowrap;
+}
+
 .folders-view-toggle {
   display: flex;
   border: 1px solid #e2e8f0;

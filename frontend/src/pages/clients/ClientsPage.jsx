@@ -62,7 +62,7 @@ export default function ClientsPage() {
   const [sortOrder, setSortOrder] = useState('desc');
   const [page, setPage] = useState(1);
   const [createOpen, setCreateOpen] = useState(false);
-  const [viewMode, setViewMode] = useState('list'); // list | alpha | folder
+  const [viewMode, setViewMode] = useState('alpha'); // list | alpha | folder
   const [collapsedGroups, setCollapsedGroups] = useState({});
   const debounceRef = useRef(null);
 
@@ -415,28 +415,33 @@ export default function ClientsPage() {
           </p>
         </div>
         <div className="clients-header-actions">
-          <div className="clients-view-toggle">
-            <button
-              className={`clients-view-btn ${viewMode === 'list' ? 'clients-view-btn--active' : ''}`}
-              onClick={() => { setViewMode('list'); setCollapsedGroups({}); }}
-              title="Vue liste"
-            >
-              <List size={18} />
-            </button>
-            <button
-              className={`clients-view-btn ${viewMode === 'alpha' ? 'clients-view-btn--active' : ''}`}
-              onClick={() => { setViewMode('alpha'); setCollapsedGroups({}); }}
-              title="Vue alphabétique"
-            >
-              <Type size={18} />
-            </button>
-            <button
-              className={`clients-view-btn ${viewMode === 'folder' ? 'clients-view-btn--active' : ''}`}
-              onClick={() => { setViewMode('folder'); setCollapsedGroups({}); }}
-              title="Vue par dossier"
-            >
-              <FolderOpen size={18} />
-            </button>
+          <div className="clients-view-wrapper">
+            <span className="clients-view-label">
+              {viewMode === 'list' ? 'Liste' : viewMode === 'alpha' ? 'Alphabétique' : 'Par dossier'}
+            </span>
+            <div className="clients-view-toggle">
+              <button
+                className={`clients-view-btn ${viewMode === 'list' ? 'clients-view-btn--active' : ''}`}
+                onClick={() => { setViewMode('list'); setCollapsedGroups({}); }}
+                title="Vue liste"
+              >
+                <List size={18} />
+              </button>
+              <button
+                className={`clients-view-btn ${viewMode === 'alpha' ? 'clients-view-btn--active' : ''}`}
+                onClick={() => { setViewMode('alpha'); setCollapsedGroups({}); }}
+                title="Vue alphabétique"
+              >
+                <Type size={18} />
+              </button>
+              <button
+                className={`clients-view-btn ${viewMode === 'folder' ? 'clients-view-btn--active' : ''}`}
+                onClick={() => { setViewMode('folder'); setCollapsedGroups({}); }}
+                title="Vue par dossier"
+              >
+                <FolderOpen size={18} />
+              </button>
+            </div>
           </div>
           <button className="clients-create-btn" onClick={() => setCreateOpen(true)}>
             <Plus size={18} />
