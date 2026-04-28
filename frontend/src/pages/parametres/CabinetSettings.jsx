@@ -17,7 +17,7 @@ export default function CabinetSettings() {
 
   // Sections open/closed
   const [sections, setSections] = useState({
-    info: true, email: false, reminders: false, security: false, legal: false,
+    info: true, email: false, features: false, reminders: false, security: false, legal: false,
   });
 
   // Legal info preview
@@ -114,6 +114,8 @@ export default function CabinetSettings() {
         require2FA: settings.require2FA,
         allowClientUpload: settings.allowClientUpload,
         clientUploadMaxSizeMB: settings.clientUploadMaxSizeMB,
+        enableMessaging: settings.enableMessaging,
+        enableAgenda: settings.enableAgenda,
       });
 
       success('Paramètres enregistrés');
@@ -386,7 +388,46 @@ export default function CabinetSettings() {
         )}
       </div>
 
-      {/* Section 3: Relances extranet */}
+      {/* Section: Fonctionnalités extranet */}
+      <div className="cab-section">
+        <div className="cab-section-header" onClick={() => toggleSection('features')}>
+          <span className="cab-section-icon"><Shield size={18} /></span>
+          <span className="cab-section-title">Fonctionnalités extranet</span>
+          <ChevronDown size={16} className={`cab-chevron ${sections.features ? 'cab-chevron--open' : ''}`} />
+        </div>
+        {sections.features && (
+          <div className="cab-section-body">
+            <div className="cab-row">
+              <div className="cab-field">
+                <label className="cab-label">Messagerie client</label>
+                <p className="cab-hint">Permet aux clients d'envoyer des messages depuis l'extranet.</p>
+                <label className="cab-toggle">
+                  <input
+                    type="checkbox"
+                    checked={settings.enableMessaging ?? true}
+                    onChange={(e) => setSettings({ ...settings, enableMessaging: e.target.checked })}
+                  />
+                  <span className="cab-toggle-slider" />
+                </label>
+              </div>
+              <div className="cab-field">
+                <label className="cab-label">Agenda</label>
+                <p className="cab-hint">Affiche le calendrier des rendez-vous et échéances dans l'extranet.</p>
+                <label className="cab-toggle">
+                  <input
+                    type="checkbox"
+                    checked={settings.enableAgenda ?? true}
+                    onChange={(e) => setSettings({ ...settings, enableAgenda: e.target.checked })}
+                  />
+                  <span className="cab-toggle-slider" />
+                </label>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Section: Relances extranet */}
       <div className="cab-section">
         <div className="cab-section-header" onClick={() => toggleSection('reminders')}>
           <span className="cab-section-icon"><Bell size={18} /></span>

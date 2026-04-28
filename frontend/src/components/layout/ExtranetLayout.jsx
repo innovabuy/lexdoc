@@ -46,6 +46,22 @@ export default function ExtranetLayout() {
             >
               Mon profil
             </NavLink>
+            {access?.features?.enableMessaging && (
+              <NavLink
+                to="/extranet/messages"
+                className={({ isActive }) => `ext-nav-link ${isActive ? 'ext-nav-link--active' : ''}`}
+              >
+                Messagerie
+              </NavLink>
+            )}
+            {access?.features?.enableAgenda && (
+              <NavLink
+                to="/extranet/agenda"
+                className={({ isActive }) => `ext-nav-link ${isActive ? 'ext-nav-link--active' : ''}`}
+              >
+                Agenda
+              </NavLink>
+            )}
           </nav>
 
           <div className="ext-header-right">

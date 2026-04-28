@@ -115,6 +115,7 @@ router.put('/preferences', requireAdmin, async (req, res, next) => {
       documentRetentionYears, autoArchiveClosedFolders, autoArchiveAfterDays,
       enforceStrongPasswords, sessionTimeoutMinutes, require2FA,
       allowClientUpload, clientUploadMaxSizeMB,
+      enableMessaging, enableAgenda,
     } = req.body;
 
     const settings = await prisma.tenantSettings.upsert({
@@ -139,6 +140,8 @@ router.put('/preferences', requireAdmin, async (req, res, next) => {
         ...(require2FA !== undefined && { require2FA }),
         ...(allowClientUpload !== undefined && { allowClientUpload }),
         ...(clientUploadMaxSizeMB !== undefined && { clientUploadMaxSizeMB }),
+        ...(enableMessaging !== undefined && { enableMessaging }),
+        ...(enableAgenda !== undefined && { enableAgenda }),
       },
       create: {
         tenantId: req.tenant.id,
@@ -152,6 +155,8 @@ router.put('/preferences', requireAdmin, async (req, res, next) => {
         ...(emailFromName !== undefined && { emailFromName }),
         ...(emailReplyTo !== undefined && { emailReplyTo }),
         ...(emailSignature !== undefined && { emailSignature }),
+        ...(enableMessaging !== undefined && { enableMessaging }),
+        ...(enableAgenda !== undefined && { enableAgenda }),
       },
     });
 

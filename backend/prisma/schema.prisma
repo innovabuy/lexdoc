@@ -1054,6 +1054,10 @@ model TenantSettings {
   allowClientUpload      Boolean @default(false)
   clientUploadMaxSizeMB  Int     @default(10)
 
+  // Fonctionnalités extranet
+  enableMessaging        Boolean @default(true)
+  enableAgenda           Boolean @default(true)
+
   // Extranet reminder config
   reminderDelay1  Int     @default(3)   // days after invite for 1st reminder
   reminderDelay2  Int     @default(7)   // days after invite for 2nd reminder

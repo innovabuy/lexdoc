@@ -333,6 +333,12 @@ router.get('/me', authenticateClient, async (req, res, next) => {
   try {
     const access = req.clientAccess;
 
+    // Récupérer les settings du tenant pour les features extranet
+    const tenantSettings = await prisma.tenantSettings.findUnique({
+      where: { tenantId: req.tenant.id },
+      select: { enableMessaging: true, enableAgenda: true },
+    });
+
     return successResponse(res, {
       id: access.id,
       email: access.email,
@@ -356,6 +362,10 @@ router.get('/me', authenticateClient, async (req, res, next) => {
         name: access.folder.tenant.name,
         logo: access.folder.tenant.logo,
         primaryColor: access.folder.tenant.primaryColor,
+      },
+      features: {
+        enableMessaging: tenantSettings?.enableMessaging ?? true,
+        enableAgenda: tenantSettings?.enableAgenda ?? true,
       },
     });
   } catch (error) {
