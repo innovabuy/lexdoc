@@ -40,6 +40,7 @@ const FolderCategories = lazy(() => import('./pages/settings/FolderCategories'))
 const TemplateCategories = lazy(() => import('./pages/settings/TemplateCategories'));
 const NotificationSettings = lazy(() => import('./pages/settings/NotificationSettings'));
 const AbonnementSettings = lazy(() => import('./pages/parametres/AbonnementSettings'));
+const ClientFormBuilder = lazy(() => import('./pages/parametres/ClientFormBuilder'));
 
 // Extranet pages
 const ExtranetLogin = lazy(() => import('./pages/extranet/ExtranetLogin'));
@@ -48,6 +49,7 @@ const ExtranetDashboard = lazy(() => import('./pages/extranet/ExtranetDashboard'
 const ExtranetProfileWizard = lazy(() => import('./pages/extranet/ExtranetProfileWizard'));
 const ExtranetFolderView = lazy(() => import('./pages/extranet/ExtranetFolderView'));
 const ExtranetFormPage = lazy(() => import('./pages/extranet/ExtranetFormPage'));
+const ClientFormExtranet = lazy(() => import('./pages/extranet/ClientFormExtranet'));
 
 function PageLoader() {
   return (
@@ -123,6 +125,7 @@ export default function App() {
                 <Route path="parametres/integrations" element={<IntegrationsSettings />} />
                 <Route path="parametres/utilisateurs" element={<UtilisateursSettings />} />
                 <Route path="parametres/abonnement" element={<AbonnementSettings />} />
+                <Route path="parametres/formulaires" element={<ClientFormBuilder />} />
 
                 {/* Legacy routes kept for backward compatibility (no sidebar nav item) */}
                 <Route path="folders" element={<Navigate to="/dossiers" replace />} />
@@ -155,6 +158,7 @@ export default function App() {
                 <Route path="/extranet/dashboard" element={<ExtranetDashboard />} />
                 <Route path="/extranet/profile" element={<ExtranetProfileWizard />} />
                 <Route path="/extranet/folders/:folderId" element={<ExtranetFolderView />} />
+                <Route path="/extranet/client-form" element={<ClientFormExtranet />} />
               </Route>
 
               {/* Catch-all redirect */}

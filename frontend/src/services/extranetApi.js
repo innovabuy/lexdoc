@@ -32,6 +32,10 @@ export const downloadDocument = (docId) => authed.get(`/extranet/me/documents/${
 // Me
 export const getMe = () => authed.get('/extranet/me');
 
+// Formulaire paramétrable (client form)
+export const getClientForm = () => authed.get('/extranet/client-form');
+export const saveClientForm = (body) => authed.post('/extranet/client-form', body);
+
 // Form-token (no JWT, token-based)
 export const verifyFormToken = (token) => api.get(`/extranet/form/verify/${token}`);
 export const getFormProfile = (token) => api.get(`/extranet/form/${token}/profile`);

@@ -12,6 +12,9 @@ const emailService = require('../services/email.service');
 const { authenticate: authenticateCabinet } = require('../middleware/auth');
 const { enforceTenant } = require('../middleware/tenant');
 const notificationService = require('../services/notification.service');
+const htmlToPdfService = require('../services/html-to-pdf.service');
+const storageService = require('../services/storage.service');
+const { sanitizeFilename } = require('../utils/helpers');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 const JWT_EXPIRES_IN = process.env.JWT_EXTRANET_EXPIRES_IN || '30d';
@@ -1599,5 +1602,330 @@ router.get('/admin/activity', authenticateCabinet, enforceTenant, async (req, re
     next(error);
   }
 });
+
+// ============================================================================
+// FORMULAIRE PARAMÉTRABLE (Client Form)
+// ============================================================================
+
+// GET /api/extranet/client-form — Récupérer le formulaire à remplir
+router.get('/client-form', authenticateClient, async (req, res, next) => {
+  try {
+    const clientId = req.clientAccess.folder.client.id;
+    const tenantId = req.tenant.id;
+    const folderId = req.folder.id;
+
+    // Chercher un template par défaut ou lié au type de dossier
+    let template = await prisma.clientFormTemplate.findFirst({
+      where: {
+        tenantId,
+        isActive: true,
+        deletedAt: null,
+        folderType: req.folder.type,
+      },
+      include: {
+        sections: { where: { isActive: true }, orderBy: { ordre: 'asc' } },
+      },
+    });
+
+    // Fallback sur le template par défaut
+    if (!template) {
+      template = await prisma.clientFormTemplate.findFirst({
+        where: {
+          tenantId,
+          isActive: true,
+          deletedAt: null,
+          isDefault: true,
+        },
+        include: {
+          sections: { where: { isActive: true }, orderBy: { ordre: 'asc' } },
+        },
+      });
+    }
+
+    if (!template) {
+      return successResponse(res, { template: null, response: null }, 'Aucun formulaire configuré');
+    }
+
+    // Chercher une réponse existante
+    const response = await prisma.clientFormResponse.findFirst({
+      where: { clientId, templateId: template.id, folderId },
+    });
+
+    return successResponse(res, { template, response });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/extranet/client-form — Sauvegarder / soumettre le formulaire
+router.post('/client-form', authenticateClient, async (req, res, next) => {
+  try {
+    const { templateId, data, step, submit } = req.body;
+    const clientId = req.clientAccess.folder.client.id;
+    const tenantId = req.tenant.id;
+    const folderId = req.folder.id;
+
+    if (!templateId) throw new BadRequestError('templateId est requis');
+
+    // Vérifier que le template existe et appartient au tenant
+    const template = await prisma.clientFormTemplate.findFirst({
+      where: { id: templateId, tenantId, isActive: true, deletedAt: null },
+      include: { sections: { where: { isActive: true }, orderBy: { ordre: 'asc' } } },
+    });
+    if (!template) throw new NotFoundError('Template non trouvé');
+
+    // Upsert de la réponse
+    const existing = await prisma.clientFormResponse.findFirst({
+      where: { clientId, templateId, folderId },
+    });
+
+    let response;
+    if (existing) {
+      // Fusionner les données existantes avec les nouvelles
+      const mergedData = { ...(existing.data || {}), ...(data || {}) };
+      response = await prisma.clientFormResponse.update({
+        where: { id: existing.id },
+        data: {
+          data: mergedData,
+          lastStep: step || existing.lastStep,
+          ...(submit && { status: 'SUBMITTED', submittedAt: new Date() }),
+        },
+      });
+    } else {
+      response = await prisma.clientFormResponse.create({
+        data: {
+          tenantId,
+          clientId,
+          templateId,
+          folderId,
+          data: data || {},
+          lastStep: step || 0,
+          ...(submit && { status: 'SUBMITTED', submittedAt: new Date() }),
+        },
+      });
+    }
+
+    // Si soumission, notifier le cabinet
+    if (submit) {
+      try {
+        const client = req.clientAccess.folder.client;
+        const folder = req.folder;
+        // Créer une notification pour les avocats du cabinet
+        const users = await prisma.user.findMany({
+          where: { tenantId, isActive: true, role: { in: ['ADMIN', 'LAWYER'] } },
+          select: { id: true },
+        });
+        for (const user of users) {
+          await notificationService.create({
+            userId: user.id,
+            tenantId,
+            type: 'CLIENT_PROFILE_COMPLETE',
+            title: 'Formulaire client soumis',
+            message: `${client.firstName || ''} ${client.lastName || ''} a soumis le formulaire "${template.name}" pour le dossier ${folder.reference}`,
+            metadata: { clientId, folderId, templateId, responseId: response.id },
+          });
+        }
+      } catch (notifError) {
+        // Ne pas bloquer la soumission pour une erreur de notification
+        console.error('Notification error:', notifError.message);
+      }
+
+      // Générer un PDF récapitulatif et l'attacher au dossier
+      try {
+        const client = req.clientAccess.folder.client;
+        const folder = req.folder;
+        const formData = response.data || (existing ? { ...(existing.data || {}), ...(data || {}) } : data || {});
+        const clientFullName = [client.firstName, client.lastName].filter(Boolean).join(' ') || 'Client';
+        const dateStr = new Date().toLocaleDateString('fr-FR');
+
+        const htmlContent = buildFormPdfHtml(template, formData, clientFullName, folder.reference, dateStr);
+        const pdfBuffer = await htmlToPdfService.convertHtmlToPdf(htmlContent);
+
+        const docName = `Fiche de renseignements - ${clientFullName} - ${dateStr}`;
+        const filename = sanitizeFilename(`${docName}.pdf`);
+        const objectKey = `${tenantId}/documents/${Date.now()}-${filename}`;
+
+        const uploaded = await storageService.uploadFile(pdfBuffer, objectKey, {
+          originalName: filename,
+          mimeType: 'application/pdf',
+        }, true);
+
+        const document = await prisma.document.create({
+          data: {
+            name: docName,
+            description: `Fiche de renseignements soumise le ${dateStr} via le formulaire "${template.name}"`,
+            type: 'OTHER',
+            filename: objectKey.split('/').pop(),
+            originalName: filename,
+            mimeType: 'application/pdf',
+            size: BigInt(pdfBuffer.length),
+            checksum: uploaded.checksum,
+            bucketName: uploaded.bucket,
+            objectKey: uploaded.objectKey,
+            isEncrypted: uploaded.isEncrypted,
+            folderId,
+            tenantId,
+            clientId,
+            status: 'DRAFT',
+          },
+        });
+
+        // Stocker les métadonnées d'encryption
+        if (uploaded.isEncrypted && uploaded.iv && uploaded.authTag) {
+          await prisma.$executeRaw`
+            UPDATE documents
+            SET checksum = ${uploaded.checksum || ''} || '|' || ${uploaded.iv || ''} || '|' || ${uploaded.authTag || ''}
+            WHERE id = ${document.id}
+          `;
+        }
+      } catch (pdfError) {
+        // Ne pas bloquer la soumission pour une erreur de génération PDF
+        console.error('PDF generation error:', pdfError.message);
+      }
+    }
+
+    return successResponse(res, response, submit ? 'Formulaire soumis' : 'Brouillon enregistré');
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ============================================================================
+// HELPER : Génération HTML pour PDF récapitulatif
+// ============================================================================
+
+const SECTION_FIELD_LABELS = {
+  IDENTITE: {
+    title: 'Identité principale',
+    fields: [
+      ['nom', 'Nom'], ['prenom', 'Prénom'], ['dateNaissance', 'Date de naissance'],
+      ['lieuNaissance', 'Lieu de naissance'], ['nationalite', 'Nationalité'],
+      ['profession', 'Profession'], ['numeroSecuriteSociale', 'N° sécurité sociale'],
+    ],
+  },
+  COORDONNEES: {
+    title: 'Coordonnées',
+    fields: [
+      ['domicilePersonnel', 'Domicile personnel'], ['telephonePersonnel', 'Téléphone personnel'],
+      ['domicileProfessionnel', 'Domicile professionnel'], ['telephoneProfessionnel', 'Téléphone professionnel'],
+      ['telecopie', 'Télécopie'], ['email', 'Email'],
+    ],
+  },
+  SITUATION_FAMILIALE: {
+    title: 'Situation familiale',
+    fields: [
+      ['nombreEnfantsMineurs', "Enfants mineurs"], ['nombreEnfantsMajeurs', "Enfants majeurs"],
+      ['estSalarieSociete', 'Salarié(e) de la société'], ['deviendraaSalarieSociete', 'Deviendra salarié(e)'],
+    ],
+  },
+  FILIATION: {
+    title: 'Filiation',
+    fields: [
+      ['nomPrenomsPere', 'Nom et prénoms du père'], ['nomJeuneFillePrenomsEre', 'Nom et prénoms de la mère'],
+    ],
+  },
+  CONJOINT_PACS: {
+    title: 'Conjoint / PACS',
+    fields: [
+      ['statutConjoint', 'Statut'], ['conjointNom', 'Nom du conjoint'], ['conjointPrenom', 'Prénom du conjoint'],
+      ['conjointDateNaissance', 'Date de naissance'], ['conjointLieuNaissance', 'Lieu de naissance'],
+      ['conjointNationalite', 'Nationalité'], ['conjointProfession', 'Profession'],
+      ['pacsSign', 'PACS signé'], ['pacsDate', 'Date du PACS'],
+    ],
+  },
+  SITUATION_MATRIMONIALE: {
+    title: 'Situation matrimoniale',
+    fields: [
+      ['dateLieuMariage', 'Date et lieu du mariage'], ['contratMariage', 'Contrat de mariage'],
+      ['typeContratMariage', 'Type de contrat'], ['dateContratMariage', 'Date du contrat'],
+      ['nomAdresseNotaire', 'Notaire'], ['dateDecesConjoint', 'Date de décès du conjoint'],
+      ['dateDivorce', 'Date du divorce'],
+    ],
+  },
+  INFORMATIONS_PROJET: {
+    title: 'Informations projet',
+    fields: [
+      ['nomSociete', 'Nom de la société'], ['objetSocial', 'Objet social'],
+      ['montantCapital', 'Capital'], ['repartitionCapital', 'Répartition du capital'],
+      ['apports', 'Apports'], ['projetImmobilier', 'Projet immobilier'],
+      ['dirigeants', 'Dirigeants'], ['siegeSocial', 'Siège social'],
+      ['modeJouissance', 'Mode de jouissance'], ['optionIS', 'Option IS'],
+      ['optionTVA', 'Option TVA'], ['regimeTVA', 'Régime TVA'],
+    ],
+  },
+};
+
+function formatPdfValue(value) {
+  if (value === null || value === undefined || value === '') return '—';
+  if (value === 'true') return 'Oui';
+  if (value === 'false') return 'Non';
+  // Date ISO
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+    try { return new Date(value).toLocaleDateString('fr-FR'); } catch { return value; }
+  }
+  const statusLabels = { MARIE: 'Marié(e)', PACSE: 'Pacsé(e)', CELIBATAIRE: 'Célibataire', VEUF: 'Veuf/Veuve', DIVORCE: 'Divorcé(e)' };
+  if (statusLabels[value]) return statusLabels[value];
+  return String(value);
+}
+
+function buildFormPdfHtml(template, formData, clientName, folderRef, dateStr) {
+  const activeSections = template.sections.filter((s) => s.isActive);
+
+  let sectionsHtml = '';
+  for (const section of activeSections) {
+    const def = SECTION_FIELD_LABELS[section.section];
+    if (!def) continue;
+
+    let rowsHtml = '';
+    for (const [key, label] of def.fields) {
+      const val = formData[key];
+      if (val === undefined && val === null) continue;
+      rowsHtml += `<tr><td class="label">${label}</td><td class="value">${formatPdfValue(val)}</td></tr>`;
+    }
+
+    if (rowsHtml) {
+      sectionsHtml += `
+        <div class="section">
+          <h2>${def.title}</h2>
+          <table>${rowsHtml}</table>
+        </div>`;
+    }
+  }
+
+  return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11pt; color: #1e293b; line-height: 1.5; }
+  .header { border-bottom: 2px solid #0066ff; padding-bottom: 16px; margin-bottom: 24px; }
+  .header h1 { font-size: 18pt; color: #0066ff; margin-bottom: 4px; }
+  .header .meta { font-size: 9pt; color: #64748b; }
+  .section { margin-bottom: 20px; page-break-inside: avoid; }
+  .section h2 { font-size: 12pt; color: #0066ff; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 8px; }
+  table { width: 100%; border-collapse: collapse; }
+  tr { border-bottom: 1px solid #f1f5f9; }
+  td { padding: 5px 8px; vertical-align: top; }
+  td.label { width: 40%; font-weight: 600; color: #475569; font-size: 10pt; }
+  td.value { color: #1e293b; font-size: 10pt; }
+  .footer { margin-top: 32px; padding-top: 12px; border-top: 1px solid #e2e8f0; font-size: 8pt; color: #94a3b8; text-align: center; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>Fiche de renseignements</h1>
+    <div class="meta">
+      <strong>${clientName}</strong> &mdash; Dossier ${folderRef}<br>
+      Formulaire : ${template.name} &mdash; Soumis le ${dateStr}
+    </div>
+  </div>
+  ${sectionsHtml}
+  <div class="footer">
+    Document généré automatiquement par LexDoc le ${dateStr}. Ce document est confidentiel.
+  </div>
+</body>
+</html>`;
+}
 
 module.exports = router;

@@ -35,6 +35,7 @@ const sendingboxRoutes = require('./sendingbox.routes');
 const treeTemplateRoutes = require('./tree-template.routes');
 const userRoutes = require('./user.routes');
 const settingsRoutes = require('./settings.routes');
+const formTemplateRoutes = require('./form-template.routes');
 
 // Register routes
 router.use('/health', healthRoutes);
@@ -67,6 +68,7 @@ router.use('/blocks', blockRoutes);
 router.use('/tree-templates', treeTemplateRoutes);
 router.use('/users', userRoutes);
 router.use('/settings', settingsRoutes);
+router.use('/form-templates', formTemplateRoutes);
 router.use('/integrations/docusign', docusignRoutes);
 router.use('/integrations/sendingbox', sendingboxRoutes);
 router.use('/documents', docusignRoutes); // For /documents/:id/sign and /documents/:id/send-registered

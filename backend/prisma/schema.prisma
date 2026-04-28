@@ -63,6 +63,8 @@ model Tenant {
   folderCategories   FolderCategory[]
   templateCategories TemplateCategory[]
   documentRequests   DocumentRequest[]
+  formTemplates      ClientFormTemplate[]
+  formResponses      ClientFormResponse[]
 
   @@index([email])
   @@index([siret])
@@ -272,6 +274,7 @@ model Client {
   consents    ClientConsent[]
   folderPersons FolderPerson[]
   documents   Document[]     @relation("DocumentClient")
+  formResponses ClientFormResponse[]
 
   @@index([email])
   @@index([tenantId])
@@ -370,6 +373,7 @@ model Folder {
   folderDocCategories FolderDocCategory[]
   timelineEvents   TimelineEvent[]
   signatureRequests SignatureRequest[]
+  formResponses    ClientFormResponse[]
 
   @@unique([tenantId, reference])
   @@index([tenantId])
@@ -1688,4 +1692,92 @@ model ClientReminder {
   @@index([scheduledAt])
   @@index([status])
   @@map("client_reminders")
+}
+
+// ============================================================================
+// FORMULAIRE CLIENT PARAMÉTRABLE (Fiche de renseignements)
+// ============================================================================
+
+enum FormSectionType {
+  IDENTITE
+  COORDONNEES
+  SITUATION_FAMILIALE
+  FILIATION
+  CONJOINT_PACS
+  SITUATION_MATRIMONIALE
+  INFORMATIONS_PROJET
+}
+
+enum FormResponseStatus {
+  DRAFT
+  SUBMITTED
+}
+
+model ClientFormTemplate {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+  folderType  FolderType?   // Limiter le template à un type de dossier
+  isDefault   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  deletedAt   DateTime?
+
+  sections    ClientFormSection[]
+  responses   ClientFormResponse[]
+
+  @@index([tenantId])
+  @@map("client_form_templates")
+}
+
+model ClientFormSection {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  templateId  String
+  template    ClientFormTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  section     FormSectionType
+  label       String
+  ordre       Int      @default(0)
+  isActive    Boolean  @default(true)
+
+  @@unique([templateId, section])
+  @@index([templateId])
+  @@map("client_form_sections")
+}
+
+model ClientFormResponse {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  templateId  String
+  template    ClientFormTemplate @relation(fields: [templateId], references: [id])
+
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  folderId    String?
+  folder      Folder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
+
+  data        Json     @default("{}")
+  status      FormResponseStatus @default(DRAFT)
+  lastStep    Int      @default(0)
+  submittedAt DateTime?
+
+  @@index([tenantId])
+  @@index([clientId])
+  @@index([folderId])
+  @@unique([clientId, templateId, folderId])
+  @@map("client_form_responses")
 }
