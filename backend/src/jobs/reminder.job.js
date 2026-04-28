@@ -130,15 +130,39 @@ class ReminderJob {
 
     logger.info(`Found ${pendingTrackings.length} documents needing reminders`);
 
+    // (a) Collecter les documentId déjà relancés par le système legacy (Signature)
+    // pour éviter les doublons le même jour
+    const todayStart = new Date(now);
+    todayStart.setHours(0, 0, 0, 0);
+    const signatureRemindersToday = await prisma.signatureReminder.findMany({
+      where: { sentAt: { gte: todayStart } },
+      select: { signature: { select: { documentId: true } } },
+    });
+    const alreadyRemindedDocIds = new Set(
+      signatureRemindersToday.map((r) => r.signature.documentId)
+    );
+
     for (const tracking of pendingTrackings) {
       try {
-        if (tracking.reminderCount >= 3) {
+        // (a) Éviter le doublon si déjà relancé via le système legacy aujourd'hui
+        if (alreadyRemindedDocIds.has(tracking.documentId)) {
+          logger.info(`Skipping tracking reminder for document ${tracking.documentId} — already reminded via legacy system today`);
+          continue;
+        }
+
+        // (b) Utiliser maxReminders de TenantSettings au lieu du hardcodé 3
+        const settings = await prisma.tenantSettings.findUnique({
+          where: { tenantId: tracking.document.tenantId },
+        });
+        const maxReminders = settings?.maxReminders ?? 3;
+
+        if (tracking.reminderCount >= maxReminders) {
           // Max reminders reached, disable auto reminders
           await prisma.documentTracking.update({
             where: { id: tracking.id },
             data: { autoRemindersEnabled: false },
           });
-          logger.info(`Max reminders reached for document ${tracking.documentId}, disabling auto reminders`);
+          logger.info(`Max reminders (${maxReminders}) reached for document ${tracking.documentId}, disabling auto reminders`);
           continue;
         }
 
@@ -203,9 +227,22 @@ class ReminderJob {
           },
         });
 
-        // Calculate next reminder date based on schedule (J+1, J+3, J+5 = intervals of 2 days)
-        const nextReminder = new Date();
-        nextReminder.setDate(nextReminder.getDate() + 2);
+        // (c) Utiliser reminderDelay1/2/3 de TenantSettings pour calculer le prochain intervalle
+        const delays = [
+          settings?.reminderDelay1 ?? 3,
+          settings?.reminderDelay2 ?? 7,
+          settings?.reminderDelay3 ?? 14,
+        ];
+        const nextDelayIndex = Math.min(tracking.reminderCount, delays.length - 1);
+        const currentDelay = delays[nextDelayIndex];
+        // L'intervalle est la différence entre le délai suivant et le courant
+        const nextDelay = nextDelayIndex + 1 < delays.length
+          ? delays[nextDelayIndex + 1] - currentDelay
+          : currentDelay; // Fallback: même intervalle que le dernier
+
+        const nextReminder = tracking.reminderCount + 1 < maxReminders
+          ? new Date(now.getTime() + nextDelay * 24 * 60 * 60 * 1000)
+          : null;
 
         // Update tracking
         await prisma.documentTracking.update({
@@ -213,14 +250,14 @@ class ReminderJob {
           data: {
             reminderCount: { increment: 1 },
             lastReminderAt: now,
-            nextReminderAt: tracking.reminderCount < 2 ? nextReminder : null,
+            nextReminderAt: nextReminder,
           },
         });
 
         logger.info(`Tracking reminder ${reminderNumber} processed for document ${document.id}`, {
           reminderType,
           emailSent,
-          nextReminderAt: tracking.reminderCount < 2 ? nextReminder : null,
+          nextReminderAt: nextReminder,
         });
 
         if (emailSent) remindersSent++;
