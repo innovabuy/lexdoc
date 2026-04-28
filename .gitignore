@@ -53,3 +53,12 @@ minio-data/
 # Docker volumes data (PostgreSQL, MinIO)
 data/
 /data/
+
+# Backups locaux (jamais commiter)
+*.backup
+.env.*.backup
+
+# Drafts de schéma / migrations en attente de validation humaine
+*.draft
+prisma/migrations/_DRAFT_*/
+backend/prisma/migrations/_DRAFT_*/
