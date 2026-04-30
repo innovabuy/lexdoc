@@ -62,3 +62,9 @@ data/
 *.draft
 prisma/migrations/_DRAFT_*/
 backend/prisma/migrations/_DRAFT_*/
+
+# Mission B — backups locaux et fichiers de test
+*.bak-*
+*.bak-pre-*
+document_test_*.docx
+/tmp-snapshots/
