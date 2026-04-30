@@ -74,7 +74,7 @@ async function collectData(folderId, tenantId) {
   const data = {
     _branding: {
       logoBuffer,
-      mentionsLegales: avocatLegalInfo?.mentionsLegales || null,
+      mentionsLegales: formatMentionsLegales(avocatLegalInfo?.mentionsLegales),
     },
     cabinet: {
       nom: tenant.name || '',
@@ -166,6 +166,20 @@ async function collectData(folderId, tenantId) {
     })(),
     date_annee: String(new Date().getFullYear()),
   };
+
+  // Mission B : champs Tenant ajoutés (Stage 2.2) + section mediateur + alias date
+  data.cabinet.tva = tenant.tva || '';
+  data.cabinet.address_line1 = tenant.addressLine1 || '';
+  data.mediateur = {
+    nom_complet: tenant.mediateurNomComplet || '',
+    barreau: tenant.mediateurBarreau || '',
+  };
+  data.document_date = data.date;
+
+  // Mission B Phase 1 : sections métier reçues via additionalData
+  // Doivent être pré-initialisées sinon mergeAdditionalData skip silencieusement
+  data.honoraires = {};
+  data.provision = {};
 
   return data;
 }
@@ -259,6 +273,75 @@ function findMissingFields(data, variables) {
     }
   }
   return missing;
+}
+
+/**
+ * Formate un nombre en montant français : "2 500,00 €"
+ */
+function formatMontantEur(n) {
+  if (n == null || isNaN(n)) return '';
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(n);
+}
+
+/**
+ * Formate les mentions légales du cabinet en string multi-ligne.
+ * Tolère : string (renvoyée telle quelle), objet (formaté), null/undefined (string vide).
+ *
+ * Format de sortie attendu (4 lignes) :
+ *   <Dénomination> - <Forme> au capital de <Capital> €
+ *   Siège social : <Siège>
+ *   RCS <Rcs>
+ *   <Ordre>
+ */
+function formatMentionsLegales(value) {
+  if (value == null) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value !== 'object') return String(value);
+
+  const parts = [];
+
+  const ligne1 = [];
+  if (value.denomination) ligne1.push(value.denomination);
+  if (value.forme_juridique) ligne1.push(`- ${value.forme_juridique}`);
+  if (value.capital != null) {
+    const capitalStr = formatMontantEur(value.capital);
+    ligne1.push(`au capital de ${capitalStr}`);
+  }
+  if (ligne1.length) parts.push(ligne1.join(' '));
+
+  if (value.siege) parts.push(`Siège social : ${value.siege}`);
+  if (value.rcs) parts.push(`RCS ${value.rcs}`);
+  if (value.ordre) parts.push(value.ordre);
+
+  return parts.join('\n');
+}
+
+/**
+ * Enrichit data avec champs calculés (TVA 20%, TTC) à partir des montants HT.
+ * Appelé après mergeAdditionalData, avant generateDocument.
+ */
+function enrichComputedFields(data) {
+  if (data.honoraires && data.honoraires.ht != null && data.honoraires.ht !== '') {
+    const ht = parseFloat(data.honoraires.ht);
+    if (!isNaN(ht)) {
+      data.honoraires.tva = formatMontantEur(ht * 0.20);
+      data.honoraires.ttc = formatMontantEur(ht * 1.20);
+      data.honoraires.ht = formatMontantEur(ht);
+    }
+  }
+  if (data.provision && data.provision.ht != null && data.provision.ht !== '') {
+    const ht = parseFloat(data.provision.ht);
+    if (!isNaN(ht)) {
+      data.provision.ttc = formatMontantEur(ht * 1.20);
+      data.provision.ht = formatMontantEur(ht);
+    }
+  }
+  return data;
 }
 
 /**
@@ -549,9 +632,11 @@ function mergeAdditionalData(data, additionalData) {
     const parts = key.split('.');
     if (parts.length === 2) {
       const [section, field] = parts;
-      if (data[section] && typeof data[section] === 'object') {
-        data[section][field] = value;
+      if (!data[section] || typeof data[section] !== 'object') {
+        console.warn(`[mergeAdditionalData] Auto-creating section '${section}' for key '${key}' — consider declaring it in collectData()`);
+        data[section] = {};
       }
+      data[section][field] = value;
     }
   }
   return data;
@@ -564,6 +649,7 @@ module.exports = {
   generateDocument,
   applyBranding,
   mergeAdditionalData,
+  enrichComputedFields,
   getNestedValue,
   flattenObject,
 };

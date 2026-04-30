@@ -445,6 +445,7 @@ router.post('/generate', async (req, res, next) => {
     }
 
     // 5. Generate document
+    templateEngine.enrichComputedFields(data);
     const docBuffer = templateEngine.generateDocument(templateBuffer, data);
 
     // 6. Store in MinIO
@@ -642,6 +643,7 @@ router.post('/generate/force', async (req, res, next) => {
     }
 
     // Generate
+    templateEngine.enrichComputedFields(data);
     const docBuffer = templateEngine.generateDocument(templateBuffer, data);
 
     // Store
