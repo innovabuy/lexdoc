@@ -28,6 +28,12 @@ model Tenant {
   email          String   @unique
   website        String?
 
+  // Informations complémentaires (Mission B — templates Pragmavox)
+  tva                  String?  // N° TVA intracommunautaire (ex: FR25982600272)
+  addressLine1         String?  // Première ligne d'adresse (ex: 11, rue Paul LANGEVIN)
+  mediateurNomComplet  String?  // Médiateur national de la consommation (art. L. 612-1)
+  mediateurBarreau     String?  // Barreau de rattachement du médiateur
+
   // Informations avocat (enrichissement spec UX)
   toque          String?
   barreau        String?
