@@ -58,14 +58,9 @@ router.get('/', async (req, res, next) => {
 router.put('/', requireAdmin, async (req, res, next) => {
   try {
     const {
-      numeroToque,
-      barreau,
       specialites,
-      rcs,
-      tvaIntra,
       assuranceRC,
       numeroPolice,
-      mentionsLegales,
     } = req.body;
 
     // Parse specialites if string
@@ -76,25 +71,15 @@ router.put('/', requireAdmin, async (req, res, next) => {
     const legalInfo = await prisma.avocatLegalInfo.upsert({
       where: { tenantId: req.tenant.id },
       update: {
-        numeroToque,
-        barreau,
         specialites: parsedSpecialites,
-        rcs,
-        tvaIntra,
         assuranceRC,
         numeroPolice,
-        mentionsLegales,
       },
       create: {
         tenantId: req.tenant.id,
-        numeroToque,
-        barreau,
         specialites: parsedSpecialites,
-        rcs,
-        tvaIntra,
         assuranceRC,
         numeroPolice,
-        mentionsLegales,
       },
     });
 
@@ -108,7 +93,7 @@ router.put('/', requireAdmin, async (req, res, next) => {
         tenantId: req.tenant.id,
         ipAddress: req.ip || req.connection?.remoteAddress,
         userAgent: req.get('user-agent'),
-        changes: { numeroToque, barreau, specialites: parsedSpecialites, rcs, tvaIntra },
+        changes: { specialites: parsedSpecialites, assuranceRC, numeroPolice },
       },
     });
 

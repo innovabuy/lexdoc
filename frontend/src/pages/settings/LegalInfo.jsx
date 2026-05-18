@@ -10,7 +10,6 @@ export default function LegalInfo() {
   const [activeTab, setActiveTab] = useState('info');
   const [message, setMessage] = useState(null);
   const [uploading, setUploading] = useState({ signature: false, cachet: false });
-  const [mentionsText, setMentionsText] = useState('');
 
   const signatureInputRef = useRef(null);
   const cachetInputRef = useRef(null);
@@ -24,7 +23,6 @@ export default function LegalInfo() {
       const { data } = await api.get('/legal-info');
       const info = data.data || {};
       setLegalInfo(info);
-      setMentionsText(info.mentionsLegales ? JSON.stringify(info.mentionsLegales, null, 2) : '{\n  "footer": "",\n  "header": "",\n  "confidentialite": ""\n}');
     } catch (error) {
       console.error('Error fetching legal info:', error);
       setMessage({ type: 'error', text: 'Erreur lors du chargement' });
@@ -39,18 +37,7 @@ export default function LegalInfo() {
     setMessage(null);
 
     try {
-      // Parse mentions légales
-      let mentionsLegales = null;
-      try {
-        mentionsLegales = JSON.parse(mentionsText);
-      } catch {
-        // Keep as null if invalid JSON
-      }
-
-      await api.put('/legal-info', {
-        ...legalInfo,
-        mentionsLegales,
-      });
+      await api.put('/legal-info', legalInfo);
 
       setMessage({ type: 'success', text: 'Informations enregistrées avec succès' });
       setTimeout(() => setMessage(null), 3000);
@@ -160,7 +147,6 @@ export default function LegalInfo() {
             {[
               { id: 'info', label: 'Informations', icon: '📋' },
               { id: 'files', label: 'Signature & Cachet', icon: '✍️' },
-              { id: 'mentions', label: 'Mentions légales', icon: '⚖️' },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -183,35 +169,6 @@ export default function LegalInfo() {
           {/* Tab: Informations */}
           {activeTab === 'info' && (
             <div className="bg-white rounded-lg shadow-sm border p-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Barreau *
-                  </label>
-                  <input
-                    type="text"
-                    value={legalInfo?.barreau || ''}
-                    onChange={(e) => handleChange('barreau', e.target.value)}
-                    disabled={!isAdmin}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
-                    placeholder="Ex: Paris, Lyon, Angers..."
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Numéro de toque *
-                  </label>
-                  <input
-                    type="text"
-                    value={legalInfo?.numeroToque || ''}
-                    onChange={(e) => handleChange('numeroToque', e.target.value)}
-                    disabled={!isAdmin}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
-                    placeholder="Ex: P0245"
-                  />
-                </div>
-              </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Spécialités
@@ -230,35 +187,6 @@ export default function LegalInfo() {
                   placeholder="Droit des affaires, Droit des sociétés, Droit commercial..."
                 />
                 <p className="text-xs text-gray-500 mt-1">Séparez les spécialités par des virgules</p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    RCS
-                  </label>
-                  <input
-                    type="text"
-                    value={legalInfo?.rcs || ''}
-                    onChange={(e) => handleChange('rcs', e.target.value)}
-                    disabled={!isAdmin}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
-                    placeholder="RCS Paris B 123 456 789"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    N° TVA Intracommunautaire
-                  </label>
-                  <input
-                    type="text"
-                    value={legalInfo?.tvaIntra || ''}
-                    onChange={(e) => handleChange('tvaIntra', e.target.value)}
-                    disabled={!isAdmin}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
-                    placeholder="FR12345678901"
-                  />
-                </div>
               </div>
 
               <div className="border-t pt-6">
@@ -437,58 +365,6 @@ export default function LegalInfo() {
                   <strong>Conseil :</strong> Pour une meilleure qualité, utilisez des images PNG avec fond transparent.
                   La signature et le cachet seront automatiquement intégrés dans les documents générés.
                 </p>
-              </div>
-            </div>
-          )}
-
-          {/* Tab: Mentions légales */}
-          {activeTab === 'mentions' && (
-            <div className="bg-white rounded-lg shadow-sm border p-6 space-y-6">
-              <div>
-                <h3 className="font-medium text-gray-900 mb-2">Configuration des mentions légales</h3>
-                <p className="text-sm text-gray-500 mb-4">
-                  Ces mentions seront automatiquement insérées dans vos documents générés.
-                  Utilisez le format JSON pour définir les différentes sections.
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Mentions légales (format JSON)
-                </label>
-                <textarea
-                  value={mentionsText}
-                  onChange={(e) => setMentionsText(e.target.value)}
-                  disabled={!isAdmin}
-                  rows={12}
-                  className="w-full px-3 py-2 border rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
-                  placeholder='{\n  "footer": "Cabinet XYZ - Avocat au Barreau de Paris",\n  "header": "Confidentiel",\n  "confidentialite": "Ce document est strictement confidentiel..."\n}'
-                />
-              </div>
-
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <h4 className="font-medium text-gray-700 mb-2">Variables disponibles :</h4>
-                <ul className="text-sm text-gray-600 space-y-1">
-                  <li><code className="bg-gray-200 px-1 rounded">footer</code> - Texte en pied de page</li>
-                  <li><code className="bg-gray-200 px-1 rounded">header</code> - Texte en en-tête</li>
-                  <li><code className="bg-gray-200 px-1 rounded">confidentialite</code> - Clause de confidentialité</li>
-                  <li><code className="bg-gray-200 px-1 rounded">rgpd</code> - Mentions RGPD</li>
-                  <li><code className="bg-gray-200 px-1 rounded">honoraires</code> - Conditions d'honoraires</li>
-                </ul>
-              </div>
-
-              <div className="border-t pt-4">
-                <h4 className="font-medium text-gray-700 mb-2">Aperçu du pied de page :</h4>
-                <div className="p-4 bg-gray-100 rounded-lg text-sm text-gray-700 border">
-                  {(() => {
-                    try {
-                      const parsed = JSON.parse(mentionsText);
-                      return parsed.footer || 'Aucun pied de page défini';
-                    } catch {
-                      return <span className="text-red-500">JSON invalide</span>;
-                    }
-                  })()}
-                </div>
               </div>
             </div>
           )}

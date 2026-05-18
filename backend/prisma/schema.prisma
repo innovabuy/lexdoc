@@ -90,11 +90,7 @@ model AvocatLegalInfo {
   tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   // Informations professionnelles
-  numeroToque     String?
-  barreau         String?
   specialites     String[] @default([])
-  rcs             String?
-  tvaIntra        String?
 
   // Assurance
   assuranceRC     String?
@@ -103,9 +99,6 @@ model AvocatLegalInfo {
   // Fichiers
   signaturePath   String?
   cachetPath      String?
-
-  // Mentions légales personnalisées
-  mentionsLegales Json?
 
   @@map("avocat_legal_info")
 }

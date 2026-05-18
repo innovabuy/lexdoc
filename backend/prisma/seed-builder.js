@@ -299,25 +299,13 @@ async function main() {
     where: { tenantId: tenant.id },
   });
 
-  if (existingLegalInfo && !existingLegalInfo.barreau) {
+  if (existingLegalInfo && !existingLegalInfo.assuranceRC) {
     await prisma.avocatLegalInfo.update({
       where: { tenantId: tenant.id },
       data: {
-        numeroToque: 'P0245',
-        barreau: 'Angers',
         specialites: ['Droit des affaires', 'Droit des sociétés', 'Fusions-Acquisitions'],
-        rcs: 'Angers B 123 456 789',
-        tvaIntra: 'FR12345678901',
         assuranceRC: 'AXA Assurances',
         numeroPolice: 'RC-2026-00123456',
-        mentionsLegales: {
-          denomination: 'Cabinet Pragmavox',
-          forme_juridique: 'SELARL',
-          capital: 10000,
-          siege: '123 Rue de la Paix, 49000 Angers',
-          rcs: 'Angers B 123 456 789',
-          ordre: 'Ordre des Avocats du Barreau d\'Angers',
-        },
       },
     });
     console.log('✅ Updated legal info');

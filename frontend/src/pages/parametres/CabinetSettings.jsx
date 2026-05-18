@@ -558,38 +558,14 @@ export default function CabinetSettings() {
             {legalInfo ? (
               <div className="cab-legal-preview">
                 <div className="cab-legal-grid">
-                  {legalInfo.barreau && (
-                    <div className="cab-legal-item">
-                      <span className="cab-legal-label">Barreau</span>
-                      <span className="cab-legal-value">{legalInfo.barreau}</span>
-                    </div>
-                  )}
-                  {legalInfo.numeroToque && (
-                    <div className="cab-legal-item">
-                      <span className="cab-legal-label">Toque</span>
-                      <span className="cab-legal-value">{legalInfo.numeroToque}</span>
-                    </div>
-                  )}
                   {legalInfo.assuranceRC && (
                     <div className="cab-legal-item">
                       <span className="cab-legal-label">Assurance RC</span>
                       <span className="cab-legal-value">{legalInfo.assuranceRC}</span>
                     </div>
                   )}
-                  {legalInfo.rcs && (
-                    <div className="cab-legal-item">
-                      <span className="cab-legal-label">RCS</span>
-                      <span className="cab-legal-value">{legalInfo.rcs}</span>
-                    </div>
-                  )}
-                  {legalInfo.tvaIntra && (
-                    <div className="cab-legal-item">
-                      <span className="cab-legal-label">TVA Intracommunautaire</span>
-                      <span className="cab-legal-value">{legalInfo.tvaIntra}</span>
-                    </div>
-                  )}
                 </div>
-                {!legalInfo.barreau && !legalInfo.numeroToque && !legalInfo.assuranceRC && (
+                {!legalInfo.assuranceRC && !legalInfo.numeroPolice && (!legalInfo.specialites || legalInfo.specialites.length === 0) && (
                   <p className="cab-hint">Aucune information legale configuree.</p>
                 )}
                 <button
