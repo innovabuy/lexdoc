@@ -68,3 +68,4 @@ backend/prisma/migrations/_DRAFT_*/
 *.bak-pre-*
 document_test_*.docx
 /tmp-snapshots/
+backend/backups/

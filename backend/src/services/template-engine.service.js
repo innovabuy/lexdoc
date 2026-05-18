@@ -3,6 +3,7 @@ const PizZip = require('pizzip');
 const prisma = require('../config/database');
 const logger = require('../config/logger');
 const storageService = require('./storage.service');
+const { buildFooterFromTenant } = require('../utils/branding-format');
 
 /**
  * Collect all available data for template rendering from a folder
@@ -74,12 +75,12 @@ async function collectData(folderId, tenantId) {
   const data = {
     _branding: {
       logoBuffer,
-      mentionsLegales: formatMentionsLegales(avocatLegalInfo?.mentionsLegales),
+      mentionsLegales: buildFooterFromTenant(tenant),
     },
     cabinet: {
       nom: tenant.name || '',
       raison_sociale: tenant.legalName || tenant.name || '',
-      adresse: [tenant.address, tenant.postalCode, tenant.city].filter(Boolean).join(', '),
+      adresse: [tenant.addressLine1, tenant.postalCode, tenant.city].filter(Boolean).join(', '),
       telephone: tenant.phone || '',
       email: tenant.email || '',
       siret: tenant.siret || '',
@@ -98,7 +99,7 @@ async function collectData(folderId, tenantId) {
       email: createdBy.email || '',
       toque: tenant.toque || '',
       barreau: tenant.barreau || '',
-      adresse: [tenant.address, tenant.postalCode, tenant.city].filter(Boolean).join(', '),
+      adresse: [tenant.addressLine1, tenant.postalCode, tenant.city].filter(Boolean).join(', '),
       telephone: tenant.phone || '',
       fax: '',
     },
@@ -181,6 +182,24 @@ async function collectData(folderId, tenantId) {
   data.honoraires = {};
   data.provision = {};
 
+  // Mission B Phase 2 — alias snake_case pour mise en demeure (zéro régression Phase 1)
+  // Les clés existantes (client_capital, client_siege, client_email) restent intactes.
+  data.client.capital_social = data.client.capital;
+  data.client.siege_social = data.client.siege;
+  data.client.adresse_mail = data.client.email;
+
+  // Mission B Phase 2 — sections métier pour mise en demeure (pré-init pour mergeAdditionalData)
+  data.adversaire = {};
+  data.devis = {};
+  data.facture = {};
+  data.somme_due = {};
+
+  // Mission B Phase 2 — nouveaux champs dossier pour mise en demeure
+  // (vides par défaut, peuplés via additionalData : dossier.ref_interne, dossier.ref_adverse, dossier.greffe)
+  if (data.dossier.ref_interne == null) data.dossier.ref_interne = '';
+  if (data.dossier.ref_adverse == null) data.dossier.ref_adverse = '';
+  if (data.dossier.greffe == null) data.dossier.greffe = '';
+
   return data;
 }
 
@@ -214,7 +233,7 @@ async function collectBasicData(tenantId, userId) {
     cabinet: {
       nom: tenant.name || '',
       raison_sociale: tenant.legalName || tenant.name || '',
-      adresse: [tenant.address, tenant.postalCode, tenant.city].filter(Boolean).join(', '),
+      adresse: [tenant.addressLine1, tenant.postalCode, tenant.city].filter(Boolean).join(', '),
       cp: tenant.postalCode || '',
       ville: tenant.city || '',
       telephone: tenant.phone || '',
@@ -233,7 +252,7 @@ async function collectBasicData(tenantId, userId) {
       email: user?.email || '',
       toque: tenant.toque || '',
       barreau: tenant.barreau || '',
-      adresse: [tenant.address, tenant.postalCode, tenant.city].filter(Boolean).join(', '),
+      adresse: [tenant.addressLine1, tenant.postalCode, tenant.city].filter(Boolean).join(', '),
       telephone: tenant.phone || '',
       fax: '',
     },
@@ -289,39 +308,6 @@ function formatMontantEur(n) {
 }
 
 /**
- * Formate les mentions légales du cabinet en string multi-ligne.
- * Tolère : string (renvoyée telle quelle), objet (formaté), null/undefined (string vide).
- *
- * Format de sortie attendu (4 lignes) :
- *   <Dénomination> - <Forme> au capital de <Capital> €
- *   Siège social : <Siège>
- *   RCS <Rcs>
- *   <Ordre>
- */
-function formatMentionsLegales(value) {
-  if (value == null) return '';
-  if (typeof value === 'string') return value;
-  if (typeof value !== 'object') return String(value);
-
-  const parts = [];
-
-  const ligne1 = [];
-  if (value.denomination) ligne1.push(value.denomination);
-  if (value.forme_juridique) ligne1.push(`- ${value.forme_juridique}`);
-  if (value.capital != null) {
-    const capitalStr = formatMontantEur(value.capital);
-    ligne1.push(`au capital de ${capitalStr}`);
-  }
-  if (ligne1.length) parts.push(ligne1.join(' '));
-
-  if (value.siege) parts.push(`Siège social : ${value.siege}`);
-  if (value.rcs) parts.push(`RCS ${value.rcs}`);
-  if (value.ordre) parts.push(value.ordre);
-
-  return parts.join('\n');
-}
-
-/**
  * Enrichit data avec champs calculés (TVA 20%, TTC) à partir des montants HT.
  * Appelé après mergeAdditionalData, avant generateDocument.
  */
@@ -339,6 +325,15 @@ function enrichComputedFields(data) {
     if (!isNaN(ht)) {
       data.provision.ttc = formatMontantEur(ht * 1.20);
       data.provision.ht = formatMontantEur(ht);
+    }
+  }
+  // Mission B Phase 2 — calcul SIREN dérivé du SIRET (9 premiers chiffres)
+  if (data.client && data.client.siret && typeof data.client.siret === 'string') {
+    const siretClean = data.client.siret.replace(/\s/g, '');
+    if (siretClean.length >= 9) {
+      data.client.siren = siretClean.slice(0, 9);
+    } else {
+      data.client.siren = '';
     }
   }
   return data;
@@ -453,7 +448,7 @@ function applyBranding(docBuffer, data) {
       '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
       '  <Relationship Id="rId1"',
       '    Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"',
-      '    Target="../media/image1.png"/>',
+      '    Target="media/image1.png"/>',
       '</Relationships>',
     ].join('\n'));
   }
@@ -464,6 +459,19 @@ function applyBranding(docBuffer, data) {
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
 
+    const lines = escapedMentions.split('\n');
+    const runs = lines
+      .map((line, idx) => {
+        const brTag = idx > 0 ? '<w:br/>' : '';
+        return [
+          '    <w:r>',
+          '      <w:rPr><w:sz w:val="16"/><w:szCs w:val="16"/></w:rPr>',
+          `      ${brTag}<w:t xml:space="preserve">${line}</w:t>`,
+          '    </w:r>',
+        ].join('\n');
+      })
+      .join('\n');
+
     zip.file('word/footer1.xml', [
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
       '<w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">',
@@ -472,10 +480,7 @@ function applyBranding(docBuffer, data) {
       '      <w:jc w:val="center"/>',
       '      <w:rPr><w:sz w:val="16"/><w:szCs w:val="16"/></w:rPr>',
       '    </w:pPr>',
-      '    <w:r>',
-      '      <w:rPr><w:sz w:val="16"/><w:szCs w:val="16"/></w:rPr>',
-      `      <w:t xml:space="preserve">${escapedMentions}</w:t>`,
-      '    </w:r>',
+      runs,
       '  </w:p>',
       '</w:ftr>',
     ].join('\n'));

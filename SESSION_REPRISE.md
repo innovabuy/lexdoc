@@ -1,0 +1,164 @@
+# Reprise session — 2026-05-19
+
+## 2026-05-18 — Cleanup-9 COMPLET (commit 14ab919, tag v0.3.0-mission-b-phase-2)
+
+**Objectif** : drop 5 champs morts sur AvocatLegalInfo (numeroToque, barreau, rcs, tvaIntra, mentionsLegales).
+
+**Stages livrés** :
+- 9.1 : frontend admin (LegalInfo.jsx + CabinetSettings.jsx) — valid navigateur OK
+- 9.2.A : audit inspection backend READ-ONLY
+- 9.2.B : patch backend (route + schema + seed) sans migration — 150/150 tests
+- 9.2.C : migration `drop_legacy_legal_info_columns` + smoke tests HTTP + commit (14ab919)
+- 9.3 : smoke test Prisma post-drop + push + tag v0.3.0-mission-b-phase-2
+
+**Backups disponibles** :
+- backend/backups/lexdoc-db-pre-cleanup-9.2-20260518-133717.sql (1.1 MB)
+- backend/backups/lexdoc-db-pre-migrate-9.2C-20260518-134327.sql (1.1 MB)
+
+**État BDD** : `avocat_legal_info` passé de 14 à 9 colonnes. No drift. Prisma rejette explicitement un write sur `barreau` post-drop (preuve cohérence client/BDD).
+
+**Smoke tests** :
+- GET /api/legal-info → 200, 9 champs propres
+- PUT payload sale (5 champs morts injectés) → 200, silencieusement stripé, pas d'erreur Prisma
+- 150/150 tests backend verts
+- Tenant context (barreau="Angers", toque="T-123", siret, tva, addressLine1, city) intact → footer DOCX OK
+
+## Backlog mineur (découvertes cleanup-9, non bloquantes)
+
+1. **Sérialisation Date dans `omitSensitiveFields`** : `createdAt` / `updatedAt` ressortent `{}` dans les JSON renvoyés par l'API. Bug préexistant cleanup-9. Fichier probable : `backend/src/utils/helpers.js` (fonction omitSensitiveFields).
+
+2. **Cron backup pg_dump cassé** : utilise `pg_dump $DATABASE_URL` avec `?schema=public` dans l'URI → `invalid URI query parameter`. Logs montrent échec quotidien depuis le 2026-05-17. Contournement : `docker exec postgres-lexdoc pg_dump -U lexdoc_user lexdoc_dev`. Fichier à patcher : `backend/src/services/backup.service.js`.
+
+3. **Guard "Aucune info" incohérent dans CabinetSettings.jsx L568** : vérifie 3 champs (assuranceRC, numeroPolice, specialites) mais la grille n'affiche que assuranceRC. Cas pathologique : legalInfo avec numeroPolice/specialites mais sans assuranceRC → cadre vide. Non bloquant.
+
+4. **template-engine.service.js L65-66** : `avocatLegalInfo` lu via Promise.all puis jamais utilisé. Code mort potentiel à confirmer (peut-être nécessaire pour signaturePath/cachetPath ailleurs).
+
+5. **Migration nommée 202604291435** (12 chiffres au lieu de 14) : nommage non-standard. Cosmetic.
+
+6. **Frontend production déployé date du 30 Apr 16:28** (nginx sur port 80) : contient déjà les modifs cleanup-9.1. À reconstruire/redéployer proprement à la prochaine session pour clean state.
+
+7. **`tenant.tva = "FR25982600272"`** côté BDD alors que l'identité Bienaime indiquait NULL. Possible seed reset. À vérifier si pertinent pour Phase 1 lettre mission.
+
+## Prochaine session
+
+- Démarrer Mission B Phase 3 (à définir selon roadmap)
+- Adresser backlog mineur ci-dessus si fenêtre disponible
+- Frontend rebuild + redeploy propre pour acter état post-cleanup-9
+
+---
+
+## État au 30 avril 2026 fin de session (post cleanup-9.1)
+
+### Mission B Phase 2 backend cleanup : LIVRÉ NON-COMMITTÉ
+- Bug rels image header corrigé (fix-rels)
+- Footer dynamique opérationnel depuis tenants (single source of truth)
+- Module utilitaire branding-format.js créé (formatSiret, formatSiren, buildFooterFromTenant)
+- 12 nouveaux tests unitaires pour branding-format
+- Baseline tests backend : 150/150 verts
+- Identité Pragmavox alignée aux vraies données Bienaime (BDD)
+- 4 sites legacy tenant.address → tenant.addressLine1 patchés
+- avocat_legal_info.mentionsLegales : NULL pour Pragmavox
+- Validation visuelle Word v5 : OK (footer 3 lignes propres, header logo page 1)
+
+### Mission B Phase 2 frontend cleanup : LIVRÉ NON-COMMITTÉ (build vert, valid navigateur en attente)
+- LegalInfo.jsx : suppression complète mentionsLegales (state + fetch + PUT + tab def + tab content)
+- LegalInfo.jsx : suppression 4 inputs morts (Barreau, numeroToque, RCS, TVA)
+- CabinetSettings.jsx : suppression 4 displays + guard refait sur assuranceRC/numeroPolice/specialites
+- Build frontend : OK (chunks LegalInfo + CabinetSettings rebuilts)
+- Conservation : tenant.barreau, tenant.toque (entités distinctes), assuranceRC, numeroPolice, specialites, signaturePath, cachetPath, useRef
+
+## Validation humaine en attente AVANT cleanup-9.2
+
+**BLOQUANT** : tunnel SSH local puis navigateur :
+```
+ssh -L 5173:localhost:5173 root@76.13.50.173
+# puis http://localhost:5173/settings/legal-info
+```
+
+Login : yves-marie.bienaime@pragmavox.fr / admin123
+
+Vérifications :
+1. /settings/legal-info → 2 onglets seulement (Informations, Signature & Cachet), pas de Mentions, pas de Barreau/Toque/RCS/TVA dans Informations
+2. PUT propre dans devtools Network (peut encore contenir les 5 champs morts dans le payload state mais sera ignoré par le backend une fois 9.2 livré)
+3. /parametres/cabinet → section info légales affiche uniquement Assurance RC (ou message "Aucune information")
+4. Édition tenant.toque + tenant.barreau du formulaire principal cabinet : INTACTE
+
+Si valid OK → cleanup-9.2.
+Si valid KO → fix avant.
+
+## TODO 2026-05-01
+
+### cleanup-9.2 — Backend legal-info.routes + Prisma drop colonnes
+- Patch src/routes/legal-info.routes.js : retirer destructuring + upsert + audit log des 5 champs morts
+- Migration Prisma : `ALTER TABLE avocat_legal_info DROP COLUMN mentionsLegales, numeroToque, barreau, tvaIntra, rcs`
+- prisma/schema.prisma : retirer les 5 champs du model AvocatLegalInfo
+- `npx prisma migrate dev --name drop_legacy_legal_info_columns`
+- npm test → 150/150 (les tests data-driven peuvent nécessiter ajustement si certains figeaient ces colonnes)
+- Validation : régénérer un MED, vérifier que rien ne casse
+
+### cleanup-9.3 — Commits + tag v0.3.0-mission-b-phase-2
+- Vérifier git status final propre
+- Commits groupés thématiques (suggéré 4-6 commits) :
+  1. fix(template-engine): correct image rels Target path
+  2. feat(branding): add buildFooterFromTenant utility with 12 unit tests
+  3. refactor(template-engine): use tenants as single source of truth for footer
+  4. fix(template-engine): replace legacy tenant.address by addressLine1 (4 sites)
+  5. data(pragmavox): align tenant with real Bienaime identity
+  6. refactor(legal-info): drop legacy duplicate columns from avocat_legal_info
+- tag v0.3.0-mission-b-phase-2 avec message récap
+- push origin master + tags
+
+### Stage 3.7.H principal — Refacto applyBranding pour header riche
+- Maintenant trivial : infra prête (buildFooterFromTenant + pattern multiline <w:br/> + données BDD propres)
+- À acter : header sur toutes pages ou page 1 uniquement (convention française = page 1, état actuel)
+- Décliner pour les 53 templates système (multi-tenant générique)
+
+## Backlog — Bugs template visibles dans v5.docx (HORS cleanup)
+
+1. **Doublon "Société Société Mauvais Payeur SAS"** dans bloc destinataire → probablement template MED avec {partie.forme_juridique} {partie.nom} où partie.nom contient déjà la forme.
+2. **Doublon "12 000,00€ euros TTC"** → formatMontantEur inclut déjà €, template rajoute "euros" en dur.
+
+## Backlog technique
+
+- Cleanup colonne `address` de tenants (NULL pour Pragmavox mais legacy ailleurs ?)
+- Cleanup footer1.xml.rels orphelin (image3.png non utilisé après anonymisation)
+- soffice à installer sur VPS (besoin pour conversion .doc legacy + preview PDF backend)
+- Documentation : port API = 4000 (pas 3000)
+- Convention "header/footer page 1 only" actée par défaut, à documenter dans SPEC_UX_UNIFIEE
+- Exposition firewall Hostinger : port 5173 dev pas accessible publiquement (workaround tunnel SSH OK)
+
+## Backups disponibles
+
+### BDD
+- /root/lexdoc-db-pre-cleanup-8-20260430-1536.sql (pre-UPDATE Pragmavox)
+- /root/lexdoc-db-end-of-session-cleanup-9.1-* (fin session 30/04)
+- Backups antérieurs (5 historiques)
+
+### Code
+- backend/src/services/template-engine.service.js.bak-3.7.H.cleanup-2
+- backend/src/services/template-engine.service.js.bak-3.7.H.fix-rels
+- backend/src/services/template-engine.service.js.bak-3.4
+- frontend/src/pages/settings/LegalInfo.jsx.bak-3.7.H.cleanup-9.1
+- frontend/src/pages/parametres/CabinetSettings.jsx.bak-3.7.H.cleanup-9.1
+- backend/templates/pragmavox/*.bak-3.7.G
+
+## Identité Pragmavox réelle (validée Bienaime + Google Maps)
+
+- name : Pragma Vox Avocat
+- legalName : SELARL Pragma Vox Avocat
+- siret : 98260027200016
+- addressLine1 : 11 Rue Paul Langevin
+- postalCode : 49240
+- city : Avrillé
+- phone : 0614843838
+- email : ym.bienaime@pragmavox-avocat.fr
+- website : NULL
+- mediateurNomComplet, mediateurBarreau : NULL (à demander à Bienaime quand pertinent pour Phase 1 lettre mission)
+
+## Baseline à préserver demain
+
+- 150/150 tests backend verts
+- Build frontend vert (chunks LegalInfo + CabinetSettings)
+- PM2 lexdoc-api online port 4000
+- API health HTTP 200
+- DB postgres-lexdoc up
