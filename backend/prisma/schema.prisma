@@ -417,6 +417,7 @@ enum PersonRole {
   NOTAIRE
   HUISSIER
   MEDIATEUR
+  CO_DEBITEUR
   AUTRE
 }
 

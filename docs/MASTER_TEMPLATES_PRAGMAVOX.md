@@ -460,7 +460,8 @@ Partie : {prenom} {nom}, demeurant {adresse}.
 
 | Variable | Source | Champs |
 |---|---|---|
-| `parties_adverses` | `folder.persons` filtré sur type "partie adverse" | `nom`, `prenom`, `adresse`, `avocat_nom`, `avocat_barreau` |
+| `parties_adverses` | `folder.persons` filtré sur role `PARTIE_ADVERSE` | `nom`, `prenom`, `adresse`, `email`, `telephone`, `avocat_nom`, `avocat_cabinet`, `avocat_barreau`, `avocat_email` |
+| `co_debiteurs` | `folder.persons` filtré sur role `CO_DEBITEUR` | `nom`, `prenom`, `raison_sociale`, `adresse`, `code_postal`, `ville`, `email`, `telephone` |
 
 (à compléter au fur et à mesure que de nouvelles collections sont câblées dans `collectData()` — voir `backend/src/services/template-engine.service.js` L145)
 

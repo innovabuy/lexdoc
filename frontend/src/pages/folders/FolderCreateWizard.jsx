@@ -489,6 +489,7 @@ function StepInfos({ folderType, procedure, nature, infos, parties, selectedClie
                       <option value="POSTULANT">Postulant</option>
                       <option value="TEMOIN">Témoin</option>
                       <option value="EXPERT">Expert</option>
+                      <option value="CO_DEBITEUR">Co-débiteur</option>
                     </select>
                     <button type="button" className="wz-btn-ghost wz-btn-ghost--danger" onClick={() => removeParty(idx)}>
                       <Trash2 size={16} />

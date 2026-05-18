@@ -11,6 +11,7 @@ const PERSON_ROLES = [
   { value: 'NOTAIRE', label: 'Notaire' },
   { value: 'HUISSIER', label: 'Huissier' },
   { value: 'MEDIATEUR', label: 'Médiateur' },
+  { value: 'CO_DEBITEUR', label: 'Co-débiteur' },
   { value: 'AUTRE', label: 'Autre' },
 ];
 
@@ -27,6 +28,7 @@ const roleColors = {
   NOTAIRE: 'bg-green-100 text-green-700',
   HUISSIER: 'bg-yellow-100 text-yellow-700',
   MEDIATEUR: 'bg-teal-100 text-teal-700',
+  CO_DEBITEUR: 'bg-pink-100 text-pink-700',
   AUTRE: 'bg-gray-100 text-gray-700',
 };
 

@@ -76,6 +76,17 @@ const TEMPLATE_VARIABLES = [
   { key: 'parties_adverses.[].avocat_nom', label: 'Avocat adverse', category: 'parties', description: 'Dans boucle: {avocat_nom}', example: 'Me Durand' },
   { key: 'parties_adverses.[].avocat_barreau', label: 'Barreau avocat adverse', category: 'parties', description: 'Dans boucle: {avocat_barreau}', example: 'Paris' },
 
+  // ── Co-débiteurs (B2 Phase 3) ──
+  { key: 'co_debiteurs', label: 'Liste des co-débiteurs', category: 'co_debiteurs', description: 'Boucle {#co_debiteurs}...{/co_debiteurs} (Docxtemplater)', example: '[tableau]' },
+  { key: 'co_debiteurs.[].nom', label: 'Nom co-débiteur', category: 'co_debiteurs', description: 'Dans boucle: {nom}', example: 'Dupont' },
+  { key: 'co_debiteurs.[].prenom', label: 'Prénom co-débiteur', category: 'co_debiteurs', description: 'Dans boucle: {prenom}', example: 'Jean' },
+  { key: 'co_debiteurs.[].raison_sociale', label: 'Raison sociale (si morale)', category: 'co_debiteurs', description: 'Dans boucle: {raison_sociale}', example: 'Tech Corp SAS' },
+  { key: 'co_debiteurs.[].adresse', label: 'Adresse co-débiteur', category: 'co_debiteurs', description: 'Dans boucle: {adresse}', example: '1 rue de la Paix' },
+  { key: 'co_debiteurs.[].code_postal', label: 'Code postal', category: 'co_debiteurs', description: 'Dans boucle: {code_postal}', example: '49000' },
+  { key: 'co_debiteurs.[].ville', label: 'Ville', category: 'co_debiteurs', description: 'Dans boucle: {ville}', example: 'Angers' },
+  { key: 'co_debiteurs.[].email', label: 'Email', category: 'co_debiteurs', description: 'Dans boucle: {email}', example: 'jean.dupont@example.fr' },
+  { key: 'co_debiteurs.[].telephone', label: 'Téléphone', category: 'co_debiteurs', description: 'Dans boucle: {telephone}', example: '0612345678' },
+
   // ── Societe (si client PM) ──
   { key: 'societe.nom', label: 'Nom societe', category: 'societe', description: 'Raison sociale (si PM)', example: 'Tech Corp SAS' },
   { key: 'societe.forme', label: 'Forme juridique', category: 'societe', description: 'SAS, SARL, etc.', example: 'SAS' },
@@ -104,6 +115,7 @@ const CATEGORIES = {
   client_pm: { label: 'Client (Personne morale)', icon: '🏢', order: 3 },
   dossier: { label: 'Dossier', icon: '📁', order: 4 },
   parties: { label: 'Parties adverses', icon: '⚔️', order: 5 },
+  co_debiteurs: { label: 'Co-débiteurs', icon: '🔗', order: 5.5 },
   societe: { label: 'Societe', icon: '🏭', order: 6 },
   dates: { label: 'Dates', icon: '📅', order: 7 },
   postulant: { label: 'Postulant', icon: '📋', order: 8 },

@@ -46,6 +46,20 @@ async function collectData(folderId, tenantId) {
       };
     });
 
+  // Co-débiteurs (B2 Phase 3)
+  const coDebiteurs = persons
+    .filter(p => p.role === 'CO_DEBITEUR')
+    .map(p => ({
+      nom: p.lastName || '',
+      prenom: p.firstName || '',
+      raison_sociale: p.company || '',
+      adresse: p.address || '',
+      code_postal: p.postalCode || '',
+      ville: p.city || '',
+      email: p.email || '',
+      telephone: p.phone || '',
+    }));
+
   const postulant = persons.find(p => p.role === 'POSTULANT') || {};
 
   // Generate presigned URL for logo
@@ -143,6 +157,7 @@ async function collectData(folderId, tenantId) {
       date_echeance: folder.dateEcheance ? new Date(folder.dateEcheance).toLocaleDateString('fr-FR') : '',
     },
     parties_adverses: partiesAdverses,
+    co_debiteurs: coDebiteurs,
     postulant: {
       nom: postulant.lastName || '',
       prenom: postulant.firstName || '',
@@ -361,6 +376,7 @@ function generateDocument(templateBuffer, data) {
     ...flattenObject(data, ''),
     // Keep arrays for loops
     parties_adverses: data.parties_adverses || [],
+    co_debiteurs: data.co_debiteurs || [],
     // Also pass full objects for nested access
     cabinet: data.cabinet,
     avocat: data.avocat,
