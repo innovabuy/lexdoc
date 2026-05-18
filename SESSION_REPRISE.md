@@ -1,5 +1,33 @@
 # Reprise session — 2026-05-19
 
+## 2026-05-18 (suite) — B1 Phase 3 livré (commit 7745160, pas taggé)
+
+**Objectif B1** : rendre exploitables les loops Docxtemplater (feature préexistante mais sous-utilisée et mal documentée).
+
+**Livré** :
+- Docxtemplater 3.67.6 + `paragraphLoop:true` étaient déjà actifs côté `template-engine.service.js` (L347-349) et `parties_adverses` déjà câblé dans `collectData()` (L145) — feature dormante.
+- **Fix mismatch syntaxe** `backend/src/config/template-variables.js` L72-77 : la doc annonçait du Handlebars (`{{#each parties_adverses}}` + `{{this.nom}}`) → corrigé en vraie syntaxe Docxtemplater (`{#parties_adverses}...{/parties_adverses}` + accès direct `{nom}`). Sans ce fix, tout dev s'y fiant cassait son template.
+- **3 tests unitaires** ajoutés dans `backend/tests/unit/template-engine-loops.test.js` (empty / 2 entries / 1 entry) → **153/153 verts** (150 baseline + 3 nouveaux, 11 suites).
+- **Fixture reproductible** : `backend/scripts/generate-template-loops-example.js` (lib `docx@9.5.1`) génère `backend/tests/fixtures/template-loops-example.docx` (7771 bytes). Régénérable à volonté.
+- **Doc dev** : section 10 ajoutée à `docs/MASTER_TEMPLATES_PRAGMAVOX.md` — syntaxe correcte, collections disponibles, pièges courants (mélange `{}` / `{{}}`, paragraphLoop, collection vide).
+
+**Pas touché** : `template-engine.service.js` (le moteur marche), les 2 templates Pragmavox actifs, BDD, frontend.
+
+## Prochaine session — Phase 3 B2 (à scoper)
+
+**Étendre `collectData()` à d'autres collections** : héritiers, créanciers, opposants, co-débiteurs.
+
+**PRÉ-REQUIS** : recueillir signal métier de Me Bienaime sur ses templates réels **avant** de partir dans la spéculation. Quelles collections rencontrera-t-il sur quels actes ?
+
+**Plan B si pas de signal métier** : créer un template d'exemple co-débiteurs Pragmavox crédible (basé sur un cas réel projeté) pour valider end-to-end avec un cas concret. Permet d'ouvrir B2 même sans input direct.
+
+## Stable courant
+
+- **Tag stable** : `v0.3.0-mission-b-phase-2` (commit `14ab919`, 2026-05-18)
+- **HEAD courant** : `7745160` (B1 Phase 3, **non taggé** — le tag `v0.4.0-mission-b-phase-3` attendra la fin complète de Phase 3 : B1 + B2 [+ B3 si besoin])
+
+---
+
 ## 2026-05-18 — Cleanup-9 COMPLET (commit 14ab919, tag v0.3.0-mission-b-phase-2)
 
 **Objectif** : drop 5 champs morts sur AvocatLegalInfo (numeroToque, barreau, rcs, tvaIntra, mentionsLegales).
