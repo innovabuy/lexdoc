@@ -1,5 +1,79 @@
 # Reprise session — 2026-05-19
 
+## 2026-05-18 (suite 2) — B2 Phase 3 livré (commit ff9d173, pas taggé)
+
+**Objectif B2** : câbler une 2e collection itérable (`co_debiteurs`) au moteur de templates DOCX, validant le pattern miroir de `parties_adverses` introduit en B1.
+
+**Livré** :
+- **Enum Prisma `PersonRole` étendu** : `CO_DEBITEUR` ajouté (entre `MEDIATEUR` et `AUTRE` côté schema Prisma, **en queue côté SQL PostgreSQL** — `ALTER TYPE ... ADD VALUE` n'accepte pas la position via Prisma diff). Pas bloquant : c'est le client Prisma TS qui pilote l'UI, pas l'ordre SQL réel.
+- **Migration** : `20260518145951_add_co_debiteur_person_role` appliquée, 11 valeurs en BDD, no drift.
+- **`collectData()` étendu** : bloc `coDebiteurs` calqué sur `partiesAdverses` (template-engine.service.js, après L47). Mapping 8 champs : `nom, prenom, raison_sociale, adresse, code_postal, ville, email, telephone`. **8 vs 9 pour parties_adverses** (pas de sub-avocat — un co-débiteur n'a pas son propre avocat dans le pattern). Clé `co_debiteurs` aussi dans `renderData` (generateDocument L363).
+- **`template-variables.js`** : 9 entrées ajoutées (1 collection + 8 champs) + nouvelle catégorie `co_debiteurs` (label "Co-débiteurs", icon 🔗, order 5.5).
+- **Frontend** :
+  - `FolderPersons.jsx` : `PERSON_ROLES` 8 → 9 entrées (+ couleur badge `bg-pink-100 text-pink-700`).
+  - `FolderCreateWizard.jsx` : `<option value="CO_DEBITEUR">` ajoutée au dropdown wizard.
+- **Tests** : 3 unitaires loops `co_debiteurs` (empty / 3 entries / single) → **156/156 passing** (12 suites = 11 baseline + 1 nouveau).
+- **Fixture reproductible** : `tests/fixtures/template-co-debiteurs-example.docx` (7786 bytes) + script `scripts/generate-template-co-debiteurs-example.js`.
+- **Doc MASTER_TEMPLATES section 10** : ligne `co_debiteurs` ajoutée dans le tableau + mapping `parties_adverses` complété (5 → 9 champs documentés).
+- **Build frontend** : OK (`✓ built in 7.70s`), nouveau chunk `FolderCreateWizard-D_9kP98i.js`.
+- **API PM2 restart** : OK, health 200, Prisma client expose `CO_DEBITEUR`.
+
+**Backups disponibles** :
+- `backend/backups/lexdoc-db-pre-b2-20260518-145903.sql` (1.1 M)
+- + tous backups antérieurs cleanup-9
+
+## Backlog mineur — 3 nouvelles entrées B2
+
+8. **Position SQL enum `PersonRole`** : `CO_DEBITEUR` est en queue côté PostgreSQL (`enum_range` retourne `CLIENT, PARTIE_ADVERSE, …, AUTRE, CO_DEBITEUR`) alors qu'il est entre `MEDIATEUR` et `AUTRE` côté Prisma schema. **Pas bloquant** (le client Prisma TS pilote l'UI), mais à corriger si un jour quelqu'un génère une liste UI via `enum_range` SQL direct. Fix : recréer l'enum avec la position correcte (procédure lourde mais documentée PostgreSQL — DROP TYPE / CREATE TYPE / migrate columns).
+
+9. **Refacto `CATEGORIES.order`** : `order: 5.5` ajouté en B2 pour `co_debiteurs` (bricole pour insérer entre 5 `parties` et 6 `societe` sans renuméroter). À refacto en intégers cohérents (5, 10, 15, 20…) pour permettre insertion future sans demi-pas. Fichier : `backend/src/config/template-variables.js` L111-122.
+
+10. **Inconsistance dropdowns front** : `FolderPersons.jsx` expose 9 rôles, `FolderCreateWizard.jsx` 5 (subset volontaire). Pas un bug, mais redondance source de drift. À unifier via constante partagée importée depuis `frontend/src/constants/personRoles.js` (à créer) — voire mieux : générer la liste côté backend depuis `PersonRole` Prisma et exposer via route API. Décision à acter avant B3.
+
+## Backlog mineur (rappel — 7 entrées précédentes, inchangées)
+
+1. Sérialisation Date dans `omitSensitiveFields` (createdAt/updatedAt sortent `{}`).
+2. Cron backup `pg_dump $DATABASE_URL` cassé (URI `?schema=public` non supporté par pg_dump CLI).
+3. Guard "Aucune info" `CabinetSettings.jsx` L568 (vérifie 3 champs mais n'en affiche qu'un).
+4. Code mort potentiel `template-engine.service.js` L65-66 (`avocatLegalInfo` lu mais inutilisé dans le flow visible).
+5. Migration nommée `202604291435` (12 chiffres au lieu de 14) — cosmétique.
+6. Frontend prod build à reconstruire propre (build 30 Apr déployé sur nginx port 80 — entretemps deux rebuilds locaux en B1.B et B2.B.2 jamais déployés en prod).
+7. `tenant.tva` peuplé en BDD alors que l'identité Bienaime indiquait NULL — à vérifier.
+
+## Prochaine session — 2 options à arbitrer
+
+### Option A — Phase 3 B3 (autre collection)
+
+Câbler une 3e collection : `heritiers` ? `creanciers` ? Pattern identique B2 (~1h30 si type juridique simple).
+
+**PRÉ-REQUIS** : signal métier de Me Bienaime sur ses templates réels — quels actes manipulent des collections ?
+- Héritiers : succession, partage, donation-partage
+- Créanciers : redressement, liquidation, plan de cession
+- Opposants : contentieux multi-parties
+
+Sans input métier → spéculation, risque de coder une collection qui ne servira jamais.
+
+### Option B — Pause Phase 3, attaquer backlog mineur (1h-2h, sans risque)
+
+Priorité pragmatique :
+- 🟡 **Fix cron `pg_dump`** (#2) — bug actif, échec quotidien depuis 2026-05-17, ~15 min
+- 🟢 **Refacto `CATEGORIES.order` entiers cohérents** (#9) — ~10 min
+- 🟢 **Unifier dropdowns front PersonRole** (#10) — ~30 min
+- 🟢 **Sérialisation Date** (#1) — investigation puis fix, ~30-45 min
+
+### Recommandation
+
+**B** si Bienaime silencieux (pas de signal métier nouveau d'ici la reprise) — bouclage propre du backlog Phase 2/3 sans pousser de feature spéculative.
+
+**A** dès qu'il livre des templates concrets — alors B3 a un cas d'usage métier réel et c'est de la livraison utile.
+
+## Stable courant
+
+- **Tag stable** : `v0.3.0-mission-b-phase-2` (commit `14ab919`, 2026-05-18) — inchangé
+- **HEAD courant** : `ff9d173` (B2 Phase 3, **non taggé** — `v0.4.0-mission-b-phase-3` réservé pour fin de Phase 3 complète)
+
+---
+
 ## 2026-05-18 (suite) — B1 Phase 3 livré (commit 7745160, pas taggé)
 
 **Objectif B1** : rendre exploitables les loops Docxtemplater (feature préexistante mais sous-utilisée et mal documentée).
