@@ -437,4 +437,46 @@ Pour la conversion des 2 templates restants (mise en demeure, assignation réfé
 
 ---
 
+## 10. Syntaxe loops (collections itérables)
+
+*Ajouté 2026-05-18 — Mission B Phase 3 B1.B*
+
+Le moteur de templates LexDoc utilise **Docxtemplater 3.67.x** avec `paragraphLoop: true`. La syntaxe des boucles n'est **pas** Handlebars (`{{#each}}`) — elle est spécifique à Docxtemplater.
+
+### Syntaxe correcte
+
+```
+{#parties_adverses}
+Partie : {prenom} {nom}, demeurant {adresse}.
+{/parties_adverses}
+```
+
+- Ouverture : `{#nom_collection}` (un dièse)
+- Fermeture : `{/nom_collection}`
+- Accès aux propriétés dans la boucle : directement par nom de champ — `{prenom}`, **pas** `{this.prenom}` ni `{{prenom}}`
+- `paragraphLoop: true` (activé par défaut côté service) fait que chaque itération produit un paragraphe Word complet
+
+### Collections actuellement disponibles
+
+| Variable | Source | Champs |
+|---|---|---|
+| `parties_adverses` | `folder.persons` filtré sur type "partie adverse" | `nom`, `prenom`, `adresse`, `avocat_nom`, `avocat_barreau` |
+
+(à compléter au fur et à mesure que de nouvelles collections sont câblées dans `collectData()` — voir `backend/src/services/template-engine.service.js` L145)
+
+### Pièges courants
+
+- **Ne pas mélanger les délimiteurs** : Docxtemplater utilise `{}` simple-brace pour les variables et `{#}{/}` pour les loops. Ne **jamais** écrire `{{var}}` (Handlebars/Jinja syntax) — ça ne sera pas interpolé.
+- **`paragraphLoop: true`** : entre les marqueurs `{#parties_adverses}` et `{/parties_adverses}`, mettre les délimiteurs sur des paragraphes Word distincts du contenu, sinon Word peut introduire des artefacts XML.
+- **Si la collection est vide** : tout le bloc loop est omis silencieusement, aucun paragraphe résiduel. Comportement souhaité dans la plupart des cas.
+
+### Exemple de référence
+
+Voir `backend/tests/fixtures/template-loops-example.docx` (généré par `backend/scripts/generate-template-loops-example.js`) et les 3 tests unitaires dans `backend/tests/unit/template-engine-loops.test.js` :
+- `parties_adverses: []` → bloc loop omis
+- `parties_adverses: [{...}, {...}]` → 2 paragraphes rendus
+- `parties_adverses: [{...}]` (1 entrée) → 1 paragraphe rendu, pas de crash
+
+---
+
 *Fin du master v1.2 — 2026-04-30.*

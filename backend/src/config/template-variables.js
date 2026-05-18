@@ -69,12 +69,12 @@ const TEMPLATE_VARIABLES = [
   { key: 'dossier.date_echeance', label: 'Date echeance', category: 'dossier', description: 'Date limite / echeance', example: '01/04/2026' },
 
   // ── Parties adverses ──
-  { key: 'parties_adverses', label: 'Liste des parties adverses', category: 'parties', description: 'Boucle {{#each parties_adverses}}', example: '[tableau]' },
-  { key: 'parties_adverses.[].nom', label: 'Nom partie adverse', category: 'parties', description: 'Dans boucle: {{this.nom}}', example: 'Martin' },
-  { key: 'parties_adverses.[].prenom', label: 'Prenom partie adverse', category: 'parties', description: 'Dans boucle: {{this.prenom}}', example: 'Pierre' },
-  { key: 'parties_adverses.[].adresse', label: 'Adresse partie adverse', category: 'parties', description: 'Dans boucle: {{this.adresse}}', example: '5 rue de Rivoli, Paris' },
-  { key: 'parties_adverses.[].avocat_nom', label: 'Avocat adverse', category: 'parties', description: 'Dans boucle: {{this.avocat_nom}}', example: 'Me Durand' },
-  { key: 'parties_adverses.[].avocat_barreau', label: 'Barreau avocat adverse', category: 'parties', description: 'Dans boucle: {{this.avocat_barreau}}', example: 'Paris' },
+  { key: 'parties_adverses', label: 'Liste des parties adverses', category: 'parties', description: 'Boucle {#parties_adverses}...{/parties_adverses} (Docxtemplater)', example: '[tableau]' },
+  { key: 'parties_adverses.[].nom', label: 'Nom partie adverse', category: 'parties', description: 'Dans boucle: {nom}', example: 'Martin' },
+  { key: 'parties_adverses.[].prenom', label: 'Prenom partie adverse', category: 'parties', description: 'Dans boucle: {prenom}', example: 'Pierre' },
+  { key: 'parties_adverses.[].adresse', label: 'Adresse partie adverse', category: 'parties', description: 'Dans boucle: {adresse}', example: '5 rue de Rivoli, Paris' },
+  { key: 'parties_adverses.[].avocat_nom', label: 'Avocat adverse', category: 'parties', description: 'Dans boucle: {avocat_nom}', example: 'Me Durand' },
+  { key: 'parties_adverses.[].avocat_barreau', label: 'Barreau avocat adverse', category: 'parties', description: 'Dans boucle: {avocat_barreau}', example: 'Paris' },
 
   // ── Societe (si client PM) ──
   { key: 'societe.nom', label: 'Nom societe', category: 'societe', description: 'Raison sociale (si PM)', example: 'Tech Corp SAS' },
