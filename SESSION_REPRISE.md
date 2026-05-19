@@ -1,5 +1,21 @@
 # Reprise session — 2026-05-19
 
+## 2026-05-19 — Backup applicatif désactivé + frontend prod rebuildé
+
+**Objectif** : nettoyer le bruit de logs du cron node-cron cassé (~75 erreurs/mois depuis 2026-04-25) et exposer en prod les modifs cleanup-9 + B1 + B2 (build nginx datait du 30 avril).
+
+**Backup nocturne — état audité** : assuré par cron système `/opt/backups/lexdoc/backup.sh` (crontab root, `0 3 * * *`), rétention 7j via `find -mtime +7 -delete`. 9 backups consécutifs OK du 11 au 19 mai. Le script utilise `docker exec postgres-lexdoc pg_dump -U lexdoc_user -d lexdoc_dev -F c` — évite le piège `?schema=public` en passant `-d` en CLI direct.
+
+**Cron applicatif (node-cron)** : désactivé via commentaire de `backupJob.start()` dans `backend/src/server.js:125`. La classe `BackupJob` + route API `/api/backups/database` restent fonctionnelles pour snapshots manuels.
+
+**Regex `parseDatabaseUrl`** : extraite en méthode dédiée + 5e groupe regex passé de `(.+)` à `([^?]+)` pour stripper le query-string Prisma. 3 tests unitaires ajoutés (`tests/unit/backup.service.test.js`) → **159/159 verts** (156 baseline + 3 nouveaux).
+
+**Permissions secrets backupés** : `/opt/backups/lexdoc/env_*.backup` sont en `644 root root`. ⚠️ Devraient être `600` — `.env` lisible par n'importe quel user local sur le VPS. Non corrigé (hors scope), à acter humain. Risque : fuite secrets DATABASE_URL + MinIO si compromission user non-root.
+
+**Frontend prod rebuild + déploiement** : `npm run build` OK, nouveau bundle `index-D9bWRdl5.js` (262 KB). Nginx sert directement depuis `/home/lexdoc-dev/frontend/dist` (config `root /home/lexdoc-dev/frontend/dist;`) → rebuild = déploiement, juste `nginx -s reload`. Backup avant rebuild : `frontend/dist.pre-rebuild-20260519-092747`. Smoke test : HTTP 200, chunk `FolderCreateWizard-D_9kP98i.js` contient bien `CO_DEBITEUR` côté serveur prod.
+
+**API restart** : PM2 lexdoc-api online, health 200, plus de planification cron backup au boot.
+
 ## 2026-05-18 (suite 2) — B2 Phase 3 livré (commit ff9d173, pas taggé)
 
 **Objectif B2** : câbler une 2e collection itérable (`co_debiteurs`) au moteur de templates DOCX, validant le pattern miroir de `parties_adverses` introduit en B1.
@@ -30,15 +46,15 @@
 
 10. **Inconsistance dropdowns front** : `FolderPersons.jsx` expose 9 rôles, `FolderCreateWizard.jsx` 5 (subset volontaire). Pas un bug, mais redondance source de drift. À unifier via constante partagée importée depuis `frontend/src/constants/personRoles.js` (à créer) — voire mieux : générer la liste côté backend depuis `PersonRole` Prisma et exposer via route API. Décision à acter avant B3.
 
-## Backlog mineur (rappel — 7 entrées précédentes, inchangées)
+## Backlog mineur (rappel — 5 entrées restantes après 2026-05-19)
 
 1. Sérialisation Date dans `omitSensitiveFields` (createdAt/updatedAt sortent `{}`).
-2. Cron backup `pg_dump $DATABASE_URL` cassé (URI `?schema=public` non supporté par pg_dump CLI).
-3. Guard "Aucune info" `CabinetSettings.jsx` L568 (vérifie 3 champs mais n'en affiche qu'un).
-4. Code mort potentiel `template-engine.service.js` L65-66 (`avocatLegalInfo` lu mais inutilisé dans le flow visible).
-5. Migration nommée `202604291435` (12 chiffres au lieu de 14) — cosmétique.
-6. Frontend prod build à reconstruire propre (build 30 Apr déployé sur nginx port 80 — entretemps deux rebuilds locaux en B1.B et B2.B.2 jamais déployés en prod).
-7. `tenant.tva` peuplé en BDD alors que l'identité Bienaime indiquait NULL — à vérifier.
+2. Guard "Aucune info" `CabinetSettings.jsx` L568 (vérifie 3 champs mais n'en affiche qu'un).
+3. Code mort potentiel `template-engine.service.js` L65-66 (`avocatLegalInfo` lu mais inutilisé dans le flow visible).
+4. Migration nommée `202604291435` (12 chiffres au lieu de 14) — cosmétique.
+5. `tenant.tva` peuplé en BDD alors que l'identité Bienaime indiquait NULL — à vérifier.
+
+**Résolus 2026-05-19** : ~~Cron backup pg_dump cassé~~ (désactivé node-cron, cron système couvre) et ~~Frontend prod build à reconstruire~~ (rebuild + reload nginx OK). Nouveau backlog : permissions `/opt/backups/lexdoc/env_*.backup` à passer en `600`.
 
 ## Prochaine session — 2 options à arbitrer
 

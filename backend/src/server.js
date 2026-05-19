@@ -122,7 +122,9 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   // Start scheduled jobs
   if (process.env.NODE_ENV !== 'test') {
     reminderJob.start();
-    backupJob.start();
+    // backupJob.start() — DÉSACTIVÉ 2026-05-19. Backup nocturne assuré par cron
+    // système /opt/backups/lexdoc/backup.sh (crontab root, 0 3 * * *, rétention 7j).
+    // La route API /api/backups/database reste fonctionnelle (snapshots manuels).
     logger.info('📅 Scheduled jobs started');
   }
 });

@@ -13,6 +13,16 @@ class BackupService {
     this.retentionDays = parseInt(process.env.BACKUP_RETENTION_DAYS, 10) || 30;
   }
 
+  parseDatabaseUrl(dbUrl) {
+    // `([^?]+)` capture le nom de DB sans le query-string Prisma (?schema=public).
+    const match = dbUrl.match(/postgresql:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/([^?]+)/);
+    if (!match) {
+      throw new Error('Invalid DATABASE_URL format');
+    }
+    const [, user, password, host, port, database] = match;
+    return { user, password, host, port, database };
+  }
+
   async ensureBackupDir() {
     try {
       await fs.mkdir(this.backupDir, { recursive: true });
@@ -39,14 +49,7 @@ class BackupService {
     });
 
     try {
-      const dbUrl = process.env.DATABASE_URL;
-      const match = dbUrl.match(/postgresql:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/(.+)/);
-
-      if (!match) {
-        throw new Error('Invalid DATABASE_URL format');
-      }
-
-      const [, user, password, host, port, database] = match;
+      const { user, password, host, port, database } = this.parseDatabaseUrl(process.env.DATABASE_URL);
 
       // Use pg_dump to create backup
       const command = `PGPASSWORD="${password}" pg_dump -h ${host} -p ${port} -U ${user} -d ${database} -F c -f ${filepath}`;

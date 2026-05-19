@@ -79,6 +79,34 @@ describe('BackupService', () => {
     });
   });
 
+  describe('parseDatabaseUrl', () => {
+    it('parses a standard DATABASE_URL', () => {
+      const parsed = BackupService.parseDatabaseUrl(
+        'postgresql://user:pass@localhost:5432/lexdoc_dev'
+      );
+      expect(parsed).toEqual({
+        user: 'user',
+        password: 'pass',
+        host: 'localhost',
+        port: '5432',
+        database: 'lexdoc_dev',
+      });
+    });
+
+    it('strips Prisma ?schema=public query string from database name', () => {
+      const parsed = BackupService.parseDatabaseUrl(
+        'postgresql://lexdoc_user:secret@localhost:5434/lexdoc_dev?schema=public'
+      );
+      expect(parsed.database).toBe('lexdoc_dev');
+    });
+
+    it('throws on invalid DATABASE_URL', () => {
+      expect(() => BackupService.parseDatabaseUrl('not-a-postgres-url')).toThrow(
+        'Invalid DATABASE_URL format'
+      );
+    });
+  });
+
   describe('createDatabaseBackup', () => {
     it('should create backup log entry', async () => {
       mockPrisma.backupLog.create.mockResolvedValue({ id: 'backup-1' });
