@@ -113,7 +113,12 @@ router.post('/', async (req, res, next) => {
       throw new NotFoundError('Document not found');
     }
 
+    // DÉSACTIVÉ 2026-05-19 — Universign n'est plus le provider de signature.
+    // Utiliser POST /api/documents/:id/sign (DocuSign) à la place.
+    throw new BadRequestError('Universign provider has been deactivated. Use POST /api/documents/:id/sign (DocuSign) instead.');
+
     // Generate presigned URL for Universign
+    // eslint-disable-next-line no-unreachable
     const documentUrl = await storageService.generatePresignedUrl(document.objectKey, 3600);
 
     // Create signature transaction with Universign
@@ -226,7 +231,11 @@ router.get('/:id/status', async (req, res, next) => {
       throw new BadRequestError('No transaction ID available');
     }
 
+    // DÉSACTIVÉ 2026-05-19 — Universign désactivé, status non récupérable.
+    throw new BadRequestError('Universign provider has been deactivated. Live status not available.');
+
     // Get live status from Universign
+    // eslint-disable-next-line no-unreachable
     const universignStatus = await universignService.getTransactionStatus(signature.transactionId);
 
     // Map status
@@ -462,7 +471,11 @@ router.get('/:id/download', async (req, res, next) => {
       throw new BadRequestError('No transaction ID available');
     }
 
+    // DÉSACTIVÉ 2026-05-19 — Universign désactivé, redirect non disponible.
+    throw new BadRequestError('Universign provider has been deactivated. Signed document download via Universign unavailable.');
+
     // Get signed document URL from Universign
+    // eslint-disable-next-line no-unreachable
     const universignStatus = await universignService.getTransactionStatus(signature.transactionId);
 
     if (!universignStatus.signedDocumentUrl) {
@@ -497,7 +510,11 @@ router.get('/:id/certificate', async (req, res, next) => {
       return res.redirect(signature.certificateUrl);
     }
 
+    // DÉSACTIVÉ 2026-05-19 — Universign désactivé, certificate live fetch non disponible.
+    throw new NotFoundError('Certificate not stored locally and Universign provider has been deactivated.');
+
     // Try to get certificate from Universign
+    // eslint-disable-next-line no-unreachable
     if (signature.transactionId) {
       const universignStatus = await universignService.getTransactionStatus(signature.transactionId);
       if (universignStatus.certificate) {

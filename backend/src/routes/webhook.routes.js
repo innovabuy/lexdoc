@@ -11,7 +11,20 @@ const crypto = require('crypto');
 /**
  * Universign webhook endpoint for signature status updates
  * POST /api/webhooks/universign
+ *
+ * DÉSACTIVÉ 2026-05-19 — LexDoc utilise DocuSign uniquement.
+ * Universign n'est plus un provider actif. Le handler retourne 410 Gone.
+ * Code original conservé en commentaire pour rollback rapide ; suppression
+ * définitive en backlog post-démo Pragmavox.
  */
+router.post('/universign', (req, res) => {
+  logger.warn('Universign webhook called but provider is deactivated', {
+    bodyKeys: Object.keys(req.body || {}),
+  });
+  return res.status(410).json({ error: 'Universign provider has been deactivated. Use DocuSign instead.' });
+});
+
+/* ORIGINAL HANDLER — kept for rollback only
 router.post('/universign', async (req, res) => {
   try {
     const {
@@ -138,6 +151,7 @@ router.post('/universign', async (req, res) => {
     return res.status(500).json({ error: 'Webhook processing error' });
   }
 });
+*/
 
 // ============================================================================
 // SENDINGBOX WEBHOOK
@@ -470,13 +484,11 @@ router.get('/docusign', (req, res) => {
 /**
  * Verification endpoint for Universign webhook setup
  * GET /api/webhooks/universign
+ *
+ * DÉSACTIVÉ 2026-05-19 — voir POST /universign ci-dessus.
  */
 router.get('/universign', (req, res) => {
-  const challenge = req.query.challenge || req.query['hub.challenge'];
-  if (challenge) {
-    return res.send(challenge);
-  }
-  return res.json({ status: 'Universign webhook endpoint ready' });
+  return res.status(410).json({ error: 'Universign provider has been deactivated. Use DocuSign instead.' });
 });
 
 /**

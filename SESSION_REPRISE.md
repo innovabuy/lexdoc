@@ -18,10 +18,37 @@
 
 **À traiter avant go-live (prochaine session)** :
 1. Définir/déployer `SENDINGBOX_WEBHOOK_SECRET` + activer la validation HMAC obligatoire
-2. Clarifier provider signature actif pour Pragmavox (Universign vs DocuSign) — choix unique
+2. ~~Clarifier provider signature actif pour Pragmavox~~ → **résolu 2026-05-19** : Universign désactivé, DocuSign seul actif
 3. Ajouter polling fallback DocuSign si webhook timeout >24h
 4. Tests d'intégration LRAR (0 actuellement sur un flux qui engage du coût réel)
 5. Vérifier `SENDINGBOX_API_URL` (pointe vers `app.lexdoc.fr` au lieu de SendingBox)
+6. **Connecter DocuSign côté tenant Pragmavox** : `GET /api/integrations/docusign/status` retourne `connected:false` — aucun OAuth2 token stocké en TenantIntegrations. Avant la démo Yves-Marie, faire le flow OAuth2 depuis l'UI Settings → Intégrations.
+
+## 2026-05-19 (soir, suite) — Universign désactivé (DocuSign seul actif)
+
+**Scénario découvert** : B — Dispatcher implicite par URL. Deux providers cohabitaient sur des routes parallèles :
+- `POST /api/documents/:id/sign` → DocuSign (route `docusign.routes.js`, appelée par `SignatureModal.jsx` → `integrationsApi.sendDocumentForSignature`)
+- `POST /api/signatures` + GET `/:id/status` + GET `/:id/download` + GET `/:id/certificate` → Universign (route `signature.routes.js`)
+- `POST /api/signatures/:id/resend` + DELETE `/:id` → **n'appelaient pas Universign** (resend = email service, delete = update statut BDD) — préservés intacts
+- `signature.controller.js` : code orphelin, jamais routé — laissé en place
+
+**Patches conservateurs (rollback = git revert)** :
+- `backend/src/routes/webhook.routes.js` : POST + GET `/universign` → retournent désormais HTTP 410 Gone avec message explicite. Handler original commenté dans un bloc `/* ... */` pour rollback rapide.
+- `backend/src/routes/signature.routes.js` : 4 appels `universignService.xxx(...)` neutralisés par `throw new BadRequestError(...)` placés AVANT, avec `// eslint-disable-next-line no-unreachable` pour conserver le code original lisible.
+- `backend/src/services/universign.service.js` : warning `logger.warn('[DEPRECATED] UniversignService instantiated…')` dans le constructeur. Loggé au boot (confirmé : `2026-05-19T10:23:50 [DEPRECATED] UniversignService instantiated`).
+
+**Smoke tests post-patch** :
+- `POST /api/webhooks/universign` → 410 Gone + message ✓
+- `GET /api/webhooks/universign` → 410 Gone + message ✓
+- `GET /api/integrations/docusign/status` → 200 (DocuSign opérationnel, mais `connected:false` côté Pragmavox — voir point #6 ci-dessus)
+- Tests : 159/159 verts (aucun test ne couvrait spécifiquement Universign — pas de régression)
+- PM2 restart : OK
+- DocuSign présent dans 3 chunks frontend servis (`IntegrationsSettings`, `OnboardingWizard`, `integrationsApi`)
+
+**Backlog post-démo Pragmavox** :
+- Suppression définitive du code Universign (`backend/src/services/universign.service.js`, handlers commentés webhook.routes.js, blocs unreachable signature.routes.js, `backend/src/controllers/signature.controller.js` orphelin)
+- Variables d'env `UNIVERSIGN_*` à retirer du `.env` prod après confirmation 1-2 semaines de non-régression
+- Toggle UI signature provider dans CabinetSettings réservé pour le jour où LexDoc supportera plusieurs providers à nouveau (sinon pas nécessaire)
 
 ## 2026-05-19 — Backup applicatif désactivé + frontend prod rebuildé
 

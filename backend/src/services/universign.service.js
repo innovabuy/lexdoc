@@ -1,11 +1,16 @@
 const axios = require('axios');
 const logger = require('../config/logger');
 
+// DÉSACTIVÉ 2026-05-19 — LexDoc utilise DocuSign uniquement.
+// Le service est conservé pour rollback rapide ; toute méthode appelée
+// loggue un warning. Suppression définitive en backlog post-démo Pragmavox.
+
 class UniversignService {
   constructor() {
     this.apiUrl = process.env.UNIVERSIGN_URL || process.env.UNIVERSIGN_API_URL;
     this.apiKey = process.env.UNIVERSIGN_API_KEY;
     this.callbackUrl = process.env.UNIVERSIGN_CALLBACK_URL || `${process.env.API_URL}/api/webhooks/universign`;
+    logger.warn('[DEPRECATED] UniversignService instantiated — provider has been deactivated, use DocuSign');
   }
 
   async createTransaction(documentUrl, signers) {
