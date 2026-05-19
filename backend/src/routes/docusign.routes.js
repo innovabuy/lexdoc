@@ -7,6 +7,7 @@ const { successResponse } = require('../utils/response');
 const { BadRequestError, NotFoundError } = require('../utils/errors');
 const docusignService = require('../services/docusign.service');
 const storageService = require('../services/storage.service');
+const timeline = require('../services/timeline.service');
 const logger = require('../config/logger');
 
 // ============================================================================
@@ -253,6 +254,21 @@ router.post('/:id/sign', authenticate, enforceTenant, async (req, res, next) => 
       },
     });
 
+    // Timeline event — visibilité onglet Historique du dossier
+    await timeline.addEvent({
+      folderId: document.folderId,
+      documentId: document.id,
+      type: 'signature_demandee',
+      description: `Document "${document.name}" envoyé pour signature à ${signers.length} signataire(s)`,
+      userId: req.user.id,
+      metadata: {
+        signatureRequestId: sigRequest.id,
+        envelopeId: result.envelopeId,
+        signersCount: signers.length,
+        ordreSignature: ordreSignature || 'parallele',
+      },
+    });
+
     logger.info('Document sent for DocuSign signature', {
       documentId: document.id,
       envelopeId: result.envelopeId,
@@ -425,6 +441,22 @@ router.post('/:id/send-registered/confirm', authenticate, enforceTenant, async (
           trackingNumber: result.trackingNumber,
           cost: result.cost,
         },
+      },
+    });
+
+    // Timeline event — visibilité onglet Historique du dossier
+    await timeline.addEvent({
+      folderId: document.folderId,
+      documentId: document.id,
+      type: 'lrar_envoye',
+      description: `${type} envoyé à ${registeredMail.recipientName} (${result.trackingNumber})`,
+      userId: req.user.id,
+      metadata: {
+        registeredMailId: registeredMail.id,
+        type,
+        trackingNumber: result.trackingNumber,
+        cost: result.cost,
+        recipientName: registeredMail.recipientName,
       },
     });
 

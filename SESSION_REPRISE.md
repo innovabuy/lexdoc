@@ -24,6 +24,26 @@
 5. Vérifier `SENDINGBOX_API_URL` (pointe vers `app.lexdoc.fr` au lieu de SendingBox)
 6. **Connecter DocuSign côté tenant Pragmavox** : `GET /api/integrations/docusign/status` retourne `connected:false` — aucun OAuth2 token stocké en TenantIntegrations. Avant la démo Yves-Marie, faire le flow OAuth2 depuis l'UI Settings → Intégrations.
 
+## 2026-05-19 (soir, B.1) — Timeline events câblés sur signature + LRAR
+
+**Lacune découverte au smoke test B** : les routes `POST /api/documents/:id/sign` et `POST /api/documents/:id/send-registered/confirm` ne créaient aucun TimelineEvent. Conséquence : l'onglet "Historique" du dossier ne montrait pas ces actions à l'utilisateur. Visible en démo.
+
+**Fix** (`backend/src/routes/docusign.routes.js`) :
+- Import `timeline = require('../services/timeline.service')`
+- Après création de `SignatureRequest` : `timeline.addEvent({type: 'signature_demandee', ...})` avec metadata `{signatureRequestId, envelopeId, signersCount, ordreSignature}`
+- Après création de `RegisteredMail` : `timeline.addEvent({type: 'lrar_envoye', ...})` avec metadata `{registeredMailId, type, trackingNumber, cost, recipientName}`
+
+Les deux types existent déjà dans `TYPE_LABELS` (timeline.service.js:26-27) et étaient documentés dans le commentaire du modèle Prisma `TimelineEvent.type` — il manquait juste les call-sites.
+
+**Smoke test** : POST /sign + POST /lrar/confirm sur un dossier neuf → timeline contient bien les 5 events dans l'ordre (`dossier_cree`, `personne_ajoutee`, `document_cree`, `signature_demandee`, `lrar_envoye`). Cleanup BDD propre.
+
+**Tests** : 159/159 préservés (pas de test unitaire ajouté — aucun test ne couvrait ces routes précédemment, hors scope ce stage).
+
+**Backlog post-démo** :
+- Câbler aussi les events sur les **webhooks** (DocuSign signed + SendingBox delivered) — actuellement les transitions automatiques sont silencieuses côté timeline
+- Backfill BDD pour les SignatureRequest/RegisteredMail historiques sans TimelineEvent associé (script idempotent — facultatif)
+- Standardiser noms d'events (frontend mappe via TYPE_LABELS, OK pour l'instant)
+
 ## 2026-05-19 (soir, suite) — Universign désactivé (DocuSign seul actif)
 
 **Scénario découvert** : B — Dispatcher implicite par URL. Deux providers cohabitaient sur des routes parallèles :
