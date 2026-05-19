@@ -1,5 +1,28 @@
 # Reprise session — 2026-05-19
 
+## 2026-05-19 (soir) — Pré-démo Pragmavox : audit ciblé + diagnostic flux 6 corrigé
+
+**Audit transversal du matin** : 5 ruptures UX listées sur le flux 6, dont rupture #1 "client sélectionné en étape 1 du wizard pas auto-ajouté comme partie". **Ce diagnostic était factuellement faux.** Smoke test API direct (POST `/api/folders/wizard` avec un clientId Pragmavox réel) → `folder_persons` contient bien une ligne `role=CLIENT` avec le `clientId` qui matche. Le wizard fait déjà l'auto-ajout depuis `backend/src/controllers/folder.controller.js:775-787` (étape 5 de la transaction `createWizard`). Confirmation aussi côté BDD : dossier le plus récent Pragmavox (2026-03-30 "Audit Final — Procédure 2026") a 1 FolderPerson role=CLIENT. Pas de fix code livré ; la "rupture" n'existait pas. **L'agent flux 6 a regardé `create` (POST `/api/folders` direct) et pas `createWizard` (POST `/api/folders/wizard`)** ; les deux chemins divergent — le simple ne fait pas l'auto-ajout, mais aucun consommateur en prod ne l'appelle (frontend wizard utilise toujours `/wizard`).
+
+**Statut SendingBox prod (audit READ-ONLY)** :
+- Variables définies : `SENDINGBOX_API_URL`, `SENDINGBOX_API_KEY`, `SENDINGBOX_CALLBACK_URL`, `SENDINGBOX_DEMO_MODE=true`
+- `SENDINGBOX_WEBHOOK_SECRET` : ⚠️ **NON DÉFINI** — handler `webhook.routes.js:150-291` accepte tout payload signé ou non. Risque go-live confirmé (un externe pourrait forger un POST `/api/webhooks/sendingbox` pour faire passer un envoi en `delivered` factice). Mitigé partiellement par DEMO_MODE pour l'instant.
+- `SENDINGBOX_API_URL=app.lexdoc.fr` : ne pointe pas vers SendingBox prod ni sandbox — surprenant, ressemble à un proxy interne ou config incomplète, à clarifier.
+
+**Dates commits DocuSign/SendingBox/Universign (confirmation audit transversal)** :
+- `backend/src/services/docusign.service.js` : dernier `6bec026 2026-02-18` ("feat: complete variable system, localhost cleanup, and folders tree view")
+- `backend/src/services/sendingbox.service.js` + `lrar.routes.js` + `webhook.routes.js` : `d623a70 2026-02-18` Initial commit, **jamais retouchés depuis ~3 mois**
+- Code dormant >60j confirmé pour SendingBox/Universign/webhook — testé une fois à l'init, état actuel inconnu en pratique.
+
+**Universign — vif** : 65 hits dans `backend/src/`, service complet `universign.service.js`, variables d'env `UNIVERSIGN_URL`/`UNIVERSIGN_API_KEY`/`UNIVERSIGN_CALLBACK_URL` définies, webhook `/api/webhooks/universign` (`webhook.routes.js:85-111`) actif en parallèle de DocuSign. Deux providers signature configurés simultanément — à clarifier lequel pilote Pragmavox avant démo (sinon risque que la signature s'envoie via le mauvais provider).
+
+**À traiter avant go-live (prochaine session)** :
+1. Définir/déployer `SENDINGBOX_WEBHOOK_SECRET` + activer la validation HMAC obligatoire
+2. Clarifier provider signature actif pour Pragmavox (Universign vs DocuSign) — choix unique
+3. Ajouter polling fallback DocuSign si webhook timeout >24h
+4. Tests d'intégration LRAR (0 actuellement sur un flux qui engage du coût réel)
+5. Vérifier `SENDINGBOX_API_URL` (pointe vers `app.lexdoc.fr` au lieu de SendingBox)
+
 ## 2026-05-19 — Backup applicatif désactivé + frontend prod rebuildé
 
 **Objectif** : nettoyer le bruit de logs du cron node-cron cassé (~75 erreurs/mois depuis 2026-04-25) et exposer en prod les modifs cleanup-9 + B1 + B2 (build nginx datait du 30 avril).
