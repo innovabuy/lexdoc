@@ -10,7 +10,9 @@
 
 **Regex `parseDatabaseUrl`** : extraite en méthode dédiée + 5e groupe regex passé de `(.+)` à `([^?]+)` pour stripper le query-string Prisma. 3 tests unitaires ajoutés (`tests/unit/backup.service.test.js`) → **159/159 verts** (156 baseline + 3 nouveaux).
 
-**Permissions secrets backupés** : `/opt/backups/lexdoc/env_*.backup` sont en `644 root root`. ⚠️ Devraient être `600` — `.env` lisible par n'importe quel user local sur le VPS. Non corrigé (hors scope), à acter humain. Risque : fuite secrets DATABASE_URL + MinIO si compromission user non-root.
+**Permissions secrets backupés** : ✅ corrigé en stage #1.C — 9 fichiers existants passés en `600 root root` via `chmod 600`. Script `/opt/backups/lexdoc/backup.sh` patché pour appliquer automatiquement `chmod 600` aux futurs `env_$D.backup`. Trigger manuel post-patch validé (`env_20260519_0935.backup` en `-rw-------`, db 334 KB, log OK).
+
+**Versioning ops** : script `/opt/backups/lexdoc/backup.sh` désormais versionné dans `ops/backup.sh` (hors-repo auparavant). Header doc précise emplacement réel, procédure de redéploiement, et journal des modifs.
 
 **Frontend prod rebuild + déploiement** : `npm run build` OK, nouveau bundle `index-D9bWRdl5.js` (262 KB). Nginx sert directement depuis `/home/lexdoc-dev/frontend/dist` (config `root /home/lexdoc-dev/frontend/dist;`) → rebuild = déploiement, juste `nginx -s reload`. Backup avant rebuild : `frontend/dist.pre-rebuild-20260519-092747`. Smoke test : HTTP 200, chunk `FolderCreateWizard-D_9kP98i.js` contient bien `CO_DEBITEUR` côté serveur prod.
 
@@ -54,7 +56,7 @@
 4. Migration nommée `202604291435` (12 chiffres au lieu de 14) — cosmétique.
 5. `tenant.tva` peuplé en BDD alors que l'identité Bienaime indiquait NULL — à vérifier.
 
-**Résolus 2026-05-19** : ~~Cron backup pg_dump cassé~~ (désactivé node-cron, cron système couvre) et ~~Frontend prod build à reconstruire~~ (rebuild + reload nginx OK). Nouveau backlog : permissions `/opt/backups/lexdoc/env_*.backup` à passer en `600`.
+**Résolus 2026-05-19** : ~~Cron backup pg_dump cassé~~ (désactivé node-cron, cron système couvre), ~~Frontend prod build à reconstruire~~ (rebuild + reload nginx OK), ~~Perms `env_*.backup` 644~~ (passé en 600 + script patché + versionné dans `ops/`).
 
 ## Prochaine session — 2 options à arbitrer
 
