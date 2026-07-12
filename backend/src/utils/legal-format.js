@@ -48,6 +48,21 @@ function formatPartieAdverse(p, avocat) {
 }
 
 /**
+ * GO-LIVE-1.C — Assainit un capital client saisi en String LIBRE (dette Q21) pour l'AFFICHAGE.
+ * Retire € / euro(s) / espaces parasites afin que les templates puissent ajouter « euros » sans doublon
+ * (« 100 000 € » → « 100 000 » → template « ... 100 000 euros »). NE résout PAS Q21 (colonne reste String).
+ * null / '' → '' (le template affichera « au capital de  euros » — artefact mineur si un PM n'a pas de capital).
+ */
+function normalizeCapital(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/€/g, '')
+    .replace(/\beuros?\b/gi, '')
+    .replace(/[\s  ]+/g, ' ')
+    .trim();
+}
+
+/**
  * GO-LIVE-1.C.1 — Construit la section singulière `data.adversaire` depuis le tableau
  * `parties_adverses` (déjà formaté par formatPartieAdverse). Prend le 1er PARTIE_ADVERSE.
  * Aucun adversaire → chaînes vides + booléens `false` (jamais d'exception).
@@ -147,6 +162,7 @@ module.exports = {
   formatMontantEur,
   formatPartieAdverse,
   buildAdversaireSingulier,
+  normalizeCapital,
   numberToFrenchWords,
   frenchDateInWords,
   frenchHourInWords,

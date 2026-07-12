@@ -1,6 +1,6 @@
 const Docxtemplater = require('docxtemplater');
 const PizZip = require('pizzip');
-const { buildAdversaireSingulier, formatPartieAdverse } = require('../../src/utils/legal-format');
+const { buildAdversaireSingulier, formatPartieAdverse, normalizeCapital } = require('../../src/utils/legal-format');
 
 // ── Fabrique un .docx minimal en mémoire pour tester le rendu Docxtemplater ──
 function makeDocx(bodyText) {
@@ -102,6 +102,29 @@ describe('GO-LIVE-1.C.1 — adversaire singulier + booléens PP/PM', () => {
       const out = render(makeDocx(tpl), flat('adversaire', buildAdversaireSingulier([])));
       expect(out).not.toContain('SOCIETE');
       expect(out).not.toContain('M/Mme');
+    });
+  });
+
+  describe('normalizeCapital (Q21 — strip €/euros pour éviter « € euros »)', () => {
+    it.each([
+      ['100 000 €', '100 000'],
+      ['10000', '10000'],
+      ['100 000 euros', '100 000'],
+      ['10 000,50 €', '10 000,50'],
+      ['100 000 € euros', '100 000'],
+      ['1 000 000 €', '1 000 000'],
+      [null, ''],
+      ['', ''],
+      [undefined, ''],
+    ])('%s → %s', (input, expected) => {
+      expect(normalizeCapital(input)).toBe(expected);
+    });
+    it('rendu template « au capital de {v} euros » ne double jamais l’unité', () => {
+      for (const v of ['100 000 €', '10000', '100 000 euros', '10 000,50 €']) {
+        const rendered = `au capital de ${normalizeCapital(v)} euros`;
+        expect(rendered).not.toMatch(/€\s*euros/);
+        expect(rendered).not.toMatch(/euros\s+euros/);
+      }
     });
   });
 

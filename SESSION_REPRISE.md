@@ -1,5 +1,17 @@
 # Reprise session — 2026-05-19
 
+## 2026-07-12 (suite) — Assignation en référé mappée + dette Q21 assainie
+
+**Template `assignation_refere_commerce`** : `.docm` (macros perso inertes retirées) → `.docx` → mapping **run-aware** (texte-seul, `rPr`/`pPr` intacts) → `.template.docx`. Identité demanderesse ET adverse en **rendu conditionnel PP/PM** (`{#..._est_morale}…{/}`), cabinet en dur (§19) remplacé par `cabinet.*`/`avocat.*`, champs huissier laissés vides. Enregistré tenant-scoped (seed `prisma/seeds/pragmavox_assignation.sql`, id `cml-pragmavox-assignation-refere-tc-v1`). Validé end-to-end PM + PP : zéro `{}` résiduel, zéro parenthèse orpheline, grammaire correcte (« Jean Dupont, demeurant… » en PP, pas de « société  au capital de  € »).
+
+**Bonus MED** corrigés : « € euros » (facture/somme) et « Société {adversaire_denomination} » (doublon).
+
+**Dette Q21 (`client.capital` String) assainie côté AFFICHAGE** (pas de migration) : `normalizeCapital()` retire `€`/`euros` en `collectData` (un seul point → `{client_capital}` + `{client_capital_social}`). Les templates gardent « euros » en dur. Q21 (colonne String) reste ouverte.
+
+### ⚠️ CONSTAT À TRACER — « validé » ≠ « code passe »
+La mise en demeure était réputée **validée** alors qu'elle produisait **« au capital de 100 000 € euros »** sur un client réel (`client.capital = "100 000 €"` en base). Le bug n'avait jamais été vu car personne n'avait relu le document GÉNÉRÉ sur données réelles — seul le code « passait ».
+→ **Un template n'est validé que lorsqu'un humain a lu le document généré en entier, sur des données réelles.** Avant go-live : relire intégralement les 3 documents Pragma Vox (lettre de mission, mise en demeure, assignation) générés sur de vraies données cabinet.
+
 ## 2026-07-12 — GO-LIVE-1.B livré (adversaire personne morale) + hygiène
 
 **Commit `2230262`, tag `v0.4.0-golive-1b` (poussé).** Modèle adversaire personne morale + champs orphelins de l'assignation en référé.

@@ -8,6 +8,7 @@ const {
   formatMontantEur,
   formatPartieAdverse,
   buildAdversaireSingulier,
+  normalizeCapital,
   numberToFrenchWords,
   frenchDateInWords,
   frenchHourInWords,
@@ -136,7 +137,7 @@ async function collectData(folderId, tenantId) {
       raison_sociale: client.companyName || '',
       forme_sociale: client.formeSociale || '',
       objet_social: client.objetSocial || '',
-      capital: client.capital || '',
+      capital: normalizeCapital(client.capital), // GO-LIVE-1.C — strip €/euros (Q21) pour éviter « € euros »
       siege: client.siege || '',
       rcs: client.rcs || '',
       siret: client.siret || '',
@@ -174,7 +175,7 @@ async function collectData(folderId, tenantId) {
       nom: client.type === 'COMPANY' ? (client.companyName || '') : '',
       forme: client.formeSociale || '',
       objet_social: client.objetSocial || '',
-      capital: client.capital || '',
+      capital: normalizeCapital(client.capital), // GO-LIVE-1.C — strip €/euros (Q21) pour éviter « € euros »
       siege: client.siege || '',
       rcs: client.rcs || '',
     },
