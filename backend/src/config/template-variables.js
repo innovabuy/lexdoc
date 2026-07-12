@@ -53,6 +53,10 @@ const TEMPLATE_VARIABLES = [
   { key: 'client.siret', label: 'SIRET', category: 'client_pm', description: 'Numero SIRET', example: '987 654 321 00001' },
   { key: 'client.rcs', label: 'RCS', category: 'client_pm', description: 'Numero RCS', example: 'Angers B 987 654 321' },
   { key: 'client.capital', label: 'Capital social', category: 'client_pm', description: 'Montant du capital', example: '10 000 euros' },
+  { key: 'client.ville_immatriculation', label: 'Ville immatriculation client', category: 'client_pm', description: 'Greffe RCS (GO-LIVE-1.C.1)', example: 'Angers' },
+  { key: 'client.numero_immatriculation', label: 'N° immatriculation client', category: 'client_pm', description: 'RCS/SIREN (GO-LIVE-1.C.1)', example: '123 456 789' },
+  { key: 'client.est_morale', label: 'Client est une personne morale', category: 'client_pm', description: 'Booléen — condition {#client_est_morale}', example: 'true' },
+  { key: 'client.est_physique', label: 'Client est une personne physique', category: 'client_pm', description: 'Booléen — condition {#client_est_physique}', example: 'false' },
   { key: 'client.siege', label: 'Siege social', category: 'client_pm', description: 'Adresse du siege', example: '10 avenue des Champs, 75008 Paris' },
   { key: 'client.objet_social', label: 'Objet social', category: 'client_pm', description: "Objet social de l'entreprise", example: 'Conseil en informatique' },
 
@@ -73,6 +77,7 @@ const TEMPLATE_VARIABLES = [
   { key: 'dossier.tribunal_ville', label: 'Ville du tribunal', category: 'dossier', description: 'Ponctuel (additionalData)', example: 'Angers' },
   { key: 'dossier.tribunal_adresse', label: 'Adresse du tribunal', category: 'dossier', description: 'Ponctuel (additionalData)', example: '1 rue Waldeck-Rousseau, 49000 Angers' },
   { key: 'dossier.montant_article_700', label: 'Montant article 700', category: 'dossier', description: 'Ponctuel (additionalData)', example: '2 500 €' },
+  { key: 'dossier.montant_provisionnel', label: 'Montant provisionnel (référé)', category: 'dossier', description: 'Provision demandée au juge (≠ créance MED). Ponctuel (additionalData)', example: '15 000 € TTC' },
   { key: 'dossier.date_mise_en_demeure', label: 'Date de la mise en demeure', category: 'dossier', description: 'Ponctuel (additionalData)', example: '01/02/2026' },
 
   // ── Parties adverses ──
@@ -89,6 +94,18 @@ const TEMPLATE_VARIABLES = [
   { key: 'parties_adverses.[].capital', label: 'Capital partie adverse', category: 'parties', description: 'Dans boucle: {capital} (formaté €, personne morale)', example: '10 000,00 €' },
   { key: 'parties_adverses.[].ville_immatriculation', label: 'Ville immatriculation partie adverse', category: 'parties', description: 'Dans boucle: {ville_immatriculation} (greffe RCS)', example: 'Angers' },
   { key: 'parties_adverses.[].numero_immatriculation', label: 'N° immatriculation partie adverse', category: 'parties', description: 'Dans boucle: {numero_immatriculation} (RCS/SIREN)', example: '987 654 321' },
+
+  // GO-LIVE-1.C.1 — adversaire SINGULIER (1er PARTIE_ADVERSE), hors boucle
+  { key: 'adversaire.denomination', label: 'Dénomination adversaire', category: 'adversaire', description: 'Raison sociale (PM) ou nom complet (PP)', example: 'Démo SARL' },
+  { key: 'adversaire.raison_sociale', label: 'Raison sociale adversaire', category: 'adversaire', description: 'Personne morale', example: 'Démo SARL' },
+  { key: 'adversaire.forme_sociale', label: 'Forme sociale adversaire', category: 'adversaire', description: 'Personne morale', example: 'SARL' },
+  { key: 'adversaire.capital', label: 'Capital adversaire', category: 'adversaire', description: 'Formaté € (personne morale)', example: '10 000,00 €' },
+  { key: 'adversaire.adresse', label: 'Adresse adversaire', category: 'adversaire', description: 'Adresse / siège', example: '10 rue du Commerce, Angers' },
+  { key: 'adversaire.adresse_mail', label: 'Email adversaire', category: 'adversaire', description: 'Adresse mail', example: 'contact@demo.fr' },
+  { key: 'adversaire.ville_immatriculation', label: 'Ville immatriculation adversaire', category: 'adversaire', description: 'Greffe RCS (personne morale)', example: 'Angers' },
+  { key: 'adversaire.numero_immatriculation', label: 'N° immatriculation adversaire', category: 'adversaire', description: 'RCS/SIREN (personne morale)', example: '987 654 321' },
+  { key: 'adversaire.est_morale', label: 'Adversaire est une personne morale', category: 'adversaire', description: 'Booléen — condition {#adversaire_est_morale}', example: 'true' },
+  { key: 'adversaire.est_physique', label: 'Adversaire est une personne physique', category: 'adversaire', description: 'Booléen — condition {#adversaire_est_physique}', example: 'false' },
 
   // ── Co-débiteurs (B2 Phase 3) ──
   { key: 'co_debiteurs', label: 'Liste des co-débiteurs', category: 'co_debiteurs', description: 'Boucle {#co_debiteurs}...{/co_debiteurs} (Docxtemplater)', example: '[tableau]' },

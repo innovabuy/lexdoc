@@ -224,9 +224,11 @@ model Client {
   // Identité PM complémentaire
   formeSociale           String?   // SAS, SARL, SCI, etc.
   objetSocial            String?
-  capital                String?
+  capital                String?   // (dette Q21 : reste String, saisie libre — non migré)
   siege                  String?
   rcs                    String?
+  villeImmatriculation   String?   // Ville du greffe RCS (GO-LIVE-1.C.1)
+  numeroImmatriculation  String?   // N° RCS / SIREN
 
   // Coordonnées complémentaires
   complementAdressePerso String?

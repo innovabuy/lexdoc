@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, Send, Edit3, ChevronDown, ChevronRight,
   Save, FolderOpen, Clock, User, Phone, Heart, Users as UsersIcon,
-  Globe, CheckCircle, RefreshCw, Archive, Trash2, RotateCcw,
+  Globe, CheckCircle, RefreshCw, Archive, Trash2, RotateCcw, Building2,
 } from 'lucide-react';
 import { getClient, updateClient, sendClientForm, inviteExtranet, archiveClient, deleteClient } from '../../services/clientsApi';
 import CompletenessAlert from '../../components/clients/CompletenessAlert';
@@ -104,6 +104,23 @@ function TabInformations({ client, onSave, saving }) {
           {editMode ? 'Annuler' : 'Modifier'}
         </button>
       </div>
+
+      {/* GO-LIVE-1.C.1 — Identité société (personne morale : COMPANY / ASSOCIATION) */}
+      {client.type !== 'INDIVIDUAL' && (
+        <Section title="Identité société" icon={Building2} defaultOpen>
+          <div className="detail-fields-grid">
+            <FieldRow label="Raison sociale" value={form.companyName} fieldKey="companyName" editMode={editMode} onChange={handleChange} />
+            <FieldRow label="Forme sociale" value={form.formeSociale} fieldKey="formeSociale" editMode={editMode} onChange={handleChange} />
+            <FieldRow label="Capital social" value={form.capital} fieldKey="capital" editMode={editMode} onChange={handleChange} />
+            <FieldRow label="SIRET" value={form.siret} fieldKey="siret" editMode={editMode} onChange={handleChange} />
+            <FieldRow label="Siège social" value={form.siege} fieldKey="siege" editMode={editMode} onChange={handleChange} />
+            <FieldRow label="RCS" value={form.rcs} fieldKey="rcs" editMode={editMode} onChange={handleChange} />
+            <FieldRow label="Ville d'immatriculation" value={form.villeImmatriculation} fieldKey="villeImmatriculation" editMode={editMode} onChange={handleChange} />
+            <FieldRow label="N° immatriculation (RCS/SIREN)" value={form.numeroImmatriculation} fieldKey="numeroImmatriculation" editMode={editMode} onChange={handleChange} />
+            <FieldRow label="Objet social" value={form.objetSocial} fieldKey="objetSocial" editMode={editMode} onChange={handleChange} />
+          </div>
+        </Section>
+      )}
 
       <Section title="Identité" icon={User} defaultOpen>
         <div className="detail-fields-grid">

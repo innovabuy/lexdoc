@@ -235,7 +235,9 @@ router.get('/:id/completeness', async (req, res, next) => {
 // Create client
 router.post('/', async (req, res, next) => {
   try {
-    const { type, firstName, lastName, companyName, siret, email, phone, mobile, address, addressLine2, postalCode, city, country, notes } = req.body;
+    const { type, firstName, lastName, companyName, siret, email, phone, mobile, address, addressLine2, postalCode, city, country, notes,
+      // GO-LIVE-1.C.1 — identité PM saisissable dès la création
+      formeSociale, capital, siege, rcs, objetSocial, villeImmatriculation, numeroImmatriculation } = req.body;
 
     if (!type) {
       throw new BadRequestError('Client type is required');
@@ -275,6 +277,14 @@ router.post('/', async (req, res, next) => {
         city: city || null,
         country: country || 'France',
         notes: notes || null,
+        // GO-LIVE-1.C.1 — identité PM (persistée pour COMPANY/ASSOCIATION ; ignorée sinon)
+        formeSociale: (type === 'COMPANY' || type === 'ASSOCIATION') ? (formeSociale || null) : null,
+        capital: (type === 'COMPANY' || type === 'ASSOCIATION') ? (capital || null) : null,
+        siege: (type === 'COMPANY' || type === 'ASSOCIATION') ? (siege || null) : null,
+        rcs: (type === 'COMPANY' || type === 'ASSOCIATION') ? (rcs || null) : null,
+        objetSocial: (type === 'COMPANY' || type === 'ASSOCIATION') ? (objetSocial || null) : null,
+        villeImmatriculation: (type === 'COMPANY' || type === 'ASSOCIATION') ? (villeImmatriculation || null) : null,
+        numeroImmatriculation: (type === 'COMPANY' || type === 'ASSOCIATION') ? (numeroImmatriculation || null) : null,
         tenantId: req.tenant.id,
       },
     });
@@ -311,7 +321,8 @@ router.put('/:id', async (req, res, next) => {
       'city', 'country', 'notes', 'civilite', 'nomUsage', 'birthDate',
       'lieuNaissance', 'departementNaissance', 'paysNaissance', 'nationalite',
       'profession', 'secu', 'formeSociale', 'objetSocial', 'capital', 'siege',
-      'rcs', 'complementAdressePerso', 'adressePro', 'complementAdressePro',
+      'rcs', 'villeImmatriculation', 'numeroImmatriculation',
+      'complementAdressePerso', 'adressePro', 'complementAdressePro',
       'cpPro', 'villePro', 'paysPro', 'telPro', 'fax', 'emailSecondaire',
       'pereNom', 'perePrenom', 'mereNomJeuneFille', 'merePrenom',
       'situationFamiliale', 'conjointNom', 'conjointPrenom',

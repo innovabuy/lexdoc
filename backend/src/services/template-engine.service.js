@@ -7,6 +7,7 @@ const { buildFooterFromTenant } = require('../utils/branding-format');
 const {
   formatMontantEur,
   formatPartieAdverse,
+  buildAdversaireSingulier,
   numberToFrenchWords,
   frenchDateInWords,
   frenchHourInWords,
@@ -140,6 +141,11 @@ async function collectData(folderId, tenantId) {
       rcs: client.rcs || '',
       siret: client.siret || '',
       type: client.type || '',
+      // GO-LIVE-1.C.1 — immatriculation isolée + booléens réels PP/PM
+      ville_immatriculation: client.villeImmatriculation || '',
+      numero_immatriculation: client.numeroImmatriculation || '',
+      est_morale: client.type === 'COMPANY' || client.type === 'ASSOCIATION',
+      est_physique: client.type === 'INDIVIDUAL',
     },
     dossier: {
       titre: folder.title || '',
@@ -202,8 +208,9 @@ async function collectData(folderId, tenantId) {
   data.client.siege_social = data.client.siege;
   data.client.adresse_mail = data.client.email;
 
-  // Mission B Phase 2 — sections métier pour mise en demeure (pré-init pour mergeAdditionalData)
-  data.adversaire = {};
+  // GO-LIVE-1.C.1 — section adversaire SINGULIÈRE, peuplée depuis le 1er PARTIE_ADVERSE.
+  // additionalData reste prioritaire (mergeAdditionalData override par champ, après).
+  data.adversaire = buildAdversaireSingulier(partiesAdverses);
   data.devis = {};
   data.facture = {};
   data.somme_due = {};
@@ -224,6 +231,8 @@ async function collectData(folderId, tenantId) {
   if (data.dossier.tribunal_adresse == null) data.dossier.tribunal_adresse = '';
   if (data.dossier.montant_article_700 == null) data.dossier.montant_article_700 = '';
   if (data.dossier.date_mise_en_demeure == null) data.dossier.date_mise_en_demeure = '';
+  // GO-LIVE-1.C.1 — montant provisionnel réclamé au juge des référés (≠ somme_due_ttc de la MED)
+  if (data.dossier.montant_provisionnel == null) data.dossier.montant_provisionnel = '';
 
   return data;
 }

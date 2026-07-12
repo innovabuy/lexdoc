@@ -9,6 +9,10 @@ export default function ClientQuickCreate({ open, onClose, onCreated }) {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [apiError, setApiError] = useState('');
+  // GO-LIVE-1.C.1 — identité PM saisissable dès la création (évite la friction "créer puis compléter")
+  const emptyPm = { formeSociale: '', capital: '', siege: '', rcs: '', villeImmatriculation: '', numeroImmatriculation: '' };
+  const [pm, setPm] = useState(emptyPm);
+  const setPmField = (k, v) => setPm((p) => ({ ...p, [k]: v }));
 
   if (!open) return null;
 
@@ -30,7 +34,7 @@ export default function ClientQuickCreate({ open, onClose, onCreated }) {
       const body =
         type === 'INDIVIDUAL'
           ? { type, lastName: name, email }
-          : { type: 'COMPANY', companyName: name, email };
+          : { type: 'COMPANY', companyName: name, email, ...pm };
       const client = await createClient(body);
       onCreated(client);
       onClose();
@@ -38,6 +42,7 @@ export default function ClientQuickCreate({ open, onClose, onCreated }) {
       setType('INDIVIDUAL');
       setName('');
       setEmail('');
+      setPm(emptyPm);
       setErrors({});
     } catch (err) {
       setApiError(err.response?.data?.error?.message || 'Erreur lors de la création');
@@ -92,6 +97,21 @@ export default function ClientQuickCreate({ open, onClose, onCreated }) {
             />
             {errors.name && <span className="modal-field-error">{errors.name}</span>}
           </div>
+
+          {/* GO-LIVE-1.C.1 — identité PM (optionnelle à la création, complétable ensuite) */}
+          {type === 'COMPANY' && (
+            <div className="modal-field">
+              <label className="modal-label">Identité société (optionnel)</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                <input className="modal-input" value={pm.formeSociale} onChange={(e) => setPmField('formeSociale', e.target.value)} placeholder="Forme (SARL, SAS...)" />
+                <input className="modal-input" value={pm.capital} onChange={(e) => setPmField('capital', e.target.value)} placeholder="Capital (ex: 10 000 €)" />
+                <input className="modal-input" value={pm.siege} onChange={(e) => setPmField('siege', e.target.value)} placeholder="Siège social" />
+                <input className="modal-input" value={pm.rcs} onChange={(e) => setPmField('rcs', e.target.value)} placeholder="RCS" />
+                <input className="modal-input" value={pm.villeImmatriculation} onChange={(e) => setPmField('villeImmatriculation', e.target.value)} placeholder="Ville immatriculation" />
+                <input className="modal-input" value={pm.numeroImmatriculation} onChange={(e) => setPmField('numeroImmatriculation', e.target.value)} placeholder="N° RCS / SIREN" />
+              </div>
+            </div>
+          )}
 
           <div className="modal-field">
             <label className="modal-label">

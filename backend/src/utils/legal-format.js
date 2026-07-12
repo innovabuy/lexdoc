@@ -48,6 +48,30 @@ function formatPartieAdverse(p, avocat) {
 }
 
 /**
+ * GO-LIVE-1.C.1 — Construit la section singulière `data.adversaire` depuis le tableau
+ * `parties_adverses` (déjà formaté par formatPartieAdverse). Prend le 1er PARTIE_ADVERSE.
+ * Aucun adversaire → chaînes vides + booléens `false` (jamais d'exception).
+ * est_morale / est_physique sont de VRAIS booléens (exploitables par {#adversaire_est_morale}).
+ */
+function buildAdversaireSingulier(partiesAdverses) {
+  const a = (partiesAdverses && partiesAdverses[0]) || null;
+  return {
+    denomination: a ? (a.type === 'MORALE' ? (a.raison_sociale || '') : `${a.prenom || ''} ${a.nom || ''}`.trim()) : '',
+    raison_sociale: a ? (a.raison_sociale || '') : '',
+    nom: a ? (a.nom || '') : '',
+    prenom: a ? (a.prenom || '') : '',
+    forme_sociale: a ? (a.forme_sociale || '') : '',
+    capital: a ? (a.capital || '') : '',
+    adresse: a ? (a.adresse || '') : '',
+    adresse_mail: a ? (a.email || '') : '',
+    ville_immatriculation: a ? (a.ville_immatriculation || '') : '',
+    numero_immatriculation: a ? (a.numero_immatriculation || '') : '',
+    est_morale: a ? a.type === 'MORALE' : false,
+    est_physique: a ? a.type === 'PHYSIQUE' : false,
+  };
+}
+
+/**
  * Convertit un entier (0..9999) en toutes lettres françaises.
  * Couvre années, jours, heures, minutes. Orthographe traditionnelle ("vingt et un", "soixante et onze").
  */
@@ -122,6 +146,7 @@ function frenchHourInWords(date) {
 module.exports = {
   formatMontantEur,
   formatPartieAdverse,
+  buildAdversaireSingulier,
   numberToFrenchWords,
   frenchDateInWords,
   frenchHourInWords,
