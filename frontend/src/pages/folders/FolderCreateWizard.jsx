@@ -362,7 +362,11 @@ function StepInfos({ folderType, procedure, nature, infos, parties, selectedClie
   const updateInfo = (key, val) => onUpdateInfos({ ...infos, [key]: val });
 
   const addParty = () => {
-    onUpdateParties([...parties, { role: 'PARTIE_ADVERSE', lastName: '', firstName: '', email: '', phone: '', address: '', avocat: null }]);
+    onUpdateParties([...parties, {
+      role: 'PARTIE_ADVERSE', type: 'PHYSIQUE', lastName: '', firstName: '', email: '', phone: '', address: '', avocat: null,
+      // GO-LIVE-1.B — personne morale (capital en euros dans le formulaire)
+      company: '', formeSociale: '', capital: '', villeImmatriculation: '', numeroImmatriculation: '',
+    }]);
   };
 
   const updateParty = (idx, key, val) => {
@@ -496,9 +500,30 @@ function StepInfos({ folderType, procedure, nature, infos, parties, selectedClie
                     </button>
                   </div>
 
+                  {/* GO-LIVE-1.B — type physique / morale */}
                   <div className="wz-field-row">
                     <div className="wz-field">
-                      <label className="wz-label-sm">Nom</label>
+                      <label className="wz-label-sm">Type</label>
+                      <select
+                        className="wz-select wz-select--sm"
+                        value={partie.type || 'PHYSIQUE'}
+                        onChange={(e) => updateParty(idx, 'type', e.target.value)}
+                      >
+                        <option value="PHYSIQUE">Personne physique</option>
+                        <option value="MORALE">Personne morale</option>
+                      </select>
+                    </div>
+                    {partie.type === 'MORALE' && (
+                      <div className="wz-field">
+                        <label className="wz-label-sm">Raison sociale</label>
+                        <input className="wz-input wz-input--sm" value={partie.company || ''} onChange={(e) => updateParty(idx, 'company', e.target.value)} placeholder="Démo SARL" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="wz-field-row">
+                    <div className="wz-field">
+                      <label className="wz-label-sm">{partie.type === 'MORALE' ? 'Nom (contact)' : 'Nom'}</label>
                       <input className="wz-input wz-input--sm" value={partie.lastName} onChange={(e) => updateParty(idx, 'lastName', e.target.value)} placeholder="Nom" />
                     </div>
                     <div className="wz-field">
@@ -506,6 +531,28 @@ function StepInfos({ folderType, procedure, nature, infos, parties, selectedClie
                       <input className="wz-input wz-input--sm" value={partie.firstName} onChange={(e) => updateParty(idx, 'firstName', e.target.value)} placeholder="Prénom" />
                     </div>
                   </div>
+
+                  {/* GO-LIVE-1.B — identité personne morale */}
+                  {partie.type === 'MORALE' && (
+                    <div className="wz-field-row">
+                      <div className="wz-field">
+                        <label className="wz-label-sm">Forme sociale</label>
+                        <input className="wz-input wz-input--sm" value={partie.formeSociale || ''} onChange={(e) => updateParty(idx, 'formeSociale', e.target.value)} placeholder="SARL, SAS..." />
+                      </div>
+                      <div className="wz-field">
+                        <label className="wz-label-sm">Capital social (€)</label>
+                        <input className="wz-input wz-input--sm" type="number" min="0" step="0.01" value={partie.capital || ''} onChange={(e) => updateParty(idx, 'capital', e.target.value)} placeholder="10000" />
+                      </div>
+                      <div className="wz-field">
+                        <label className="wz-label-sm">Ville immatriculation</label>
+                        <input className="wz-input wz-input--sm" value={partie.villeImmatriculation || ''} onChange={(e) => updateParty(idx, 'villeImmatriculation', e.target.value)} placeholder="Angers" />
+                      </div>
+                      <div className="wz-field">
+                        <label className="wz-label-sm">N° RCS / SIREN</label>
+                        <input className="wz-input wz-input--sm" value={partie.numeroImmatriculation || ''} onChange={(e) => updateParty(idx, 'numeroImmatriculation', e.target.value)} placeholder="987 654 321" />
+                      </div>
+                    </div>
+                  )}
 
                   <div className="wz-field-row">
                     <div className="wz-field">
@@ -782,7 +829,17 @@ export default function FolderCreateWizard() {
           chambre: infos.chambre || undefined,
           dateAudience: infos.dateAudience || undefined,
         },
-        parties: folderType === 'judiciaire' ? parties.filter(p => p.lastName?.trim()) : undefined,
+        // GO-LIVE-1.B — inclure les parties PM (company) et convertir le capital euros → centimes.
+        parties: folderType === 'judiciaire'
+          ? parties
+              .filter(p => p.lastName?.trim() || p.company?.trim())
+              .map(p => ({
+                ...p,
+                capital: (p.type === 'MORALE' && p.capital !== '' && p.capital != null && !isNaN(parseFloat(p.capital)))
+                  ? Math.round(parseFloat(p.capital) * 100)
+                  : null,
+              }))
+          : undefined,
         documents: selectedTemplates.map(t => ({
           templateId: t.id,
           name: t.name,

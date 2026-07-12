@@ -51,6 +51,11 @@ export default function FolderPersons({ folderId }) {
     phone: '',
     address: '',
     notes: '',
+    // GO-LIVE-1.B — identité personne morale (capital saisi en EUROS)
+    formeSociale: '',
+    capital: '',
+    villeImmatriculation: '',
+    numeroImmatriculation: '',
   };
 
   const [form, setForm] = useState(emptyForm);
@@ -89,6 +94,11 @@ export default function FolderPersons({ folderId }) {
         phone: person.phone || '',
         address: person.address || '',
         notes: person.notes || '',
+        // GO-LIVE-1.B — capital stocké en centimes → affiché en euros
+        formeSociale: person.formeSociale || '',
+        capital: person.capital != null ? String(person.capital / 100) : '',
+        villeImmatriculation: person.villeImmatriculation || '',
+        numeroImmatriculation: person.numeroImmatriculation || '',
       });
     } else {
       setEditingPerson(null);
@@ -115,13 +125,19 @@ export default function FolderPersons({ folderId }) {
         ? `${API_URL}/folders/${folderId}/persons/${editingPerson.id}`
         : `${API_URL}/folders/${folderId}/persons`;
 
+      // GO-LIVE-1.B — capital saisi en EUROS → converti en CENTIMES (entier) pour le backend.
+      const capitalCents = (form.type === 'MORALE' && form.capital !== '' && !isNaN(parseFloat(form.capital)))
+        ? Math.round(parseFloat(form.capital) * 100)
+        : null;
+      const payload = { ...form, capital: capitalCents };
+
       const res = await fetch(url, {
         method: editingPerson ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -350,6 +366,62 @@ export default function FolderPersons({ folderId }) {
                     placeholder="Nom de la société"
                     required={form.type === 'MORALE'}
                   />
+                </div>
+              )}
+
+              {/* GO-LIVE-1.B — Identité personne morale (adversaire PM) */}
+              {form.type === 'MORALE' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Forme sociale
+                    </label>
+                    <input
+                      type="text"
+                      value={form.formeSociale}
+                      onChange={(e) => setForm({ ...form, formeSociale: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                      placeholder="SAS, SARL, SCI..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Capital social (€)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.capital}
+                      onChange={(e) => setForm({ ...form, capital: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                      placeholder="10000"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Ville d'immatriculation (greffe RCS)
+                    </label>
+                    <input
+                      type="text"
+                      value={form.villeImmatriculation}
+                      onChange={(e) => setForm({ ...form, villeImmatriculation: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                      placeholder="Angers"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      N° d'immatriculation (RCS / SIREN)
+                    </label>
+                    <input
+                      type="text"
+                      value={form.numeroImmatriculation}
+                      onChange={(e) => setForm({ ...form, numeroImmatriculation: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                      placeholder="987 654 321"
+                    />
+                  </div>
                 </div>
               )}
 

@@ -67,6 +67,13 @@ const TEMPLATE_VARIABLES = [
   { key: 'dossier.chambre', label: 'Chambre', category: 'dossier', description: 'Chambre du tribunal', example: '1ere chambre civile' },
   { key: 'dossier.date_audience', label: "Date d'audience", category: 'dossier', description: "Date de la prochaine audience", example: '15/03/2026' },
   { key: 'dossier.date_echeance', label: 'Date echeance', category: 'dossier', description: 'Date limite / echeance', example: '01/04/2026' },
+  // GO-LIVE-1.B — assignation : audience en lettres (calculé) + champs ponctuels (additionalData)
+  { key: 'dossier.date_audience_lettres', label: "Date d'audience en lettres", category: 'dossier', description: 'Calcule depuis date_audience', example: 'le quinze mars deux mille vingt-six' },
+  { key: 'dossier.heure_audience', label: "Heure d'audience en lettres", category: 'dossier', description: 'Calcule depuis date_audience', example: 'quatorze heures trente' },
+  { key: 'dossier.tribunal_ville', label: 'Ville du tribunal', category: 'dossier', description: 'Ponctuel (additionalData)', example: 'Angers' },
+  { key: 'dossier.tribunal_adresse', label: 'Adresse du tribunal', category: 'dossier', description: 'Ponctuel (additionalData)', example: '1 rue Waldeck-Rousseau, 49000 Angers' },
+  { key: 'dossier.montant_article_700', label: 'Montant article 700', category: 'dossier', description: 'Ponctuel (additionalData)', example: '2 500 €' },
+  { key: 'dossier.date_mise_en_demeure', label: 'Date de la mise en demeure', category: 'dossier', description: 'Ponctuel (additionalData)', example: '01/02/2026' },
 
   // ── Parties adverses ──
   { key: 'parties_adverses', label: 'Liste des parties adverses', category: 'parties', description: 'Boucle {#parties_adverses}...{/parties_adverses} (Docxtemplater)', example: '[tableau]' },
@@ -75,6 +82,13 @@ const TEMPLATE_VARIABLES = [
   { key: 'parties_adverses.[].adresse', label: 'Adresse partie adverse', category: 'parties', description: 'Dans boucle: {adresse}', example: '5 rue de Rivoli, Paris' },
   { key: 'parties_adverses.[].avocat_nom', label: 'Avocat adverse', category: 'parties', description: 'Dans boucle: {avocat_nom}', example: 'Me Durand' },
   { key: 'parties_adverses.[].avocat_barreau', label: 'Barreau avocat adverse', category: 'parties', description: 'Dans boucle: {avocat_barreau}', example: 'Paris' },
+  // GO-LIVE-1.B — adversaire personne morale (vides si physique)
+  { key: 'parties_adverses.[].type', label: 'Type partie adverse', category: 'parties', description: 'Dans boucle: {type} (PHYSIQUE|MORALE)', example: 'MORALE' },
+  { key: 'parties_adverses.[].raison_sociale', label: 'Raison sociale partie adverse', category: 'parties', description: 'Dans boucle: {raison_sociale} (personne morale)', example: 'Démo SARL' },
+  { key: 'parties_adverses.[].forme_sociale', label: 'Forme sociale partie adverse', category: 'parties', description: 'Dans boucle: {forme_sociale} (personne morale)', example: 'SARL' },
+  { key: 'parties_adverses.[].capital', label: 'Capital partie adverse', category: 'parties', description: 'Dans boucle: {capital} (formaté €, personne morale)', example: '10 000,00 €' },
+  { key: 'parties_adverses.[].ville_immatriculation', label: 'Ville immatriculation partie adverse', category: 'parties', description: 'Dans boucle: {ville_immatriculation} (greffe RCS)', example: 'Angers' },
+  { key: 'parties_adverses.[].numero_immatriculation', label: 'N° immatriculation partie adverse', category: 'parties', description: 'Dans boucle: {numero_immatriculation} (RCS/SIREN)', example: '987 654 321' },
 
   // ── Co-débiteurs (B2 Phase 3) ──
   { key: 'co_debiteurs', label: 'Liste des co-débiteurs', category: 'co_debiteurs', description: 'Boucle {#co_debiteurs}...{/co_debiteurs} (Docxtemplater)', example: '[tableau]' },
@@ -99,6 +113,7 @@ const TEMPLATE_VARIABLES = [
   { key: 'date', label: 'Date du jour', category: 'dates', description: 'Date format court', example: '18/02/2026' },
   { key: 'date_jour_long', label: 'Date longue', category: 'dates', description: 'Date en toutes lettres', example: '18 fevrier 2026' },
   { key: 'date_annee', label: 'Annee', category: 'dates', description: 'Annee en cours', example: '2026' },
+  { key: 'date_annee_lettres', label: 'Annee en lettres', category: 'dates', description: 'Annee en cours en toutes lettres', example: 'deux mille vingt-six' },
 
   // ── Postulant ──
   { key: 'postulant.nom', label: 'Nom postulant', category: 'postulant', description: 'Nom du postulant', example: 'Martin' },
@@ -106,6 +121,7 @@ const TEMPLATE_VARIABLES = [
   { key: 'postulant.nom_complet', label: 'Nom complet postulant', category: 'postulant', description: 'Prenom + Nom', example: 'Sophie Martin' },
   { key: 'postulant.cabinet', label: 'Cabinet postulant', category: 'postulant', description: 'Cabinet du postulant', example: 'Cabinet Martin' },
   { key: 'postulant.barreau', label: 'Barreau postulant', category: 'postulant', description: 'Barreau du postulant', example: 'Paris' },
+  { key: 'postulant.adresse', label: 'Adresse postulant', category: 'postulant', description: 'Adresse du postulant', example: '1 rue de la Paix, 49000 Angers' },
 ];
 
 const CATEGORIES = {

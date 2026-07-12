@@ -4,6 +4,13 @@ const prisma = require('../config/database');
 const logger = require('../config/logger');
 const storageService = require('./storage.service');
 const { buildFooterFromTenant } = require('../utils/branding-format');
+const {
+  formatMontantEur,
+  formatPartieAdverse,
+  numberToFrenchWords,
+  frenchDateInWords,
+  frenchHourInWords,
+} = require('../utils/legal-format');
 
 /**
  * Collect all available data for template rendering from a folder
@@ -33,17 +40,7 @@ async function collectData(folderId, tenantId) {
       const avocat = persons.find(
         a => a.role === 'AVOCAT_ADVERSE' && a.avocatAdverseId === p.id
       );
-      return {
-        nom: p.lastName || '',
-        prenom: p.firstName || '',
-        adresse: p.address || '',
-        email: p.email || '',
-        telephone: p.phone || '',
-        avocat_nom: avocat ? `${avocat.firstName || ''} ${avocat.lastName || ''}`.trim() : '',
-        avocat_cabinet: avocat?.cabinet || '',
-        avocat_barreau: avocat?.barreau || '',
-        avocat_email: avocat?.email || '',
-      };
+      return formatPartieAdverse(p, avocat);
     });
 
   // Co-débiteurs (B2 Phase 3)
@@ -165,6 +162,7 @@ async function collectData(folderId, tenantId) {
       cabinet: postulant.cabinet || '',
       barreau: postulant.barreau || '',
       email: postulant.email || '',
+      adresse: postulant.address || '',
     },
     societe: {
       nom: client.type === 'COMPANY' ? (client.companyName || '') : '',
@@ -181,6 +179,7 @@ async function collectData(folderId, tenantId) {
       return `${d.getDate()} ${mois[d.getMonth()]} ${d.getFullYear()}`;
     })(),
     date_annee: String(new Date().getFullYear()),
+    date_annee_lettres: numberToFrenchWords(new Date().getFullYear()),
   };
 
   // Mission B : champs Tenant ajoutés (Stage 2.2) + section mediateur + alias date
@@ -214,6 +213,17 @@ async function collectData(folderId, tenantId) {
   if (data.dossier.ref_interne == null) data.dossier.ref_interne = '';
   if (data.dossier.ref_adverse == null) data.dossier.ref_adverse = '';
   if (data.dossier.greffe == null) data.dossier.greffe = '';
+
+  // GO-LIVE-1.B — audience en toutes lettres + heure, dérivées de folder.dateAudience (DateTime).
+  const dateAudience = folder.dateAudience ? new Date(folder.dateAudience) : null;
+  data.dossier.date_audience_lettres = dateAudience ? frenchDateInWords(dateAudience) : '';
+  data.dossier.heure_audience = dateAudience ? frenchHourInWords(dateAudience) : '';
+
+  // GO-LIVE-1.B — champs assignation peuplés ponctuellement via additionalData (pattern ref_interne/greffe).
+  if (data.dossier.tribunal_ville == null) data.dossier.tribunal_ville = '';
+  if (data.dossier.tribunal_adresse == null) data.dossier.tribunal_adresse = '';
+  if (data.dossier.montant_article_700 == null) data.dossier.montant_article_700 = '';
+  if (data.dossier.date_mise_en_demeure == null) data.dossier.date_mise_en_demeure = '';
 
   return data;
 }
@@ -278,6 +288,7 @@ async function collectBasicData(tenantId, userId) {
       return `${d.getDate()} ${mois[d.getMonth()]} ${d.getFullYear()}`;
     })(),
     date_annee: String(new Date().getFullYear()),
+    date_annee_lettres: numberToFrenchWords(new Date().getFullYear()),
   };
 }
 
@@ -307,19 +318,6 @@ function findMissingFields(data, variables) {
     }
   }
   return missing;
-}
-
-/**
- * Formate un nombre en montant français : "2 500,00 €"
- */
-function formatMontantEur(n) {
-  if (n == null || isNaN(n)) return '';
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(n);
 }
 
 /**
@@ -673,4 +671,10 @@ module.exports = {
   enrichComputedFields,
   getNestedValue,
   flattenObject,
+  // GO-LIVE-1.B — helpers purs (testables unitairement)
+  formatMontantEur,
+  formatPartieAdverse,
+  numberToFrenchWords,
+  frenchDateInWords,
+  frenchHourInWords,
 };

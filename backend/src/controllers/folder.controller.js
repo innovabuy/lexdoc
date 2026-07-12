@@ -789,18 +789,31 @@ const createWizard = async (req, res, next) => {
       // 6. Add parties (judiciaire)
       if (parties && Array.isArray(parties)) {
         for (const partie of parties) {
+          // GO-LIVE-1.B — support adversaire personne morale via le wizard.
+          const partieType = partie.type === 'MORALE' ? 'MORALE' : 'PHYSIQUE';
+          const capRaw = partie.capital;
+          const capital = (capRaw === null || capRaw === undefined || capRaw === '' || !Number.isFinite(Number(capRaw)))
+            ? null
+            : Math.round(Number(capRaw)); // front envoie déjà en centimes
           const fp = await tx.folderPerson.create({
             data: {
               folderId: folder.id,
               tenantId: req.tenant.id,
+              type: partieType,
               role: partie.role || 'PARTIE_ADVERSE',
               lastName: partie.lastName || '',
               firstName: partie.firstName || null,
+              company: partieType === 'MORALE' ? (partie.company || null) : null,
               email: partie.email || null,
               phone: partie.phone || null,
               address: partie.address || null,
               cabinet: partie.cabinet || null,
               barreau: partie.barreau || null,
+              // Champs PM uniquement si MORALE
+              formeSociale: partieType === 'MORALE' ? (partie.formeSociale || null) : null,
+              capital: partieType === 'MORALE' ? capital : null,
+              villeImmatriculation: partieType === 'MORALE' ? (partie.villeImmatriculation || null) : null,
+              numeroImmatriculation: partieType === 'MORALE' ? (partie.numeroImmatriculation || null) : null,
             },
           });
 

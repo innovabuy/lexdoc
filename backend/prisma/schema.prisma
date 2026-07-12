@@ -460,6 +460,13 @@ model FolderPerson {
   cabinet     String?     // Nom du cabinet adverse
   barreau     String?     // Barreau de l'avocat adverse
 
+  // ── Identité personne morale (adversaire PM — GO-LIVE-1.B) ──
+  // Complète `type`/`company` déjà présents. Le siège = address/city/postalCode (pas de double source).
+  formeSociale          String?   // SAS, SARL, SCI... (personne morale uniquement)
+  capital               Int?      // Capital social en CENTIMES d'euro (ex: 1000000 = 10 000,00 €). JAMAIS String (≠ dette Q21 client.capital).
+  villeImmatriculation  String?   // Ville du greffe RCS (ex: "Angers")
+  numeroImmatriculation String?   // N° RCS / SIREN (ex: "987 654 321")
+
   // Lien partie adverse -> son avocat
   avocatAdverseId String?
   avocatAdverse   FolderPerson?  @relation("PartieAvocat", fields: [avocatAdverseId], references: [id])

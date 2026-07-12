@@ -25,6 +25,38 @@ const PERSON_ROLES = [
 
 const PERSON_TYPES = ['PHYSIQUE', 'MORALE'];
 
+// ── GO-LIVE-1.B — Identité personne morale (adversaire PM) ──
+// Le front saisit le capital en euros et l'envoie DÉJÀ converti en CENTIMES (entier).
+// Ici on se contente de coercer en entier sûr ; toute valeur non numérique → null (pas d'erreur 500).
+function coerceCapital(cap) {
+  if (cap === null || cap === undefined || cap === '') return null;
+  const n = Number(cap);
+  return Number.isFinite(n) ? Math.round(n) : null;
+}
+
+// Champs PM complets pour une CRÉATION : nuls si le type n'est pas MORALE (payload sale ignoré).
+function buildPmFields(type, body) {
+  if (type !== 'MORALE') {
+    return { formeSociale: null, capital: null, villeImmatriculation: null, numeroImmatriculation: null };
+  }
+  return {
+    formeSociale: body.formeSociale?.trim() || null,
+    capital: coerceCapital(body.capital),
+    villeImmatriculation: body.villeImmatriculation?.trim() || null,
+    numeroImmatriculation: body.numeroImmatriculation?.trim() || null,
+  };
+}
+
+// Champs PM pour une MISE À JOUR MORALE : undefined = inchangé (Prisma ignore), sinon valeur/null.
+function buildPmFieldsPartial(body) {
+  return {
+    formeSociale: body.formeSociale !== undefined ? (body.formeSociale?.trim() || null) : undefined,
+    capital: body.capital !== undefined ? coerceCapital(body.capital) : undefined,
+    villeImmatriculation: body.villeImmatriculation !== undefined ? (body.villeImmatriculation?.trim() || null) : undefined,
+    numeroImmatriculation: body.numeroImmatriculation !== undefined ? (body.numeroImmatriculation?.trim() || null) : undefined,
+  };
+}
+
 // Role labels for display
 const ROLE_LABELS = {
   PARTIE_ADVERSE: 'Partie adverse',
@@ -142,6 +174,9 @@ router.post('/folders/:folderId/persons', async (req, res, next) => {
     const folder = await prisma.folder.findFirst({
       where: { id: folderId, tenantId: req.tenant.id },
     });
+    // GO-LIVE-1.B — champs personne morale : persistés uniquement si type === MORALE.
+    // Un payload "sale" (champs PM sur un PHYSIQUE) est donc ignoré proprement (pas d'erreur).
+    const pmData = buildPmFields(type, req.body);
 
     if (!folder) throw new NotFoundError('Dossier non trouvé');
 
@@ -188,6 +223,7 @@ router.post('/folders/:folderId/persons', async (req, res, next) => {
         postalCode: postalCode?.trim() || null,
         country: country?.trim() || 'FR',
         notes: notes?.trim() || null,
+        ...pmData,
       },
     });
 
@@ -297,6 +333,13 @@ router.put('/folders/:folderId/persons/:id', async (req, res, next) => {
       throw new BadRequestError('Format d\'email invalide');
     }
 
+    // GO-LIVE-1.B — champs personne morale selon le type FINAL.
+    // MORALE : applique les valeurs fournies (undefined = inchangé). PHYSIQUE : force null
+    // (bascule MORALE→PHYSIQUE nettoie l'identité PM, payload PM sur PHYSIQUE ignoré).
+    const pmData = finalType === 'MORALE'
+      ? buildPmFieldsPartial(req.body)
+      : { formeSociale: null, capital: null, villeImmatriculation: null, numeroImmatriculation: null };
+
     const person = await prisma.folderPerson.update({
       where: { id },
       data: {
@@ -312,6 +355,7 @@ router.put('/folders/:folderId/persons/:id', async (req, res, next) => {
         postalCode: postalCode !== undefined ? (postalCode?.trim() || null) : undefined,
         country: country !== undefined ? (country?.trim() || null) : undefined,
         notes: notes !== undefined ? (notes?.trim() || null) : undefined,
+        ...pmData,
       },
     });
 
