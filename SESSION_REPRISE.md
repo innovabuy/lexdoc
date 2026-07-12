@@ -1,5 +1,19 @@
 # Reprise session — 2026-05-19
 
+## 2026-07-12 — GO-LIVE-1.B livré (adversaire personne morale) + hygiène
+
+**Commit `2230262`, tag `v0.4.0-golive-1b` (poussé).** Modèle adversaire personne morale + champs orphelins de l'assignation en référé.
+- `FolderPerson` : +4 colonnes nullable (`formeSociale`, `capital` [**Int centimes**, ≠ dette Q21 `client.capital` laissée en String], `villeImmatriculation`, `numeroImmatriculation`). Migration additive `20260712155411`, non destructive.
+- `collectData` : `parties_adverses` expose les champs PM (vides si physique → zéro régression), `postulant.adresse`, champs calculés en toutes lettres (`date_annee_lettres`, `dossier.date_audience_lettres`, `dossier.heure_audience`), pré-init `additionalData` (`tribunal_ville/adresse`, `montant_article_700`, `date_mise_en_demeure`).
+- Helpers purs extraits dans `backend/src/utils/legal-format.js` (testables isolément). Catalogue variables 83 → 97.
+- Front : saisie conditionnelle PM (`FolderPersons.jsx` + `FolderCreateWizard.jsx`), capital saisi en euros → converti en centimes.
+- Qualité : 188/188 tests unitaires ; 8/8 smoke tests HTTP après migration ; backup pré-migration (`pg_dump` SQL 1 085 642 o) restauré et vérifié dans une base jetable.
+- Prochaine étape : **GO-LIVE-1.C** = mapping du template `assignation_refere_commerce.docm` (poser les tags, run splitting mixte à traiter).
+
+### ⚠️ ITEM À TRACER — BACKUPS CRON NON VÉRIFIÉS (à faire en phase infra)
+Le test de restauration de GO-LIVE-1.B a porté sur un **dump manuel** (SQL brut, 1 085 642 o), **PAS** sur un dump du cron (`/opt/backups/lexdoc/*.backup`, format `-Fc`, **334 834 o**). Les 9 derniers dumps automatiques font **tous exactement la même taille** alors que la base a évolué — anormal même pour du `-Fc` compressé.
+→ **À FAIRE** : restaurer un dump CRON réel dans une base jetable et confirmer qu'il contient bien les tables + données. **Tant que ce n'est pas fait, la sauvegarde automatique est présumée NON FIABLE** (prérequis go-live P0 backup, cf. Q8).
+
 ## 2026-05-19 (soir) — Pré-démo Pragmavox : audit ciblé + diagnostic flux 6 corrigé
 
 **Audit transversal du matin** : 5 ruptures UX listées sur le flux 6, dont rupture #1 "client sélectionné en étape 1 du wizard pas auto-ajouté comme partie". **Ce diagnostic était factuellement faux.** Smoke test API direct (POST `/api/folders/wizard` avec un clientId Pragmavox réel) → `folder_persons` contient bien une ligne `role=CLIENT` avec le `clientId` qui matche. Le wizard fait déjà l'auto-ajout depuis `backend/src/controllers/folder.controller.js:775-787` (étape 5 de la transaction `createWizard`). Confirmation aussi côté BDD : dossier le plus récent Pragmavox (2026-03-30 "Audit Final — Procédure 2026") a 1 FolderPerson role=CLIENT. Pas de fix code livré ; la "rupture" n'existait pas. **L'agent flux 6 a regardé `create` (POST `/api/folders` direct) et pas `createWizard` (POST `/api/folders/wizard`)** ; les deux chemins divergent — le simple ne fait pas l'auto-ajout, mais aucun consommateur en prod ne l'appelle (frontend wizard utilise toujours `/wizard`).
