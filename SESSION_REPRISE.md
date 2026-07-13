@@ -1,5 +1,37 @@
 # Reprise session — 2026-05-19
 
+## 2026-07-13 — GO-LIVE-4 : test de survie hors-site RÉUSSI + rotation mdp Postgres
+
+### ✅ TEST DE SURVIE AU SINISTRE — RÉUSSI (le 13/07/2026, par Jeff, depuis SA machine Windows)
+Le dernier test bout-en-bout jamais réalisé est **fait**. Jeff a téléchargé un jeu de
+backups chiffrés depuis Scaleway **sans aucun accès au serveur**, et l'a ouvert avec **sa**
+copie de la clé privée GPG. C'est LA preuve que le hors-site est réel (le « test » de ce
+matin tournait sur le serveur avec la clé privée présente → il ne prouvait rien).
+- **Jeu restauré** : `20260713_1407` ; **clé** `47E9C4629776EE0F2137D5CD5A0C4C398DEDD473`
+  (sous-clé de chiffrement `C366F9FD394B8C0B`).
+- **db.backup déchiffré** (dump PostgreSQL lisible), **`env.backup` → `DATABASE_URL` lisible**,
+  **`minio.tar.gz` → 210 objets MinIO** (documents présents).
+- **Conclusion : Jeff peut restaurer LexDoc depuis sa machine si le serveur disparaît.**
+- Guide suivi : **`ops/RESTORE-WINDOWS.md`** (pas-à-pas Windows/PowerShell, versionné).
+- ⚠️ À **refaire après chaque rotation de clé GPG** (une clé changée non testée = hors-site non prouvé).
+
+### 🔐 Rotation mot de passe Postgres `lexdoc_user` (conséquence du test)
+Le test a **exposé le `DATABASE_URL` complet (avec le mot de passe) hors du terminal** → mot de
+passe considéré **compromis**, roté immédiatement.
+- **Nouveau mot de passe fort** (48 car. alphanumériques) — `ALTER USER lexdoc_user`, **jamais affiché**
+  (règle anti-fuite) ; copie de secours `600` sur le serveur : `/root/lexdoc-pg-newpw.<ts>.txt`
+  (à ranger dans le coffre puis `shred -u`).
+- **`backend/.env` `DATABASE_URL` mis à jour** (chmod 600, sauvegarde `.env.bak.<ts>`). `.env.test`
+  (user/DB `test`@`lexdoc_test`) **non concerné**. Compose (`docker-compose.{dev,prod}.yml`) utilise
+  **`${POSTGRES_PASSWORD}`** (référence env, **pas** de littéral en git → pas de fuite ; pas de `.env`
+  racine — `${POSTGRES_PASSWORD}` vient de l'env shell au lancement compose, à réexporter avec le
+  nouveau mdp uniquement en cas de recréation du conteneur sur volume neuf).
+- **Vérifs** : `pm2 restart lexdoc-api` → `online` ; `/api/health` 200 ; `/api/clients` 401 (auth,
+  pas d'erreur 500 DB) ; **Prisma (nouveau `.env`) → 25 clients** ; **aucun `P1000`/auth error** au log.
+- **Cron backup** relancé en réel : **OK** (`db=337995 o`, `pg_restore -l` liste `clients`/`documents`/
+  `folders`, `env_*` sauvegardé porte déjà le nouveau secret ; chiffrement GPG+Scaleway par le cron 4h).
+- **Régression : 221/221 vert** (15 suites, `--runInBand`).
+
 ## 2026-07-13 — GO-LIVE-2 durcissement (2.A secrets + 2.A-bis MinIO)
 
 **2.A** : mot de passe PostgreSQL rotaté (dev → aléatoire fort), retiré des fichiers trackés (`docker-compose.dev.yml`, `.env.example`, RAPPORT md — ancien mdp défunt reste dans l'historique, purge non faite volontairement). Tous les `.env` en 600. JWT_SECRET/ENCRYPTION_KEY OK (64 hex), jamais dans l'historique.
