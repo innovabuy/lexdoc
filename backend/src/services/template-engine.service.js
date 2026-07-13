@@ -3,7 +3,7 @@ const PizZip = require('pizzip');
 const prisma = require('../config/database');
 const logger = require('../config/logger');
 const storageService = require('./storage.service');
-const { buildFooterFromTenant } = require('../utils/branding-format');
+const { buildFooterFromTenant, formatSiren } = require('../utils/branding-format');
 const {
   formatMontantEur,
   formatPartieAdverse,
@@ -221,6 +221,7 @@ async function collectData(folderId, tenantId) {
   if (data.dossier.ref_interne == null) data.dossier.ref_interne = '';
   if (data.dossier.ref_adverse == null) data.dossier.ref_adverse = '';
   if (data.dossier.greffe == null) data.dossier.greffe = '';
+  if (data.dossier.greffe_de == null) data.dossier.greffe_de = '';
 
   // GO-LIVE-1.B — audience en toutes lettres + heure, dérivées de folder.dateAudience (DateTime).
   const dateAudience = folder.dateAudience ? new Date(folder.dateAudience) : null;
@@ -380,11 +381,8 @@ function enrichComputedFields(data) {
   // Mission B Phase 2 — calcul SIREN dérivé du SIRET (9 premiers chiffres)
   if (data.client && data.client.siret && typeof data.client.siret === 'string') {
     const siretClean = data.client.siret.replace(/\s/g, '');
-    if (siretClean.length >= 9) {
-      data.client.siren = siretClean.slice(0, 9);
-    } else {
-      data.client.siren = '';
-    }
+    // GO-LIVE-1.E LOT 3 — SIREN formaté « 812 345 678 » (cohérent avec l'assignation)
+    data.client.siren = siretClean.length >= 9 ? formatSiren(siretClean) : '';
   }
   // GO-LIVE-1.E — élision « de » → « d' » (villes/barreaux à initiale voyelle ou h muet).
   // Calculée ici (après mergeAdditionalData) pour couvrir tribunal_ville reçu via additionalData.
@@ -398,6 +396,7 @@ function enrichComputedFields(data) {
     data.dossier.tribunal_ville_de = elideDe(data.dossier.tribunal_ville);
     data.dossier.tribunal_ville_DE = data.dossier.tribunal_ville_de.toUpperCase();
   }
+  if (data.dossier && data.dossier.greffe) data.dossier.greffe_de = elideDe(data.dossier.greffe);
   if (data.postulant)  data.postulant.barreau_de = elideDe(data.postulant.barreau);
   if (data.cabinet)    data.cabinet.barreau_de   = elideDe(data.cabinet.barreau);
   if (data.avocat)     data.avocat.barreau_de    = elideDe(data.avocat.barreau);

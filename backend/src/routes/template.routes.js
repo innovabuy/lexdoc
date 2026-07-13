@@ -429,7 +429,9 @@ router.post('/generate', async (req, res, next) => {
         // Try direct download (templates may not be encrypted)
         templateBuffer = await storageService.downloadFile(objectKey);
       } catch (err) {
-        logger.warn('Could not download template file from storage, using fallback', { err: err.message });
+        // GO-LIVE-1.E LOT 4 — le fallback local reste (résilience si MinIO tombe), mais il ne
+        // doit plus JAMAIS masquer une mauvaise config en silence : log ERROR bien visible.
+        logger.error('[TEMPLATE P0] Template absent de MinIO — fallback fichier local utilisé. À CORRIGER : uploader le template dans MinIO (sinon un déploiement propre ou une restauration de backup ne génère RIEN).', { objectKey, template: template.name, err: err.message });
         // Fallback: try filesystem
         const fs = require('fs');
         const path = require('path');
@@ -628,7 +630,9 @@ router.post('/generate/force', async (req, res, next) => {
           ? template.sourceFileUrl.split('/').slice(-2).join('/')
           : template.sourceFileUrl;
         templateBuffer = await storageService.downloadFile(objectKey);
-      } catch {
+      } catch (err) {
+        // GO-LIVE-1.E LOT 4 — fallback conservé mais LOUD (plus de fallback silencieux).
+        logger.error('[TEMPLATE P0] Template absent de MinIO — fallback fichier local (force). À CORRIGER : uploader le template dans MinIO.', { src: template.sourceFileUrl, template: template.name, err: err.message });
         const fs = require('fs');
         const path = require('path');
         const localPath = path.join(__dirname, '../../templates', template.sourceFileUrl);
