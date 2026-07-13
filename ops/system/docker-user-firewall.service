@@ -1,0 +1,14 @@
+[Unit]
+Description=GO-LIVE-2.A-quater — DOCKER-USER hardening (drop external->containers)
+After=docker.service
+Requires=docker.service
+# Ré-applique la règle après chaque (re)démarrage de Docker, qui recrée DOCKER-USER vide.
+PartOf=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/docker-user-firewall.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

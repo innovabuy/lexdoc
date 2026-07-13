@@ -8,6 +8,11 @@
 
 **2.A-ter (fermeture réseau, P0)** : Docker **bypasse UFW** (INPUT DROP inefficace sur les ports publiés) → Postgres 5434, Redis 6379, backend 4000 étaient **réellement joignables de l'internet**. Redis : **sans `requirepass`, DBSIZE=0, absent de la stack/code** (résidu depuis le 2 juin) — RCE potentiel. **Aucun signe de compromission** (authorized_keys root = 1 clé légitime, crontab propre, Redis vide sans clés d'attaque). Fermés : Redis + Postgres recréés en `127.0.0.1`, backend `server.js` bind `127.0.0.1` (HOST surchargeable). Vérifié externe injoignable, app OK via nginx :80, génération OK, cron backup OK, 208/208. **Récap `ss` : seuls 22 (ssh) + 80 (nginx) sur 0.0.0.0.** → **Redis : proposer sa SUPPRESSION** (résidu inutilisé).
 
+### 🛡️ PRINCIPE PERMANENT — Docker bypasse UFW (cause racine 2.A-quater)
+**Sur ce serveur, UFW ne protège PAS les conteneurs Docker.** Mécanisme : la chaîne `FORWARD` saute vers `DOCKER-USER` puis `DOCKER-FORWARD` (règles ACCEPT générées par `-p`) **avant** les chaînes `ufw-*`. Un port publié en `-p PORT:PORT` (nu) est donc joignable de l'internet même avec UFW en `INPUT DROP`. C'est UNE erreur systémique (elle avait ouvert MinIO, Redis, Postgres, backend).
+**RÈGLE ABSOLUE : tout port Docker publié DOIT l'être en `127.0.0.1:port` — jamais `-p port:port` nu.** C'est la barrière fiable (docker-proxy n'écoute alors pas sur 0.0.0.0).
+Défense en profondeur ajoutée : règle `DOCKER-USER` (DROP `eth0`→conteneurs sauf ESTABLISHED), persistée par le service systemd `docker-user-firewall.service` (réappliquée à chaque restart Docker). Fichiers versionnés : `ops/system/`. Elle bloque le chemin kernel FORWARD d'un vrai client externe, mais **ne remplace pas la convention 127.0.0.1** (le userland-proxy ne peut PAS être désactivé ici : ça casserait l'accès hôte→`127.0.0.1:conteneur`, méthode de connexion de l'app). Test hôte→IP-propre non probant (passe par docker-proxy, hors FORWARD) — dit franchement.
+
 ### ⚠️ CONSTATS À TRACER (hors périmètre)
 1. **222 / 242 documents ont un `objectKey` orphelin** (fichier absent du volume MinIO `/opt`), **tous antérieurs à mai 2026** (données test/démo purgées). Les documents récents/réels sont tous présents et lisibles. Pré-existant (pas la rotation). → auditer/nettoyer les records DB orphelins avant go-live.
 
