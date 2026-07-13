@@ -23,6 +23,14 @@ const shouldReportToSentry = (err) => {
     return false;
   }
 
+  // GO-LIVE-6 B2 — erreurs d'entrée utilisateur mappées en 400 : pas du bruit Sentry
+  if (err.name === 'PrismaClientValidationError') {
+    return false;
+  }
+  if (/22021|invalid byte sequence/i.test(err.message || '')) {
+    return false;
+  }
+
   // Don't report Prisma unique constraint violations (P2002)
   if (err.code === 'P2002') {
     return false;
@@ -126,6 +134,33 @@ const errorHandler = (err, req, res, next) => {
       error: {
         message: getPrismaErrorMessage(err),
         code: err.code,
+        ...(process.env.NODE_ENV === 'development' && { details: err.message }),
+      },
+    });
+  }
+
+  // GO-LIVE-6 B2 — Erreurs Prisma d'ENTRÉE utilisateur → 400, jamais 500.
+  // PrismaClientValidationError = valeur invalide (ex. enum inconnu type:"ROBOT").
+  if (err.name === 'PrismaClientValidationError') {
+    return res.status(400).json({
+      success: false,
+      error: {
+        message: 'Données invalides : une valeur fournie n\'est pas acceptée.',
+        code: 'VALIDATION_ERROR',
+        ...(process.env.NODE_ENV === 'development' && { details: err.message }),
+      },
+    });
+  }
+  // Erreur de requête runtime (ex. octet NUL 0x00 rejeté par PostgreSQL, code 22021).
+  if (err.name === 'PrismaClientUnknownRequestError' || /22021|invalid byte sequence/i.test(err.message || '')) {
+    const isNul = /0x00|invalid byte sequence/i.test(err.message || '');
+    return res.status(400).json({
+      success: false,
+      error: {
+        message: isNul
+          ? 'Le texte contient des caractères non autorisés (octet nul).'
+          : 'Requête invalide.',
+        code: 'INVALID_INPUT',
         ...(process.env.NODE_ENV === 'development' && { details: err.message }),
       },
     });

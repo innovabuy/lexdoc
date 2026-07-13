@@ -1,7 +1,16 @@
 const crypto = require('crypto');
 const minioClient = require('../config/minio');
 const { calculateChecksum } = require('../utils/helpers');
-const { InternalError } = require('../utils/errors');
+const { InternalError, NotFoundError } = require('../utils/errors');
+
+// GO-LIVE-6 B3 — un objet absent de MinIO (record orphelin) ne doit pas produire un 500 :
+// on lève une erreur "Fichier indisponible" (404) exploitable proprement côté API.
+function isObjectMissing(error) {
+  if (!error) return false;
+  const code = error.code || error.Code;
+  return code === 'NoSuchKey' || code === 'NotFound' || code === 'NoSuchBucket'
+    || /does not exist|not exist|no such key/i.test(error.message || '');
+}
 
 const ENCRYPTION_ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
@@ -106,6 +115,10 @@ class StorageService {
 
       return buffer;
     } catch (error) {
+      // GO-LIVE-6 B3 — objet absent (orphelin) → 404 "Fichier indisponible", pas 500.
+      if (isObjectMissing(error)) {
+        throw new NotFoundError('Fichier indisponible');
+      }
       console.error('Download error:', error);
       throw new InternalError('File download failed');
     }

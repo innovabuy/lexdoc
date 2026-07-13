@@ -5,6 +5,7 @@ const { NotFoundError, BadRequestError } = require('../utils/errors');
 const { parsePaginationParams, sanitizeFilename, omitSensitiveFields } = require('../utils/helpers');
 const logger = require('../config/logger');
 const timeline = require('../services/timeline.service');
+const { assertAllowedUpload, ALLOWED_LABEL } = require('../utils/file-type');
 
 /**
  * List documents with search, filters and pagination
@@ -86,6 +87,13 @@ const create = async (req, res, next) => {
     const file = req.file;
     if (!file) {
       throw new BadRequestError('File is required');
+    }
+
+    // GO-LIVE-6 B1 — rejet par le CONTENU (magic number), pas par l'extension/mimetype.
+    const check = assertAllowedUpload(file.buffer);
+    if (!check.ok) {
+      logger.warn('Upload refuse (type non autorise)', { originalName: file.originalname, declaredMime: file.mimetype, detected: check.kind, tenantId: req.tenant?.id });
+      throw new BadRequestError(`Type de fichier non autorisé. Formats acceptés : ${ALLOWED_LABEL}.`);
     }
 
     const { folderId, name, type, description, tags } = req.body;
@@ -436,6 +444,13 @@ const uploadVersion = async (req, res, next) => {
 
     if (!file) {
       throw new BadRequestError('File is required');
+    }
+
+    // GO-LIVE-6 B1 — même contrôle de contenu pour les nouvelles versions.
+    const check = assertAllowedUpload(file.buffer);
+    if (!check.ok) {
+      logger.warn('Upload version refuse (type non autorise)', { originalName: file.originalname, declaredMime: file.mimetype, detected: check.kind, tenantId: req.tenant?.id });
+      throw new BadRequestError(`Type de fichier non autorisé. Formats acceptés : ${ALLOWED_LABEL}.`);
     }
 
     // Find parent document
