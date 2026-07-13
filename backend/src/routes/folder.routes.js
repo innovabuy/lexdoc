@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const folderController = require('../controllers/folder.controller');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requireRole } = require('../middleware/auth');
 const { enforceTenant } = require('../middleware/tenant');
 
 router.use(authenticate);
@@ -21,7 +21,7 @@ router.get('/', folderController.list);
 router.post('/', folderController.create);
 router.get('/:id', folderController.getById);
 router.put('/:id', folderController.update);
-router.delete('/:id', folderController.delete);
+router.delete('/:id', requireRole('ADMIN'), folderController.delete); // GO-LIVE-6 C5 : suppression = ADMIN
 
 // Status change
 router.patch('/:id/status', folderController.patchStatus);

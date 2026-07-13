@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const prisma = require('../config/database');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requireRole } = require('../middleware/auth');
 const { enforceTenant } = require('../middleware/tenant');
 const { successResponse, paginatedResponse } = require('../utils/response');
 const { parsePaginationParams, omitSensitiveFields, generateToken } = require('../utils/helpers');
@@ -443,7 +443,10 @@ router.patch('/:id/archive', async (req, res, next) => {
 });
 
 // Soft delete client
-router.delete('/:id', async (req, res, next) => {
+// GO-LIVE-6 C5 : suppression réservée à l'ADMIN. C2 : aligné sur la suppression de
+// dossier — on ne supprime plus un client en laissant ses dossiers/documents orphelins
+// et vivants. Bloqué s'il a des dossiers, sauf force=true (cascade soft-delete explicite).
+router.delete('/:id', requireRole('ADMIN'), async (req, res, next) => {
   try {
     const existing = await prisma.client.findFirst({
       where: { id: req.params.id, tenantId: req.tenant.id, deletedAt: null },
@@ -453,14 +456,46 @@ router.delete('/:id', async (req, res, next) => {
       throw new NotFoundError('Client not found');
     }
 
-    await prisma.client.update({
-      where: { id: req.params.id },
-      data: { deletedAt: new Date(), isActive: false },
+    const force = req.query.force === 'true';
+    const folders = await prisma.folder.findMany({
+      where: { clientId: req.params.id, tenantId: req.tenant.id, deletedAt: null },
+      select: { id: true },
     });
 
-    logger.info('Client soft-deleted', { clientId: req.params.id, tenantId: req.tenant.id });
+    if (folders.length > 0 && !force) {
+      const docCount = await prisma.document.count({
+        where: { folderId: { in: folders.map((f) => f.id) }, deletedAt: null },
+      });
+      throw new BadRequestError(
+        `Ce client a ${folders.length} dossier(s) et ${docCount} document(s). ` +
+        `Supprimez-les d'abord, ou relancez avec force=true pour tout supprimer.`
+      );
+    }
 
-    return successResponse(res, null, 'Client deleted');
+    const now = new Date();
+    if (force && folders.length > 0) {
+      // Cascade explicite : documents des dossiers, puis dossiers, puis client.
+      const folderIds = folders.map((f) => f.id);
+      await prisma.document.updateMany({
+        where: { folderId: { in: folderIds }, deletedAt: null },
+        data: { deletedAt: now },
+      });
+      await prisma.folder.updateMany({
+        where: { id: { in: folderIds } },
+        data: { deletedAt: now },
+      });
+    }
+
+    await prisma.client.update({
+      where: { id: req.params.id },
+      data: { deletedAt: now, isActive: false },
+    });
+
+    logger.info('Client soft-deleted', { clientId: req.params.id, tenantId: req.tenant.id, force, cascadedFolders: force ? folders.length : 0 });
+
+    return successResponse(res, null, force && folders.length > 0
+      ? `Client et ${folders.length} dossier(s) supprimés`
+      : 'Client deleted');
   } catch (error) {
     next(error);
   }

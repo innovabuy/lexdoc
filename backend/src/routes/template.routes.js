@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const prisma = require('../config/database');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requireRole } = require('../middleware/auth');
 const { enforceTenant } = require('../middleware/tenant');
 const { successResponse } = require('../utils/response');
 const { NotFoundError, BadRequestError } = require('../utils/errors');
@@ -291,7 +291,7 @@ router.put('/:id', async (req, res, next) => {
 });
 
 // DELETE /api/templates/:id — soft delete
-router.delete('/:id', async (req, res, next) => {
+router.delete('/:id', requireRole('ADMIN'), async (req, res, next) => { // GO-LIVE-6 C5
   try {
     const existing = await prisma.template.findFirst({
       where: { id: req.params.id, tenantId: req.tenant.id, deletedAt: null },

@@ -370,6 +370,17 @@ export default function FolderDetailPage() {
         setMissingFields(null);
         setSelectedTemplate(null);
         fetchDocs();
+      } else if (result.status === 'missing_fields') {
+        // GO-LIVE-6 C0 — depuis A1, on ne peut plus forcer un acte à trous. Si des champs
+        // OBLIGATOIRES manquent encore, on l'affiche EXPLICITEMENT (plus de bouton muet) et
+        // on ré-ouvre le formulaire avec les champs à compléter.
+        const manquants = (result.fields || [])
+          .filter((f) => f.required)
+          .map((f) => f.label || f.key);
+        showError(
+          `Impossible de générer : champ(s) obligatoire(s) manquant(s) — ${manquants.join(', ')}.`
+        );
+        setMissingFields({ fields: result.fields, templateName: result.templateName });
       }
     } catch (e) {
       showError(e.response?.data?.error?.message || 'Erreur de generation');

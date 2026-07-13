@@ -443,7 +443,7 @@ model FolderPerson {
   type        PersonType  @default(PHYSIQUE)
   role        PersonRole
   firstName   String?
-  lastName    String
+  lastName    String?     // GO-LIVE-6 C3 — nullable : une personne MORALE n'a pas de nom (raison sociale = company)
   company     String?     // Pour personnes morales
 
   // Lien optionnel vers un client existant (enrichissement spec UX)

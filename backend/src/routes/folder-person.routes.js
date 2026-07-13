@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const prisma = require('../config/database');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requireRole } = require('../middleware/auth');
 const { enforceTenant } = require('../middleware/tenant');
 const { successResponse, paginatedResponse } = require('../utils/response');
 const { NotFoundError, BadRequestError } = require('../utils/errors');
@@ -12,9 +12,16 @@ router.use(authenticate);
 router.use(enforceTenant);
 
 // Valid enum values
+// GO-LIVE-6 C4 — resynchronisé avec l'enum Prisma PersonRole. POSTULANT et CO_DEBITEUR
+// existaient dans l'enum ET étaient consommés par collectData (postulant.*, boucle
+// co_debiteurs de l'assignation), mais étaient ABSENTS de cette liste → l'API refusait
+// (400) de les ajouter. Résultat : aucune assignation ne pouvait avoir de postulant/
+// co-débiteur. (CLIENT reste hors liste : le client du dossier vient de la relation folder.)
 const PERSON_ROLES = [
   'PARTIE_ADVERSE',
   'AVOCAT_ADVERSE',
+  'POSTULANT',
+  'CO_DEBITEUR',
   'TEMOIN',
   'EXPERT',
   'NOTAIRE',
@@ -61,6 +68,8 @@ function buildPmFieldsPartial(body) {
 const ROLE_LABELS = {
   PARTIE_ADVERSE: 'Partie adverse',
   AVOCAT_ADVERSE: 'Avocat adverse',
+  POSTULANT: 'Avocat postulant',
+  CO_DEBITEUR: 'Co-débiteur',
   TEMOIN: 'Témoin',
   EXPERT: 'Expert',
   NOTAIRE: 'Notaire',
@@ -189,17 +198,20 @@ router.post('/folders/:folderId/persons', async (req, res, next) => {
       throw new BadRequestError(`Type invalide. Valeurs acceptées: ${PERSON_TYPES.join(', ')}`);
     }
 
-    if (!lastName || lastName.trim() === '') {
-      throw new BadRequestError('Le nom est requis');
-    }
-
-    // Validate based on type
-    if (type === 'PHYSIQUE' && (!firstName || firstName.trim() === '')) {
-      throw new BadRequestError('Le prénom est requis pour une personne physique');
-    }
-
-    if (type === 'MORALE' && (!company || company.trim() === '')) {
-      throw new BadRequestError('La raison sociale est requise pour une personne morale');
+    // GO-LIVE-6 C3 — validation SELON LE TYPE. Une personne MORALE n'a pas de "nom de
+    // famille" : on exige la raison sociale (company), pas lastName. Le contrôle lastName
+    // ne s'applique qu'à une personne PHYSIQUE (avant, il s'exécutait pour les deux).
+    if (type === 'PHYSIQUE') {
+      if (!lastName || lastName.trim() === '') {
+        throw new BadRequestError('Le nom est requis pour une personne physique');
+      }
+      if (!firstName || firstName.trim() === '') {
+        throw new BadRequestError('Le prénom est requis pour une personne physique');
+      }
+    } else if (type === 'MORALE') {
+      if (!company || company.trim() === '') {
+        throw new BadRequestError('La raison sociale est requise pour une personne morale');
+      }
     }
 
     // Validate email format if provided
@@ -214,7 +226,7 @@ router.post('/folders/:folderId/persons', async (req, res, next) => {
         type,
         role,
         firstName: firstName?.trim() || null,
-        lastName: lastName.trim(),
+        lastName: lastName?.trim() || null,
         company: company?.trim() || null,
         email: email?.trim().toLowerCase() || null,
         phone: phone?.trim() || null,
@@ -305,16 +317,15 @@ router.put('/folders/:folderId/persons/:id', async (req, res, next) => {
       throw new BadRequestError(`Type invalide. Valeurs acceptées: ${PERSON_TYPES.join(', ')}`);
     }
 
-    // Validate lastName if provided
-    if (lastName !== undefined && (!lastName || lastName.trim() === '')) {
-      throw new BadRequestError('Le nom est requis');
-    }
-
     // Determine final type
     const finalType = type || existingPerson.type;
 
-    // Validate based on type
+    // GO-LIVE-6 C3 — nom (lastName) requis UNIQUEMENT pour une personne PHYSIQUE.
     if (finalType === 'PHYSIQUE') {
+      const finalLastName = lastName !== undefined ? lastName : existingPerson.lastName;
+      if (!finalLastName || finalLastName.trim() === '') {
+        throw new BadRequestError('Le nom est requis pour une personne physique');
+      }
       const finalFirstName = firstName !== undefined ? firstName : existingPerson.firstName;
       if (!finalFirstName || finalFirstName.trim() === '') {
         throw new BadRequestError('Le prénom est requis pour une personne physique');
@@ -383,7 +394,7 @@ router.put('/folders/:folderId/persons/:id', async (req, res, next) => {
 });
 
 // Delete a person
-router.delete('/folders/:folderId/persons/:id', async (req, res, next) => {
+router.delete('/folders/:folderId/persons/:id', requireRole('ADMIN'), async (req, res, next) => { // GO-LIVE-6 C5
   try {
     const { folderId, id } = req.params;
 

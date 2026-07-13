@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const prisma = require('../config/database');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requireRole } = require('../middleware/auth');
 const { enforceTenant } = require('../middleware/tenant');
 const { successResponse, paginatedResponse } = require('../utils/response');
 const { NotFoundError, BadRequestError } = require('../utils/errors');
@@ -346,7 +346,7 @@ router.put('/templates/:id', async (req, res, next) => {
 });
 
 // Delete template
-router.delete('/templates/:id', async (req, res, next) => {
+router.delete('/templates/:id', requireRole('ADMIN'), async (req, res, next) => { // GO-LIVE-6 C5
   try {
     const existing = await prisma.builderTemplate.findFirst({
       where: { id: req.params.id, tenantId: req.tenant.id, isSystem: false },

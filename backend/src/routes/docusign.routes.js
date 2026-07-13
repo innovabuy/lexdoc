@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const prisma = require('../config/database');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requireRole } = require('../middleware/auth');
 const { enforceTenant } = require('../middleware/tenant');
 const { successResponse } = require('../utils/response');
 const { BadRequestError, NotFoundError } = require('../utils/errors');
@@ -126,7 +126,7 @@ router.post('/disconnect', authenticate, enforceTenant, async (req, res, next) =
  * POST /api/documents/:id/sign
  * Send a document for DocuSign signature
  */
-router.post('/:id/sign', authenticate, enforceTenant, async (req, res, next) => {
+router.post('/:id/sign', authenticate, enforceTenant, requireRole('ADMIN'), async (req, res, next) => { // GO-LIVE-6 C5 : lancer une signature = ADMIN
   try {
     const { signers, subject, message, expiresAfterDays, ordreSignature } = req.body;
 
@@ -296,7 +296,7 @@ router.post('/:id/sign', authenticate, enforceTenant, async (req, res, next) => 
  * POST /api/documents/:id/send-registered
  * Estimate cost for registered mail
  */
-router.post('/:id/send-registered', authenticate, enforceTenant, async (req, res, next) => {
+router.post('/:id/send-registered', authenticate, enforceTenant, requireRole('ADMIN'), async (req, res, next) => { // GO-LIVE-6 C5 : LRAR = ADMIN
   try {
     const { recipientPersonId, type } = req.body;
 

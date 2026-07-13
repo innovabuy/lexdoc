@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const documentController = require('../controllers/document.controller');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requireRole } = require('../middleware/auth');
 const { enforceTenant } = require('../middleware/tenant');
 
 const upload = multer({
@@ -35,7 +35,7 @@ router.use(enforceTenant);
 
 // Bulk operations (before /:id routes)
 router.post('/bulk-download', documentController.bulkDownload);
-router.delete('/bulk-delete', documentController.bulkDelete);
+router.delete('/bulk-delete', requireRole('ADMIN'), documentController.bulkDelete); // GO-LIVE-6 C5
 
 // Document CRUD
 router.get('/', documentController.list);
@@ -43,7 +43,7 @@ router.post('/', upload.single('file'), documentController.create);
 router.get('/trash', documentController.getDeleted);
 router.get('/:id', documentController.getById);
 router.put('/:id', documentController.update);
-router.delete('/:id', documentController.delete);
+router.delete('/:id', requireRole('ADMIN'), documentController.delete); // GO-LIVE-6 C5
 
 // Preview (inline display)
 router.get('/:id/preview', documentController.preview);

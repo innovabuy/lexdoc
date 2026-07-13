@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { UnauthorizedError } = require('../utils/errors');
+const { UnauthorizedError, ForbiddenError } = require('../utils/errors');
 const { JWT_SECRET } = require('../config/constants');
 const prisma = require('../config/database');
 
@@ -24,10 +24,13 @@ const authenticate = async (req, res, next) => {
   }
 };
 
+// GO-LIVE-6 C5 — autorisation par rôle. Un utilisateur authentifié mais sans le rôle
+// requis reçoit 403 (Forbidden), pas 401 (Unauthorized) : il EST identifié, mais n'a
+// pas la permission. Utilisé pour réserver le destructif + signature + LRAR à l'ADMIN.
 const requireRole = (...roles) => {
   return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
-      return next(new UnauthorizedError('Insufficient permissions'));
+    if (!req.user || !roles.includes(req.user.role)) {
+      return next(new ForbiddenError('Action réservée à un administrateur du cabinet'));
     }
     next();
   };
