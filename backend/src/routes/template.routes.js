@@ -14,6 +14,40 @@ router.use(authenticate);
 router.use(enforceTenant);
 
 // ============================================================================
+// GO-LIVE-6 A1 — Un acte judiciaire ne doit JAMAIS sortir avec un champ requis vide
+// (montant, date, partie adverse...). Règle : tant qu'un champ REQUIS manque, on
+// REFUSE la génération — quel que soit le chemin (/generate ET /generate/force).
+// "force" ne saute que les champs OPTIONNELS, jamais les requis. Le bypass historique
+// (additionalData:{} = truthy) est supprimé : la validation tourne TOUJOURS après merge.
+// ============================================================================
+function computeRequiredMissing(template, data) {
+  const variables = Array.isArray(template.variables) ? template.variables : [];
+  const missing = templateEngine.findMissingFields(data, variables);
+  const requiredMissing = missing.filter((m) => m.required);
+
+  // Un acte qui vise une partie adverse (le template référence des variables
+  // adversaire.*) ne peut pas être généré sur un dossier SANS adversaire :
+  // la dénomination adverse (auto 1er PARTIE_ADVERSE) est alors vide.
+  const usesAdversaire = variables.some(
+    (v) => typeof v.key === 'string' && v.key.startsWith('adversaire.')
+  );
+  if (usesAdversaire && !templateEngine.getNestedValue(data, 'adversaire.denomination')) {
+    if (!requiredMissing.some((m) => m.key === 'adversaire.denomination')) {
+      requiredMissing.push({
+        key: 'adversaire.denomination',
+        label: 'Partie adverse (aucune partie adverse au dossier)',
+        required: true,
+        currentValue: '',
+      });
+      if (!missing.some((m) => m.key === 'adversaire.denomination')) {
+        missing.push({ key: 'adversaire.denomination', label: 'Partie adverse (aucune partie adverse au dossier)', required: true, currentValue: '' });
+      }
+    }
+  }
+  return { missing, requiredMissing };
+}
+
+// ============================================================================
 // LIST / SUGGESTIONS
 // ============================================================================
 
@@ -402,15 +436,20 @@ router.post('/generate', async (req, res, next) => {
       templateEngine.mergeAdditionalData(data, additionalData);
     }
 
-    // 3. Check missing fields (only if no additionalData = first attempt)
-    if (!additionalData && template.variables && Array.isArray(template.variables)) {
-      const missing = templateEngine.findMissingFields(data, template.variables);
-      const requiredMissing = missing.filter(m => m.required);
-
+    // 3. GO-LIVE-6 A1 — validation TOUJOURS appliquée (après merge de additionalData).
+    //    Le bypass historique `if (!additionalData ...)` est supprimé : envoyer un
+    //    additionalData vide/partiel ne saute plus le contrôle. Tant qu'un champ REQUIS
+    //    manque, on renvoie missing_fields et on NE génère PAS (pas d'acte à trous).
+    {
+      const { missing, requiredMissing } = computeRequiredMissing(template, data);
       if (requiredMissing.length > 0) {
+        logger.warn('Generation refusee : champs requis manquants', {
+          templateId: template.id, folderId, missing: requiredMissing.map((m) => m.key),
+        });
         return successResponse(res, {
           status: 'missing_fields',
           fields: missing,
+          requiredMissing: requiredMissing.map((m) => m.key),
           templateName: template.name,
         });
       }
@@ -572,6 +611,24 @@ router.post('/generate/force', async (req, res, next) => {
     const data = await templateEngine.collectData(folderId, req.tenant.id);
     if (additionalData) {
       templateEngine.mergeAdditionalData(data, additionalData);
+    }
+
+    // GO-LIVE-6 A1 — "force" ne saute QUE les champs optionnels. Un champ REQUIS
+    // manquant (montant, date, partie adverse) bloque la génération, même en force :
+    // aucun acte à trous ne doit être produit.
+    {
+      const { missing, requiredMissing } = computeRequiredMissing(template, data);
+      if (requiredMissing.length > 0) {
+        logger.warn('Generation FORCE refusee : champs requis manquants', {
+          templateId: template.id, folderId, missing: requiredMissing.map((m) => m.key),
+        });
+        return successResponse(res, {
+          status: 'missing_fields',
+          fields: missing,
+          requiredMissing: requiredMissing.map((m) => m.key),
+          templateName: template.name,
+        });
+      }
     }
 
     // Also update client/folder with additionalData

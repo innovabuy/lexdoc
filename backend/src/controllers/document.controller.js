@@ -283,8 +283,8 @@ const preview = async (req, res, next) => {
         const [, iv, authTag] = parts;
         fileBuffer = await storageService.downloadDecrypted(document.objectKey, iv, authTag);
       } else {
-        const url = await storageService.generatePresignedUrl(document.objectKey);
-        return res.redirect(url);
+        // GO-LIVE-6 A3 — pas de redirect vers MinIO interne (localhost:9003) : streaming backend.
+        fileBuffer = await storageService.downloadFile(document.objectKey);
       }
     } else {
       fileBuffer = await storageService.downloadFile(document.objectKey);
@@ -327,9 +327,10 @@ const download = async (req, res, next) => {
         const [, iv, authTag] = parts;
         fileBuffer = await storageService.downloadDecrypted(document.objectKey, iv, authTag);
       } else {
-        // Fallback to presigned URL for legacy docs
-        const url = await storageService.generatePresignedUrl(document.objectKey);
-        return res.redirect(url);
+        // GO-LIVE-6 A3 — NE JAMAIS rediriger vers l'URL présignée MinIO : l'endpoint
+        // est interne (localhost:9003), donc injoignable depuis le navigateur de l'avocat.
+        // On sert le fichier en streaming par le backend (docs legacy sans iv/authTag).
+        fileBuffer = await storageService.downloadFile(document.objectKey);
       }
     } else {
       fileBuffer = await storageService.downloadFile(document.objectKey);

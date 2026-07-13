@@ -169,7 +169,7 @@ router.post('/:id/sign', authenticate, enforceTenant, async (req, res, next) => 
     // Send envelope via DocuSign
     let result;
     try {
-      result = await docusignService.sendEnvelope(settings.docusignAccessToken, {
+      result = await docusignService.sendEnvelope(settings?.docusignAccessToken, {
         documentBuffer,
         documentName: document.name,
         signers: orderedSigners,
@@ -179,7 +179,10 @@ router.post('/:id/sign', authenticate, enforceTenant, async (req, res, next) => 
       });
     } catch (err) {
       // Try refreshing token and retry
-      if (settings.docusignRefreshToken) {
+      // GO-LIVE-6 A2 — settings peut être null (cabinet sans tenantSettings) : accès
+      // null-safe pour ne plus jamais crasher en 500. En DEMO_MODE, sendEnvelope simule
+      // proprement sans token ; sinon on retombe sur une erreur 400 explicite.
+      if (settings?.docusignRefreshToken) {
         try {
           const newTokens = await docusignService.refreshAccessToken(settings.docusignRefreshToken);
           await prisma.tenantSettings.update({
