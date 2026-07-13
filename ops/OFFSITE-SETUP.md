@@ -1,83 +1,115 @@
-# Réplication hors-site des sauvegardes — à mettre en place (Jeff)
+# Réplication hors-site des sauvegardes (GO-LIVE-2.E)
 
 > Objectif : que la perte totale du VPS (panne, erreur, compromission) ne détruise
-> PAS les sauvegardes en même temps que la production. Sans ça, tout le travail de
-> 2.C ne protège de rien face au sinistre le plus banal.
+> PAS les sauvegardes en même temps que la production. Le serveur ne détient que la
+> clé **publique** : il chiffre les backups mais **ne peut pas les déchiffrer**. La
+> clé **privée + passphrase** vivent **hors serveur**, chez Jeff.
 
-## 1. Choix du fournisseur (décision Jeff — compte à créer)
+---
+
+## ⚠️ POST-MORTEM — la 1re paire GPG a été perdue (à lire avant toute régénération)
+
+**Ce qui s'est passé.** La première paire (`D33E4DF4…131A602E`) a été générée sur le
+serveur, mais **détruite avant que Jeff ne la récupère** : `passphrase.txt` a été
+supprimée lors d'un nettoyage, la clé privée n'a jamais quitté la machine.
+Aucune perte réelle (bucket vide, rien n'avait été chiffré ni uploadé), mais le
+dispositif était **factice**.
+
+**Cause racine.** Le workflow demandait à Jeff de récupérer la clé *après* génération,
+« plus tard ». Le nettoyage est passé avant la récupération. Pire : le test de
+déchiffrement était fait **sur le serveur** → il prouvait que la crypto marchait, **pas**
+que Jeff pouvait restaurer depuis un serveur mort. Fausse confiance.
+
+**Second incident (paire `ECDA332E…`).** La régénération a d'abord **affiché** la
+passphrase et la clé privée dans un rapport ; comme ces rapports sont copiés-collés
+hors du terminal, la passphrase a été considérée **compromise**. Paire jetée.
+
+**Règles qui en découlent (appliquées ci-dessous) :**
+1. **Aucun secret n'est jamais affiché** (passphrase, clé privée, clé API). Il est écrit
+   dans un fichier `600`, et seul le **chemin** est communiqué.
+2. Jeff **rapatrie et confirme AVANT** toute suppression. Rien n'est détruit tant qu'il
+   n'a pas dit « c'est en sécurité chez moi ».
+3. Le seul test qui compte : après retrait de la clé privée, **le serveur DOIT échouer à
+   déchiffrer**. C'est ça la preuve — pas un déchiffrement réussi sur le serveur.
+4. Le vrai test de survie au sinistre se fait **depuis la machine de Jeff** (cf. §6).
+
+---
+
+## Paire en service
+
+| | |
+|---|---|
+| **Empreinte** | `47E9C4629776EE0F2137D5CD5A0C4C398DEDD473` (clé `5A0C4C398DEDD473`, sous-clé de chiffrement `C366F9FD394B8C0B`) |
+| **UID** | `LexDoc Backup Offsite (offsite backup encryption) <backup@lexdoc.fr>` |
+| **Clé publique (serveur)** | `ops/backup-pubkey.asc` — trackée git, sert à **chiffrer** |
+| **Clé privée + passphrase** | **hors serveur uniquement**, chez Jeff (gestionnaire de mots de passe + copie hors-ligne). Le serveur en est **incapable de déchiffrer** — vérifié. |
+
+---
+
+## 1. Fournisseur (décision Jeff — retenu : Scaleway)
 
 Contraintes : **hébergement UE (RGPD, données d'avocat français)**, S3-compatible,
 chiffrement au repos + en transit, coût dérisoire (~30 Mo/jour × 30 j ≈ 1 Go).
 
 | Fournisseur | RGPD | Prix indicatif | Note |
 |---|---|---|---|
-| **Scaleway Object Storage** (fr-par) ⭐ | 🇫🇷 société française | ~0,012 €/Go/mois (1er 75 Go gratuits) | **Recommandé** : français, facturation/support FR, pas d'exposition CLOUD Act US |
-| **OVHcloud Object Storage** (GRA/SBG) | 🇫🇷 société française | ~0,01 €/Go/mois | Équivalent, français |
-| Backblaze B2 (région EU Amsterdam) | 🇪🇺 données UE, société US | ~0,006 $/Go/mois | Le moins cher, mais **société US** (DPA + région EU dispo) |
-
-**Recommandation : Scaleway** (ou OVH). Pour un cabinet d'avocat, un prestataire
-**français** est la posture RGPD la plus défendable. Backblaze est moins cher mais
-c'est une société américaine. **À toi de trancher — je ne crée pas le compte.**
+| **Scaleway Object Storage** (fr-par) ⭐ | 🇫🇷 société française | ~0,012 €/Go/mois (75 premiers Go gratuits) | **Retenu** : français, facturation/support FR, pas de CLOUD Act US |
+| OVHcloud Object Storage (GRA/SBG) | 🇫🇷 | ~0,01 €/Go/mois | Équivalent |
+| Backblaze B2 (EU Amsterdam) | 🇪🇺 données UE, société US | ~0,006 $/Go/mois | Moins cher mais société US |
 
 Coût réel attendu : **quelques centimes à ~1 €/mois**.
 
-## 2. Ce que tu dois créer (exemple Scaleway)
-1. Compte Scaleway → **Object Storage** → **Create bucket**, région **fr-par (Paris)**,
-   nom ex. `lexdoc-backups-offsite`, visibilité **Private**.
+## 2. Bucket Scaleway (créé par Jeff)
+1. Console Scaleway → **Object Storage** → **Create bucket**, région **fr-par (Paris)**,
+   nom `lexdoc-backups-offsite`, visibilité **Private**.
 2. **API Keys** → générer une clé (Access Key + Secret Key) avec accès Object Storage.
-3. Me transmettre (ou configurer toi-même, cf. §3) : Access Key, Secret Key,
-   endpoint (`s3.fr-par.scw.cloud`), région (`fr-par`), nom du bucket.
 
-## 3. Configuration serveur (à faire une fois)
+## 3. Configuration serveur (rclone) — **sans jamais afficher les clés**
+rclone est déjà installé (`/usr/bin/rclone`). La config se fait **sans écho** des
+secrets : Jeff dépose les 2 clés dans un fichier `600`, le script les lit, puis le
+fichier est `shred`.
+
 ```bash
-# a) installer rclone
-curl https://rclone.org/install.sh | sudo bash
+# a) Jeff dépose les clés dans un fichier temporaire (ligne 1 = Access Key, ligne 2 = Secret Key)
+#    (depuis SA machine, sans les coller dans un chat)
+scp cle-scaleway.txt root@76.13.50.173:/root/scw-api.txt      # OU: nano /root/scw-api.txt sur le serveur
 
-# b) configurer le remote "offsite" (type s3, provider Scaleway)
-sudo rclone config
-#   name> offsite
-#   Storage> s3
-#   provider> Scaleway
-#   access_key_id> <ACCESS_KEY>
-#   secret_access_key> <SECRET_KEY>
-#   region> fr-par
-#   endpoint> s3.fr-par.scw.cloud
-#   (le reste par défaut)
+# b) création du remote SANS afficher les clés
+AK=$(sed -n 1p /root/scw-api.txt); SK=$(sed -n 2p /root/scw-api.txt)
+rclone config create offsite s3 \
+  provider Scaleway env_auth false \
+  access_key_id "$AK" secret_access_key "$SK" \
+  region fr-par endpoint s3.fr-par.scw.cloud
+unset AK SK
+chmod 600 /root/.config/rclone/rclone.conf
+shred -u /root/scw-api.txt          # les clés ne restent nulle part en clair
 
-# c) vérifier
-sudo rclone lsd offsite:
+# c) vérifier (n'affiche pas les clés)
+rclone lsd offsite:
+```
+`rclone.conf` est **hors du repo** (`/root/.config/rclone/`) et **gitignoré**
+(`rclone.conf`, `*.rclone.conf`).
 
-# d) planifier (après le backup local de 3h)
-sudo crontab -e
+## 4. Planification (cron root, après le backup local de 3h)
+```bash
+crontab -e
 #   0 4 * * * RCLONE_REMOTE=offsite:lexdoc-backups-offsite /home/lexdoc-dev/ops/replicate-offsite.sh
 ```
-(Adapter `RCLONE_REMOTE` au nom réel du bucket.)
+Rétention distante 30 j (`REMOTE_RETENTION_DAYS`). Échec **bruyant** (log + `logger` +
+`mail root`), jamais silencieux.
 
-## 4. La CLÉ DE DÉCHIFFREMENT (critique)
-Les backups sont chiffrés **avec la clé publique** `ops/backup-pubkey.asc` (sur le
-serveur). Ils ne peuvent être déchiffrés qu'avec la **clé privée + passphrase**, qui
-**NE doivent PAS rester sur le serveur** (sinon compromission = accès aux backups).
-
-**À faire maintenant :**
-1. Récupérer depuis le serveur : `/root/LEXDOC-BACKUP-KEY-POUR-JEFF/`
-   (`lexdoc-backup-PRIVATE.asc` + `passphrase.txt`).
-   ```bash
-   scp -r root@<serveur>:/root/LEXDOC-BACKUP-KEY-POUR-JEFF ~/lexdoc-backup-key
-   ```
-2. **Stocker la clé privée + la passphrase dans ton gestionnaire de mots de passe**
-   (Bitwarden/1Password) ET une copie hors-ligne (clé USB en coffre). Sans elles,
-   les backups hors-site sont **définitivement illisibles**.
-3. Une fois en sécurité, **supprimer du serveur** :
-   ```bash
-   sudo shred -u /root/LEXDOC-BACKUP-KEY-POUR-JEFF/* && sudo rmdir /root/LEXDOC-BACKUP-KEY-POUR-JEFF
-   ```
-   Le serveur ne garde alors que la clé publique (chiffre, ne déchiffre pas).
-   *(Idéal : régénérer la paire toi-même hors-ligne et ne me donner que la publique.)*
-
-## 5. Test de bout en bout (dès que le bucket existe)
+## 5. Test bout-en-bout serveur (chiffrement + upload)
 ```bash
-sudo /home/lexdoc-dev/ops/replicate-offsite.sh      # chiffre + upload
-sudo rclone lsf offsite:lexdoc-backups-offsite       # voir les .gpg
-# puis : download → déchiffrement (clé privée) → pg_restore en base jetable (cf. RESTORE.md)
+RCLONE_REMOTE=offsite:lexdoc-backups-offsite /home/lexdoc-dev/ops/replicate-offsite.sh
+rclone lsf --format "sp" offsite:lexdoc-backups-offsite      # voir les .gpg + tailles
 ```
-Un backup hors-site **non restauré** ne vaut pas mieux qu'un backup local non restauré.
+Le **déchiffrement n'est PAS testable sur le serveur** (il n'a pas la clé privée) —
+c'est **voulu**. Le vrai test se fait chez Jeff (§6).
+
+## 6. Test de survie au sinistre — **depuis la machine de Jeff (Windows)**
+> C'est LE test qui prouve qu'on peut restaurer après « le serveur a brûlé ».
+> Pré-requis : **rclone for Windows** + **Gpg4win (Kleopatra/gpg)**, et la clé privée +
+> passphrase importées depuis le gestionnaire de mots de passe. Voir `ops/RESTORE.md §6`.
+
+Un backup hors-site **non restauré depuis un poste tiers** ne vaut pas mieux qu'un backup
+local non restauré.

@@ -78,6 +78,12 @@ docker exec postgres-lexdoc psql -U lexdoc_user -d postgres -c "DROP DATABASE IF
 ## 5. « Le serveur a brûlé » — reconstruction depuis le HORS-SITE
 > Pré-requis : réplication hors-site en place (`ops/replicate-offsite.sh`, cf.
 > `ops/OFFSITE-SETUP.md`) + tu détiens la **clé privée GPG + passphrase** (hors serveur).
+>
+> **Paire en service : `47E9C4629776EE0F2137D5CD5A0C4C398DEDD473`** (UID
+> `LexDoc Backup Offsite <backup@lexdoc.fr>`). Le serveur ne détient que la clé
+> **publique** (`ops/backup-pubkey.asc`) — il chiffre mais **ne peut pas déchiffrer**
+> (vérifié : `gpg -d` sur le serveur → `No secret key`). Historique des paires perdues :
+> cf. **post-mortem** dans `ops/OFFSITE-SETUP.md`.
 
 ```bash
 # a) Nouveau serveur : Docker + rclone + la clé PRIVÉE importée
@@ -103,7 +109,51 @@ done
 (gestionnaire de mots de passe + copie physique) est aussi critique que les backups
 eux-mêmes.
 
-## État actuel (à compléter avant go-live)
-- ✅ Backups locaux : DB + `.env` + **MinIO** (documents), restaurables, script durci.
-- 🟠 **Hors-site : script prêt + chiffrement validé, MAIS bucket/compte à créer par Jeff**
-  (`ops/OFFSITE-SETUP.md`). Tant que ce n'est pas fait, une perte du VPS emporte tout.
+## 6. Test de survie au sinistre — **depuis TA machine (Windows), Jeff**
+> C'est LE test qui prouve que le hors-site est réel : télécharger un backup chiffré
+> depuis Scaleway et l'ouvrir **sans le serveur**. À refaire après chaque rotation de clé.
+>
+> Pré-requis (une fois) : installer **rclone for Windows** (https://rclone.org/downloads/)
+> et **Gpg4win** (https://gpg4win.org — fournit `gpg`/Kleopatra), puis importer ta clé
+> privée depuis ton gestionnaire de mots de passe :
+> ```powershell
+> gpg --import lexdoc-backup-PRIVATE.asc      # le bloc privé stocké dans ton coffre
+> ```
+
+```powershell
+# a) configurer le remote Scaleway (une fois) — mêmes creds bucket
+rclone config create offsite s3 provider Scaleway env_auth false `
+  access_key_id VOTRE_ACCESS_KEY secret_access_key VOTRE_SECRET_KEY `
+  region fr-par endpoint s3.fr-par.scw.cloud
+
+# b) lister et télécharger le dernier jeu chiffré
+rclone lsf --format "sp" offsite:lexdoc-backups-offsite      # voir les .gpg + tailles
+mkdir %USERPROFILE%\lexdoc-restore
+rclone copy offsite:lexdoc-backups-offsite %USERPROFILE%\lexdoc-restore
+cd %USERPROFILE%\lexdoc-restore
+
+# c) DÉCHIFFRER avec ta clé privée + passphrase (gpg demandera la passphrase)
+gpg --output db.backup    --decrypt db_20260713_0400.backup.gpg
+gpg --output minio.tar.gz --decrypt minio_20260713_0400.tar.gz.gpg
+gpg --output env.backup   --decrypt env_20260713_0400.backup.gpg
+```
+**Vérifier que ça s'ouvre vraiment** (le test réussit seulement si le contenu est lisible) :
+- `db.backup` : `pg_restore -l db.backup` (ou via un PostgreSQL/Docker local) doit lister
+  les tables (`clients`, `documents`, …).
+- `minio.tar.gz` : `tar tzf minio.tar.gz` (ou 7-Zip) doit lister le dossier `minio/`.
+- `env.backup` : s'ouvre en texte, contient les variables `DATABASE_URL=…`, etc.
+
+Si les 3 s'ouvrent → **le hors-site protège réellement du sinistre**. Sinon, ta copie de
+la clé privée/passphrase est en cause : reprends-la depuis le gestionnaire de mots de passe.
+
+## État actuel
+- ✅ Backups locaux : DB + `.env` + **MinIO** (documents), restaurables, script durci
+  (cron `0 3 * * *`).
+- ✅ **Hors-site OPÉRATIONNEL** (GO-LIVE-2.E-ter, 2026-07-13) : Scaleway Object Storage
+  `fr-par`, bucket `lexdoc-backups-offsite`, chiffrement GPG **clé publique** avant envoi
+  (paire `47E9C462…8DEDD473`), cron `0 4 * * *`, rétention distante 30 j, échec bruyant.
+  Vérifié : 23 objets `.gpg` uploadés, chiffrés vers la sous-clé `C366F9FD394B8C0B`
+  (déchiffrables **uniquement** par la clé privée de Jeff, hors serveur).
+- 🟠 **Reste à faire par Jeff** : le **test de survie depuis son poste Windows** (§6) —
+  télécharger + déchiffrer un backup hors serveur. Tant qu'il n'est pas fait, la
+  restaurabilité réelle n'est pas prouvée de bout en bout.
