@@ -375,7 +375,7 @@ node prisma/seed-folders-v3.js
 ## Vérification des données
 
 ```bash
-PGPASSWORD=lexdoc_dev_password_2026 psql -h localhost -p 5434 -U lexdoc_user -d lexdoc_dev -c "
+PGPASSWORD=****REDACTED**** psql -h localhost -p 5434 -U lexdoc_user -d lexdoc_dev -c "
 SELECT
   (SELECT COUNT(*) FROM folders) as dossiers,
   (SELECT COUNT(*) FROM builder_templates WHERE \"isSystem\" = true) as templates,
