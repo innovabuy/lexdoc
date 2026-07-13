@@ -93,7 +93,7 @@ async function collectData(folderId, tenantId) {
     cabinet: {
       nom: tenant.name || '',
       raison_sociale: tenant.legalName || tenant.name || '',
-      adresse: [tenant.addressLine1, tenant.postalCode, tenant.city].filter(Boolean).join(', '),
+      adresse: [tenant.addressLine1, [tenant.postalCode, tenant.city].filter(Boolean).join(' ')].filter(Boolean).join(', '),
       telephone: tenant.phone || '',
       email: tenant.email || '',
       siret: tenant.siret || '',
@@ -112,7 +112,7 @@ async function collectData(folderId, tenantId) {
       email: createdBy.email || '',
       toque: tenant.toque || '',
       barreau: tenant.barreau || '',
-      adresse: [tenant.addressLine1, tenant.postalCode, tenant.city].filter(Boolean).join(', '),
+      adresse: [tenant.addressLine1, [tenant.postalCode, tenant.city].filter(Boolean).join(' ')].filter(Boolean).join(', '),
       telephone: tenant.phone || '',
       fax: '',
     },
@@ -229,6 +229,8 @@ async function collectData(folderId, tenantId) {
 
   // GO-LIVE-1.B — champs assignation peuplés ponctuellement via additionalData (pattern ref_interne/greffe).
   if (data.dossier.tribunal_ville == null) data.dossier.tribunal_ville = '';
+  if (data.dossier.tribunal_ville_de == null) data.dossier.tribunal_ville_de = '';
+  if (data.dossier.tribunal_ville_DE == null) data.dossier.tribunal_ville_DE = '';
   if (data.dossier.tribunal_adresse == null) data.dossier.tribunal_adresse = '';
   if (data.dossier.montant_article_700 == null) data.dossier.montant_article_700 = '';
   if (data.dossier.date_mise_en_demeure == null) data.dossier.date_mise_en_demeure = '';
@@ -268,7 +270,7 @@ async function collectBasicData(tenantId, userId) {
     cabinet: {
       nom: tenant.name || '',
       raison_sociale: tenant.legalName || tenant.name || '',
-      adresse: [tenant.addressLine1, tenant.postalCode, tenant.city].filter(Boolean).join(', '),
+      adresse: [tenant.addressLine1, [tenant.postalCode, tenant.city].filter(Boolean).join(' ')].filter(Boolean).join(', '),
       cp: tenant.postalCode || '',
       ville: tenant.city || '',
       telephone: tenant.phone || '',
@@ -287,7 +289,7 @@ async function collectBasicData(tenantId, userId) {
       email: user?.email || '',
       toque: tenant.toque || '',
       barreau: tenant.barreau || '',
-      adresse: [tenant.addressLine1, tenant.postalCode, tenant.city].filter(Boolean).join(', '),
+      adresse: [tenant.addressLine1, [tenant.postalCode, tenant.city].filter(Boolean).join(' ')].filter(Boolean).join(', '),
       telephone: tenant.phone || '',
       fax: '',
     },
@@ -350,6 +352,31 @@ function enrichComputedFields(data) {
       data.provision.ht = formatMontantEur(ht);
     }
   }
+  // GO-LIVE-1.E LOT 2 — RÈGLE UNIQUE DES MONTANTS : le CODE formate (€ inclus), les
+  // templates ne portent JAMAIS d'unité. On formate ici les montants « bruts » saisis
+  // via additionalData + le capital (String libre Q21, déjà assaini par normalizeCapital).
+  const parseMontantFr = (s) => {
+    if (s == null || s === '') return NaN;
+    let x = String(s).replace(/[€\s  ]/g, '').replace(/euros?/gi, '');
+    if (x.includes(',')) x = x.replace(/\./g, '').replace(',', '.');
+    return parseFloat(x);
+  };
+  const fmtMontant = (s) => { const n = parseMontantFr(s); return isNaN(n) ? (s == null ? '' : s) : formatMontantEur(n); };
+  if (data.devis)     data.devis.montant_ttc   = fmtMontant(data.devis.montant_ttc);
+  if (data.facture)   data.facture.montant_ttc = fmtMontant(data.facture.montant_ttc);
+  if (data.somme_due) data.somme_due.ttc       = fmtMontant(data.somme_due.ttc);
+  if (data.dossier) {
+    data.dossier.montant_provisionnel = fmtMontant(data.dossier.montant_provisionnel);
+    data.dossier.montant_article_700  = fmtMontant(data.dossier.montant_article_700);
+  }
+  // Capital : MÊME règle (€), y compris le client (au capital de « 20 000,00 € »,
+  // cohérent avec l'adversaire déjà formaté). Le « € » est valide dans une mention de capital.
+  if (data.client) {
+    data.client.capital = fmtMontant(data.client.capital);
+    data.client.capital_social = data.client.capital;
+  }
+  if (data.societe) data.societe.capital = fmtMontant(data.societe.capital);
+
   // Mission B Phase 2 — calcul SIREN dérivé du SIRET (9 premiers chiffres)
   if (data.client && data.client.siret && typeof data.client.siret === 'string') {
     const siretClean = data.client.siret.replace(/\s/g, '');
@@ -359,6 +386,23 @@ function enrichComputedFields(data) {
       data.client.siren = '';
     }
   }
+  // GO-LIVE-1.E — élision « de » → « d' » (villes/barreaux à initiale voyelle ou h muet).
+  // Calculée ici (après mergeAdditionalData) pour couvrir tribunal_ville reçu via additionalData.
+  const elideDe = (val) => {
+    if (val == null || val === '') return '';
+    const v = String(val).trim();
+    const bare = v.normalize('NFD').replace(/[̀-ͯ]/g, '');
+    return /^[aeiouyhAEIOUYH]/.test(bare) ? `d'${v}` : `de ${v}`;
+  };
+  if (data.dossier && data.dossier.tribunal_ville) {
+    data.dossier.tribunal_ville_de = elideDe(data.dossier.tribunal_ville);
+    data.dossier.tribunal_ville_DE = data.dossier.tribunal_ville_de.toUpperCase();
+  }
+  if (data.postulant)  data.postulant.barreau_de = elideDe(data.postulant.barreau);
+  if (data.cabinet)    data.cabinet.barreau_de   = elideDe(data.cabinet.barreau);
+  if (data.avocat)     data.avocat.barreau_de    = elideDe(data.avocat.barreau);
+  if (data.client)     data.client.ville_immatriculation_de = elideDe(data.client.ville_immatriculation);
+  if (data.adversaire) data.adversaire.ville_immatriculation_de = elideDe(data.adversaire.ville_immatriculation);
   return data;
 }
 

@@ -66,7 +66,7 @@ describe('branding-format utils', () => {
       const expected =
         "SELARL Pragma Vox Avocat - Société d'avocats\n" +
         '11 Rue Paul Langevin, 49240 Avrillé\n' +
-        'SIRET 982 600 272 00016 - RCS Angers 982 600 272 - Avocat au Barreau de Angers';
+        "SIRET 982 600 272 00016 - RCS Angers 982 600 272 - Avocat au Barreau d'Angers";
       expect(buildFooterFromTenant(tenant)).toBe(expected);
     });
 

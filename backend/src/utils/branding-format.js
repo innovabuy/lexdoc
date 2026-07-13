@@ -38,10 +38,17 @@ function buildFooterFromTenant(tenant) {
   const sirenFmt = formatSiren(siret);
   const villeRcs = barreau || city;
 
+  // GO-LIVE-1.E — élision « de » → « d' » (« Barreau d'Angers » vs « Barreau de Nantes »)
+  const elideDe = (val) => {
+    const v = String(val).trim();
+    const bare = v.normalize('NFD').replace(/[̀-ͯ]/g, '');
+    return /^[aeiouyhAEIOUYH]/.test(bare) ? `d'${v}` : `de ${v}`;
+  };
+
   const l3parts = [];
   if (siretFmt) l3parts.push(`SIRET ${siretFmt}`);
   if (sirenFmt && villeRcs) l3parts.push(`RCS ${villeRcs} ${sirenFmt}`);
-  if (barreau) l3parts.push(`Avocat au Barreau de ${barreau}`);
+  if (barreau) l3parts.push(`Avocat au Barreau ${elideDe(barreau)}`);
   const l3 = l3parts.join(' - ');
 
   return l3 ? `${l1}\n${l2}\n${l3}` : `${l1}\n${l2}`;
