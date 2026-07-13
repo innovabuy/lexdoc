@@ -75,7 +75,35 @@ docker exec postgres-lexdoc rm -f /tmp/r.backup
 docker exec postgres-lexdoc psql -U lexdoc_user -d postgres -c "DROP DATABASE IF EXISTS lexdoc_restore;"
 ```
 
-## ⚠️ Limite actuelle (DR)
-Les sauvegardes sont **sur le même serveur** que la production. Une perte du serveur
-(disque, incendie, suppression) les emporte avec. **Réplication hors-site requise avant
-go-live** (voir proposition dans le rapport 2.C) — non encore en place.
+## 5. « Le serveur a brûlé » — reconstruction depuis le HORS-SITE
+> Pré-requis : réplication hors-site en place (`ops/replicate-offsite.sh`, cf.
+> `ops/OFFSITE-SETUP.md`) + tu détiens la **clé privée GPG + passphrase** (hors serveur).
+
+```bash
+# a) Nouveau serveur : Docker + rclone + la clé PRIVÉE importée
+curl https://rclone.org/install.sh | sudo bash
+rclone config                         # recréer le remote "offsite" (mêmes creds bucket)
+gpg --import lexdoc-backup-PRIVATE.asc # depuis ton coffre
+
+# b) Récupérer les backups chiffrés
+mkdir -p /restore && cd /restore
+rclone copy offsite:lexdoc-backups-offsite /restore   # db_*.gpg, env_*.gpg, minio_*.gpg
+D=20260713_0300                       # ← choisir le jeu le plus récent
+
+# c) Déchiffrer (clé privée + passphrase)
+for f in db_$D.backup env_$D.backup minio_$D.tar.gz; do
+  gpg --pinentry-mode loopback --passphrase '<PASSPHRASE>' -o "$f" -d "$f.gpg"
+done
+
+# d) Remonter la stack (conteneurs en 127.0.0.1 — cf. SESSION_REPRISE, Docker bypasse UFW),
+#    puis restaurer : base (§1c avec db_$D.backup), documents (§2 avec minio_$D.tar.gz),
+#    .env (§3 avec env_$D.backup). Enfin pm2 start + nginx + health.
+```
+**Sans la clé privée, les backups hors-site sont illisibles.** La stocker hors-ligne
+(gestionnaire de mots de passe + copie physique) est aussi critique que les backups
+eux-mêmes.
+
+## État actuel (à compléter avant go-live)
+- ✅ Backups locaux : DB + `.env` + **MinIO** (documents), restaurables, script durci.
+- 🟠 **Hors-site : script prêt + chiffrement validé, MAIS bucket/compte à créer par Jeff**
+  (`ops/OFFSITE-SETUP.md`). Tant que ce n'est pas fait, une perte du VPS emporte tout.
