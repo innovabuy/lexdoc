@@ -62,7 +62,9 @@ app.use(
 );
 
 // Body parsing
-app.use(express.json({ limit: '10mb' }));
+// GO-LIVE-2.B — capture du corps BRUT pour la vérification HMAC des webhooks
+// (le HMAC doit porter sur les octets reçus, pas sur un JSON re-sérialisé).
+app.use(express.json({ limit: '10mb', verify: (req, _res, buf) => { req.rawBody = buf; } }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Rate limiting
@@ -121,6 +123,19 @@ const server = app.listen(PORT, HOST, () => {
   logger.info(`   Environment: ${process.env.NODE_ENV}`);
   logger.info(`   API URL: http://${HOST}:${PORT}`);
   logger.info(`   Health: http://0.0.0.0:${PORT}/health`);
+
+  // GO-LIVE-2.B — alerte BRUYANTE si des secrets webhook manquent en production.
+  // Les webhooks correspondants rejettent déjà (fail-closed à la requête) ; on refuse
+  // au moins de démarrer SILENCIEUSEMENT dans un état non sécurisé.
+  if (process.env.NODE_ENV === 'production') {
+    const missing = ['DOCUSIGN_WEBHOOK_SECRET', 'SENDINGBOX_WEBHOOK_SECRET'].filter((k) => !process.env[k]);
+    if (missing.length) {
+      logger.error(`🔴 SÉCURITÉ — secrets webhook MANQUANTS en production : ${missing.join(', ')}. ` +
+        `Les webhooks concernés REJETTENT toute requête (401 fail-closed) tant qu'ils ne sont pas définis.`);
+    } else {
+      logger.info('🔒 Secrets webhook présents (vérification HMAC active).');
+    }
+  }
 
   // Start scheduled jobs
   if (process.env.NODE_ENV !== 'test') {

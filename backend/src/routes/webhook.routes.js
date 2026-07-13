@@ -3,6 +3,9 @@ const router = express.Router();
 const prisma = require('../config/database');
 const logger = require('../config/logger');
 const crypto = require('crypto');
+const { verifyWebhook } = require('../utils/webhook-verify');
+
+const IS_PROD = process.env.NODE_ENV === 'production';
 
 // ============================================================================
 // UNIVERSIGN WEBHOOK
@@ -176,20 +179,19 @@ router.post('/sendingbox', async (req, res) => {
 
     logger.info('SendingBox webhook received', { letterId, status, trackingNumber });
 
-    // Verify webhook signature if configured
-    const webhookSecret = process.env.SENDINGBOX_WEBHOOK_SECRET;
-    if (webhookSecret) {
-      const signature = req.headers['x-sendingbox-signature'];
-      const payload = JSON.stringify(req.body);
-      const expectedSignature = crypto
-        .createHmac('sha256', webhookSecret)
-        .update(payload)
-        .digest('hex');
-
-      if (signature !== expectedSignature) {
-        logger.warn('SendingBox webhook signature mismatch', { letterId });
-        return res.status(401).json({ error: 'Invalid signature' });
-      }
+    // GO-LIVE-2.B — vérification HMAC FAIL-CLOSED (corps brut, temps constant, anti-rejeu)
+    const v = verifyWebhook({
+      secret: process.env.SENDINGBOX_WEBHOOK_SECRET,
+      rawBody: req.rawBody,
+      signature: req.headers['x-sendingbox-signature'],
+      digest: 'hex',
+      isProduction: IS_PROD,
+      timestamp,          // fourni par SendingBox dans le corps
+      maxAgeSec: 300,
+    });
+    if (!v.ok) {
+      logger.warn('SendingBox webhook REJECTED', { reason: v.reason, letterId });
+      return res.status(v.status).json({ error: v.reason });
     }
 
     // Find registered mail by sendingBoxId
@@ -237,6 +239,12 @@ router.post('/sendingbox', async (req, res) => {
     };
 
     const mappedStatus = statusMap[status?.toLowerCase()] || 'PREPARING';
+
+    // GO-LIVE-2.B — idempotence : un rejeu du même statut ne re-déclenche rien.
+    if (mail.status === mappedStatus) {
+      logger.info('SendingBox webhook idempotent (statut déjà appliqué)', { letterId, status: mappedStatus });
+      return res.json({ received: true, status: mappedStatus, idempotent: true });
+    }
 
     // Update registered mail
     await prisma.registeredMail.update({
@@ -314,6 +322,20 @@ router.post('/sendingbox', async (req, res) => {
  */
 router.post('/docusign', async (req, res) => {
   try {
+    // GO-LIVE-2.B — vérification HMAC DocuSign Connect (X-DocuSign-Signature-1, base64),
+    // FAIL-CLOSED. Auparavant : AUCUNE vérification → n'importe qui pouvait forcer SIGNED.
+    const v = verifyWebhook({
+      secret: process.env.DOCUSIGN_WEBHOOK_SECRET,
+      rawBody: req.rawBody,
+      signature: req.headers['x-docusign-signature-1'],
+      digest: 'base64',
+      isProduction: IS_PROD,
+    });
+    if (!v.ok) {
+      logger.warn('DocuSign webhook REJECTED', { reason: v.reason });
+      return res.status(v.status).json({ error: v.reason });
+    }
+
     // DocuSign sends XML by default, but can send JSON via Connect
     const body = req.body;
 
@@ -361,6 +383,13 @@ router.post('/docusign', async (req, res) => {
     };
 
     const newStatus = statusMap[(envelopeStatus || '').toLowerCase()] || sigRequest.statut;
+
+    // GO-LIVE-2.B — idempotence : un rejeu du même statut ne re-déclenche rien
+    // (ni double passage à SIGNED, ni re-téléchargement).
+    if (sigRequest.statut === newStatus) {
+      logger.info('DocuSign webhook idempotent (statut déjà appliqué)', { envelopeId, status: newStatus });
+      return res.json({ received: true, status: newStatus, idempotent: true });
+    }
 
     // Update SignatureRequest
     const updateData = { statut: newStatus };
