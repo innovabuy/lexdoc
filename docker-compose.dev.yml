@@ -33,11 +33,11 @@ services:
     restart: unless-stopped
     command: server /data --console-address ":9002"
     environment:
-      MINIO_ROOT_USER: lexdoc_minio_dev
-      MINIO_ROOT_PASSWORD: lexdoc_minio_dev_secret_2026
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-lexdoc_minio_local}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD}
     ports:
-      - "9003:9000"
-      - "9004:9002"
+      - "127.0.0.1:9003:9000"
+      - "127.0.0.1:9004:9002"
     volumes:
       - ./data/minio:/data
     healthcheck:

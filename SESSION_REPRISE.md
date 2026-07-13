@@ -1,5 +1,15 @@
 # Reprise session — 2026-05-19
 
+## 2026-07-13 — GO-LIVE-2 durcissement (2.A secrets + 2.A-bis MinIO)
+
+**2.A** : mot de passe PostgreSQL rotaté (dev → aléatoire fort), retiré des fichiers trackés (`docker-compose.dev.yml`, `.env.example`, RAPPORT md — ancien mdp défunt reste dans l'historique, purge non faite volontairement). Tous les `.env` en 600. JWT_SECRET/ENCRYPTION_KEY OK (64 hex), jamais dans l'historique.
+
+**2.A-bis (P0)** : **MinIO était exposé `0.0.0.0:9003/9004`** avec clés dev = documents cabinet sur l'internet public. Corrigé : conteneur recréé (standalone `docker run`, pas compose) en **`127.0.0.1` uniquement** + **clés root rotatées** (48 car.). Vérifié : externe injoignable, docs existants lisibles (download OK), génération/upload OK, backup cron non touché (n'accède pas à MinIO). Compose nettoyé (127.0.0.1 + env-var).
+
+### ⚠️ CONSTATS À TRACER (hors périmètre, à décider)
+1. **Autres ports sur `0.0.0.0`** (non fermés, en attente de décision) : **Postgres 5434**, **Redis 6379** (souvent sans auth — à vérifier !), **backend node 4000** (nginx proxifie déjà 127.0.0.1:4000 → le bind 0.0.0.0 est inutile). Aucun n'a de raison d'être exposé. À traiter en durcissement réseau.
+2. **222 / 242 documents ont un `objectKey` orphelin** (fichier absent du volume MinIO `/opt`), **tous antérieurs à mai 2026** (données test/démo purgées). Les documents récents/réels sont tous présents et lisibles. Pré-existant (pas la rotation). → auditer/nettoyer les records DB orphelins avant go-live.
+
 ## 2026-07-12 (suite) — Assignation en référé mappée + dette Q21 assainie
 
 **Template `assignation_refere_commerce`** : `.docm` (macros perso inertes retirées) → `.docx` → mapping **run-aware** (texte-seul, `rPr`/`pPr` intacts) → `.template.docx`. Identité demanderesse ET adverse en **rendu conditionnel PP/PM** (`{#..._est_morale}…{/}`), cabinet en dur (§19) remplacé par `cabinet.*`/`avocat.*`, champs huissier laissés vides. Enregistré tenant-scoped (seed `prisma/seeds/pragmavox_assignation.sql`, id `cml-pragmavox-assignation-refere-tc-v1`). Validé end-to-end PM + PP : zéro `{}` résiduel, zéro parenthèse orpheline, grammaire correcte (« Jean Dupont, demeurant… » en PP, pas de « société  au capital de  € »).
