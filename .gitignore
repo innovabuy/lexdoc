@@ -69,3 +69,9 @@ backend/prisma/migrations/_DRAFT_*/
 document_test_*.docx
 /tmp-snapshots/
 backend/backups/
+
+# secrets ops (jamais trackés)
+rclone.conf
+*.rclone.conf
+LEXDOC-BACKUP-KEY*
+ops/*-PRIVATE.asc
