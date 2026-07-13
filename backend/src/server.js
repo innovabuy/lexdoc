@@ -113,10 +113,13 @@ app.use(errorHandler);
 // START SERVER
 // ============================================================================
 
-const server = app.listen(PORT, '0.0.0.0', () => {
+// GO-LIVE-2.A-ter — bind sur loopback par défaut (nginx proxifie 127.0.0.1:PORT).
+// Ne pas exposer le backend directement sur 0.0.0.0. Surchargeable via HOST si besoin.
+const HOST = process.env.HOST || '127.0.0.1';
+const server = app.listen(PORT, HOST, () => {
   logger.info(`🚀 LexDoc API started on port ${PORT}`);
   logger.info(`   Environment: ${process.env.NODE_ENV}`);
-  logger.info(`   API URL: http://0.0.0.0:${PORT}`);
+  logger.info(`   API URL: http://${HOST}:${PORT}`);
   logger.info(`   Health: http://0.0.0.0:${PORT}/health`);
 
   // Start scheduled jobs

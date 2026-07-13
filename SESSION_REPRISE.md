@@ -6,9 +6,10 @@
 
 **2.A-bis (P0)** : **MinIO était exposé `0.0.0.0:9003/9004`** avec clés dev = documents cabinet sur l'internet public. Corrigé : conteneur recréé (standalone `docker run`, pas compose) en **`127.0.0.1` uniquement** + **clés root rotatées** (48 car.). Vérifié : externe injoignable, docs existants lisibles (download OK), génération/upload OK, backup cron non touché (n'accède pas à MinIO). Compose nettoyé (127.0.0.1 + env-var).
 
-### ⚠️ CONSTATS À TRACER (hors périmètre, à décider)
-1. **Autres ports sur `0.0.0.0`** (non fermés, en attente de décision) : **Postgres 5434**, **Redis 6379** (souvent sans auth — à vérifier !), **backend node 4000** (nginx proxifie déjà 127.0.0.1:4000 → le bind 0.0.0.0 est inutile). Aucun n'a de raison d'être exposé. À traiter en durcissement réseau.
-2. **222 / 242 documents ont un `objectKey` orphelin** (fichier absent du volume MinIO `/opt`), **tous antérieurs à mai 2026** (données test/démo purgées). Les documents récents/réels sont tous présents et lisibles. Pré-existant (pas la rotation). → auditer/nettoyer les records DB orphelins avant go-live.
+**2.A-ter (fermeture réseau, P0)** : Docker **bypasse UFW** (INPUT DROP inefficace sur les ports publiés) → Postgres 5434, Redis 6379, backend 4000 étaient **réellement joignables de l'internet**. Redis : **sans `requirepass`, DBSIZE=0, absent de la stack/code** (résidu depuis le 2 juin) — RCE potentiel. **Aucun signe de compromission** (authorized_keys root = 1 clé légitime, crontab propre, Redis vide sans clés d'attaque). Fermés : Redis + Postgres recréés en `127.0.0.1`, backend `server.js` bind `127.0.0.1` (HOST surchargeable). Vérifié externe injoignable, app OK via nginx :80, génération OK, cron backup OK, 208/208. **Récap `ss` : seuls 22 (ssh) + 80 (nginx) sur 0.0.0.0.** → **Redis : proposer sa SUPPRESSION** (résidu inutilisé).
+
+### ⚠️ CONSTATS À TRACER (hors périmètre)
+1. **222 / 242 documents ont un `objectKey` orphelin** (fichier absent du volume MinIO `/opt`), **tous antérieurs à mai 2026** (données test/démo purgées). Les documents récents/réels sont tous présents et lisibles. Pré-existant (pas la rotation). → auditer/nettoyer les records DB orphelins avant go-live.
 
 ## 2026-07-12 (suite) — Assignation en référé mappée + dette Q21 assainie
 
