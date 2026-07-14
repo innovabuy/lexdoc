@@ -1,26 +1,30 @@
-// GO-LIVE-6 — art. 648 CPC : une partie personne morale d'un acte de procédure doit
-// avoir forme sociale + siège + n° d'immatriculation. pmIdentityMissing liste les manquants.
+// GO-LIVE-6 — une partie personne morale doit avoir forme sociale + capital + siège +
+// n° d'immatriculation. pmIdentityMissing liste les manquants, dans l'ordre de l'acte.
 const { pmIdentityMissing } = require('../../src/utils/legal-format');
 
-describe('pmIdentityMissing (art. 648 CPC)', () => {
-  it('aucun manquant si les 3 champs sont présents', () => {
-    expect(pmIdentityMissing({ formeSociale: 'SARL', siege: '11 rue X, Angers', numeroImmatriculation: '111 111 111' })).toEqual([]);
+describe('pmIdentityMissing', () => {
+  it('aucun manquant si les 4 champs sont présents', () => {
+    expect(pmIdentityMissing({ formeSociale: 'SARL', capital: '10000', siege: '11 rue X, Angers', numeroImmatriculation: '111 111 111' })).toEqual([]);
   });
 
-  it('liste forme sociale + siège + n° RCS si tout est vide', () => {
-    expect(pmIdentityMissing({})).toEqual(['forme sociale', 'siège', 'n° RCS']);
+  it('liste forme + capital + siège + n° RCS si tout est vide', () => {
+    expect(pmIdentityMissing({})).toEqual(['forme sociale', 'capital social', 'siège', 'n° RCS']);
   });
 
-  it('ne signale que le champ manquant', () => {
-    expect(pmIdentityMissing({ formeSociale: 'SAS', siege: '9 bd Haussmann', numeroImmatriculation: '' })).toEqual(['n° RCS']);
-    expect(pmIdentityMissing({ formeSociale: 'SAS', siege: '', numeroImmatriculation: '222' })).toEqual(['siège']);
+  it('signale le capital manquant seul', () => {
+    expect(pmIdentityMissing({ formeSociale: 'SAS', capital: '', siege: '9 bd Haussmann', numeroImmatriculation: '222' })).toEqual(['capital social']);
   });
 
-  it('traite les blancs/espaces comme manquants', () => {
-    expect(pmIdentityMissing({ formeSociale: '  ', siege: '\t', numeroImmatriculation: ' ' })).toEqual(['forme sociale', 'siège', 'n° RCS']);
+  it('accepte un capital en centimes (Int) non nul, refuse 0', () => {
+    expect(pmIdentityMissing({ formeSociale: 'SAS', capital: 5000000, siege: '9 bd', numeroImmatriculation: '222' })).toEqual([]);
+    expect(pmIdentityMissing({ formeSociale: 'SAS', capital: 0, siege: '9 bd', numeroImmatriculation: '222' })).toEqual(['capital social']);
+  });
+
+  it('traite les blancs comme manquants', () => {
+    expect(pmIdentityMissing({ formeSociale: '  ', capital: ' ', siege: '\t', numeroImmatriculation: ' ' })).toEqual(['forme sociale', 'capital social', 'siège', 'n° RCS']);
   });
 
   it('robuste sans argument', () => {
-    expect(pmIdentityMissing()).toEqual(['forme sociale', 'siège', 'n° RCS']);
+    expect(pmIdentityMissing()).toEqual(['forme sociale', 'capital social', 'siège', 'n° RCS']);
   });
 });

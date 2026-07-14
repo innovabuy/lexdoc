@@ -57,32 +57,37 @@ function computeRequiredMissing(template, data) {
 // ET les DÉFENDEURS (PARTIE_ADVERSE de type MORALE). Une personne PHYSIQUE n'a pas
 // de RCS → aucun blocage. MED (courriers) / LM (droit_societes) ne sont pas des
 // actes de procédure → non impactées.
-async function checkActeProcedureLegalParties(template, folder, folderId, tenantId) {
-  if (template.category !== 'actes_procedure') return [];
+async function checkLegalPartiesIdentity(template, folder, folderId, tenantId) {
+  const isActe = template.category === 'actes_procedure';   // assignation : DEMANDEUR + DÉFENDEURS
+  const isCourrier = template.category === 'courriers';     // MED : DEMANDEUR (client) seulement
+  if (!isActe && !isCourrier) return [];                    // LM (droit_societes) etc. non impactés
   const problems = [];
 
-  // Demandeur = le client du dossier, s'il est une personne morale.
+  // DEMANDEUR = le client du dossier, s'il est une personne morale.
+  // Requis pour les actes de procédure ET les courriers (MED) : la société du cabinet
+  // est rendue en évidence sous l'en-tête, un blanc y est indéfendable.
   if (folder.clientId) {
     const client = await prisma.client.findFirst({
       where: { id: folder.clientId, tenantId },
-      select: { type: true, companyName: true, formeSociale: true, siege: true, numeroImmatriculation: true },
+      select: { type: true, companyName: true, formeSociale: true, capital: true, siege: true, numeroImmatriculation: true },
     });
     if (client && (client.type === 'COMPANY' || client.type === 'ASSOCIATION')) {
-      // siège du client = colonne `siege`
-      const missing = pmIdentityMissing({ formeSociale: client.formeSociale, siege: client.siege, numeroImmatriculation: client.numeroImmatriculation });
+      const missing = pmIdentityMissing({ formeSociale: client.formeSociale, capital: client.capital, siege: client.siege, numeroImmatriculation: client.numeroImmatriculation });
       if (missing.length) problems.push(`Demandeur ${(client.companyName || 'société').trim()} : ${missing.join(', ')}`);
     }
   }
 
-  // Défendeurs = personnes PARTIE_ADVERSE de type MORALE.
-  const adverses = await prisma.folderPerson.findMany({
-    where: { folderId, tenantId, role: 'PARTIE_ADVERSE', type: 'MORALE' },
-    select: { company: true, formeSociale: true, address: true, numeroImmatriculation: true },
-  });
-  for (const a of adverses) {
-    // siège de la partie adverse = colonne `address`
-    const missing = pmIdentityMissing({ formeSociale: a.formeSociale, siege: a.address, numeroImmatriculation: a.numeroImmatriculation });
-    if (missing.length) problems.push(`Défendeur ${(a.company || 'société adverse').trim()} : ${missing.join(', ')}`);
+  // DÉFENDEURS = personnes PARTIE_ADVERSE de type MORALE.
+  // Requis UNIQUEMENT pour les actes de procédure (le RCS du débiteur est inutile dans une MED).
+  if (isActe) {
+    const adverses = await prisma.folderPerson.findMany({
+      where: { folderId, tenantId, role: 'PARTIE_ADVERSE', type: 'MORALE' },
+      select: { company: true, formeSociale: true, capital: true, address: true, numeroImmatriculation: true },
+    });
+    for (const a of adverses) {
+      const missing = pmIdentityMissing({ formeSociale: a.formeSociale, capital: a.capital, siege: a.address, numeroImmatriculation: a.numeroImmatriculation });
+      if (missing.length) problems.push(`Défendeur ${(a.company || 'société adverse').trim()} : ${missing.join(', ')}`);
+    }
   }
   return problems;
 }
@@ -470,10 +475,11 @@ router.post('/generate', async (req, res, next) => {
 
     // GO-LIVE-6 — refus si une partie personne morale d'un acte de procédure est
     // incomplète (art. 648 CPC) : forme sociale, siège, n° RCS. Message explicite.
-    const legalPartyProblems = await checkActeProcedureLegalParties(template, folder, folderId, req.tenant.id);
+    const legalPartyProblems = await checkLegalPartiesIdentity(template, folder, folderId, req.tenant.id);
     if (legalPartyProblems.length > 0) {
+      const ref = template.category === 'actes_procedure' ? ' (art. 648 CPC)' : '';
       throw new BadRequestError(
-        `Acte de procédure : identité de personne morale incomplète (art. 648 CPC) — ${legalPartyProblems.join(' ; ')}. Complétez la fiche de la partie avant de générer.`
+        `Identité de personne morale incomplète${ref} — ${legalPartyProblems.join(' ; ')}. Complétez la fiche avant de générer.`
       );
     }
 
@@ -659,10 +665,11 @@ router.post('/generate/force', async (req, res, next) => {
 
     // GO-LIVE-6 — même garde-fou art. 648 CPC en /force : "force" ne saute que les
     // champs optionnels, jamais l'identité légale d'une partie personne morale.
-    const legalPartyProblems = await checkActeProcedureLegalParties(template, folder, folderId, req.tenant.id);
+    const legalPartyProblems = await checkLegalPartiesIdentity(template, folder, folderId, req.tenant.id);
     if (legalPartyProblems.length > 0) {
+      const ref = template.category === 'actes_procedure' ? ' (art. 648 CPC)' : '';
       throw new BadRequestError(
-        `Acte de procédure : identité de personne morale incomplète (art. 648 CPC) — ${legalPartyProblems.join(' ; ')}. Complétez la fiche de la partie avant de générer.`
+        `Identité de personne morale incomplète${ref} — ${legalPartyProblems.join(' ; ')}. Complétez la fiche avant de générer.`
       );
     }
 
