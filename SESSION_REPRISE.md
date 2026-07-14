@@ -1,5 +1,44 @@
 # Reprise session — 2026-05-19
 
+## 2026-07-14 — Recette UI Cowork : correctifs (garde-fou art. 648, B1/B2, M1-M7, mineurs)
+
+Recette navigateur pilotée par **Cowork** (il trouve, je code) sur **Pragma Vox** (données de
+test uniquement, préfixe `TEST-RECETTE-14072026`). Répartition : je tiens la **garde + couche
+API/code**, Cowork le **navigateur**. Commits `f203581`→`6730a1e`. Backend 248/248 + tests front.
+
+- **Garde-fou art. 648 CPC** (`f203581`, `566cb33`) : refus de générer un **acte de procédure**
+  si une partie **personne morale** (demandeur client OU défendeur PARTIE_ADVERSE) manque
+  **forme + capital + siège + n° immatriculation**. MED : côté **client** seulement. Message
+  explicite. `checkLegalPartiesIdentity` + `pmIdentityMissing` (testé).
+- **B1** (`ff4e4fd`) : création client PP impossible (formulaires n'envoyaient que `lastName`) →
+  champ **Prénom** ajouté (ClientQuickCreate + wizard inline).
+- **B2** (`ff4e4fd`) : **documents fantômes** (wizard créait des placeholders size 0, « Phase 3 »
+  jamais codée) → étape 7 supprimée ; étape « documents recommandés » du wizard **retirée** ;
+  route `GET /templates/suggestions` + `getTemplateSuggestions` supprimées (code mort).
+- **M1** (`5a334bf`) : LRAR destinataires vides → `GET /folders/:id` n'incluait pas `persons`.
+- **M2** (`5a334bf`) : bouton « Compléter et générer » grisé muet → cliquable + message + surlignage.
+- **M3** : **pas de bug** (aucune auto-création de client ; doublons = données de test). Risque
+  latent wizard corrigé par **dedup email** (`c33ea12`).
+- **M4** (`c33ea12`) : suppression document/dossier **visible ADMIN uniquement** + **ConfirmModal**
+  applicatif + cascade C2. **M5** : complétude **selon le type** (PM → 100%). **M6** : catégorie
+  d'upload lue (`docCategoryId`).
+- **M7** (`6730a1e`) : **aperçu .docx côté client** (`docx-preview`, zéro infra) + bandeau
+  obligatoire « le document final peut différer » + Télécharger visible + erreur claire.
+- **Encodage** (`6730a1e`) : **PAS systémique**. Données : « FranÃ§aise » (44 clients, re-décodé) +
+  apostrophes de 8 NOMS de templates hors go-live (restaurées). Labels ASCII = correctifs ciblés.
+  Mineurs : `&middot;`→« · », « refere »→« Référé », upload→« Importer », erreurs client en FR,
+  signature no-op corrigé, « Association » au formulaire.
+
+### ⏳ RESTES de la recette Cowork
+- **Contre-recette Cowork EN COURS** : checklist `ops/CONTRE-RECETTE-COWORK.md` (Cowork re-teste
+  chaque correctif au navigateur). **Front confirmé redéployé** (nginx sert le dernier `dist`,
+  index `index-BNRo0L6B.js`). Hard-refresh navigateur recommandé.
+- **Nettoyage données `TEST-RECETTE-14072026`** : **PAS ENCORE** — après la contre-recette (les
+  données servent à Cowork pour revérifier). Backups du jour : `pre-minors-*`, `pre-recette-ui-*`.
+- ⏳ **Passe d'accents EXHAUSTIVE : différée** (décision : NON en aveugle). L'incident
+  `allCategories`→`allCatégories` (un `sed` global qui a touché une **variable**) prouve le risque.
+  À faire **plus tard, écran par écran** (pas de sed global sur ~100 fichiers). Priorité basse.
+
 ## 2026-07-14 (soir) — Fuite via le guide de restauration + 2ᵉ rotation Postgres
 
 **Incident.** Le mot de passe Postgres (déjà roté en GO-LIVE-4 le matin) a **re-fuité le soir**
