@@ -251,6 +251,12 @@ router.post('/', async (req, res, next) => {
       throw new BadRequestError('Company name is required for company/association clients');
     }
 
+    // GO-LIVE-6 LOT D — validation du format email dès la création (avant, un email
+    // invalide était accepté puis échouait silencieusement aux envois extranet/LRAR).
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new BadRequestError('Format d\'email invalide');
+    }
+
     // Check email uniqueness within tenant
     if (email) {
       const existing = await prisma.client.findFirst({

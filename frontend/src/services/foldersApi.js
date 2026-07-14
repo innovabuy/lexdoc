@@ -93,16 +93,9 @@ export async function generateFromTemplate(templateId, folderId, opts = {}) {
   return data.data;
 }
 
-export async function forceGenerateFromTemplate(templateId, folderId, opts = {}) {
-  const { data } = await api.post('/templates/generate/force', {
-    templateId,
-    folderId,
-    categoryId: opts.categoryId || null,
-    titre: opts.titre || null,
-    additionalData: opts.additionalData || null,
-  });
-  return data.data;
-}
+// GO-LIVE-6 LOT D — forceGenerateFromTemplate retiré : depuis A1, /force n'échappe plus
+// aux champs requis, et le bouton « Générer quand même » a été supprimé de l'UI. La
+// génération passe uniquement par generateFromTemplate + le modal de champs manquants.
 
 export async function checkTemplateDuplicate(folderId, templateId) {
   const { data } = await api.get(`/templates/check-duplicate?folderId=${folderId}&templateId=${templateId}`);

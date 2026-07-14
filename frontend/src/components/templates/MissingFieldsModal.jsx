@@ -13,7 +13,6 @@ export default function MissingFieldsModal({
   fields,
   templateName,
   onSubmit,
-  onForce,
   onClose,
   loading,
 }) {
@@ -102,14 +101,6 @@ export default function MissingFieldsModal({
           <div className="fdp-modal-footer mfm-footer">
             <button type="button" onClick={onClose} className="fdp-btn fdp-btn-secondary">
               Annuler
-            </button>
-            <button
-              type="button"
-              onClick={() => onForce(values)}
-              className="fdp-btn fdp-btn-ghost"
-              disabled={loading}
-            >
-              Generer quand meme
             </button>
             <button
               type="submit"

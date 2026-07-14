@@ -408,6 +408,30 @@ function enrichComputedFields(data) {
 /**
  * Generate a .docx document from a template buffer and data
  */
+// GO-LIVE-6 LOT D — nettoie le texte des <w:t> d'un DOCX (document + en-têtes + pieds
+// de page) sans toucher au balisage. Espace normale seulement : l'espace insécable fine
+// des montants (U+202F/U+00A0) n'est jamais affectée.
+function cleanupTextNode(content) {
+  return content
+    .replace(/ +,/g, ',')       // espace(s) avant une virgule → aucune (typo FR)
+    .replace(/\( *\)/g, '')     // parenthèses vides
+    .replace(/ +\)/g, ')')      // espace avant parenthèse fermante
+    .replace(/ {2,}/g, ' ');    // doubles espaces (normaux) → un seul
+}
+function cleanupDocxWhitespace(zip) {
+  const targets = Object.keys(zip.files).filter(
+    (n) => /^word\/(document|header\d*|footer\d*)\.xml$/.test(n)
+  );
+  for (const name of targets) {
+    const xml = zip.file(name).asText();
+    const cleaned = xml.replace(
+      /(<w:t[^>]*>)([\s\S]*?)(<\/w:t>)/g,
+      (_m, open, content, close) => open + cleanupTextNode(content) + close
+    );
+    if (cleaned !== xml) zip.file(name, cleaned);
+  }
+}
+
 function generateDocument(templateBuffer, data) {
   const zip = new PizZip(templateBuffer);
   const doc = new Docxtemplater(zip, {
@@ -439,6 +463,13 @@ function generateDocument(templateBuffer, data) {
   };
 
   doc.render(renderData);
+
+  // GO-LIVE-6 LOT D — nettoyage cosmétique APRÈS rendu, appliqué UNIQUEMENT au texte
+  // à l'intérieur des noeuds <w:t> (jamais à la structure du document). Corrige les
+  // artefacts laissés par des champs optionnels vides : espace avant virgule/parenthèse,
+  // parenthèses vides, doubles espaces. Respecte la typo FR (ne touche PAS ; : ! ? qui
+  // prennent une espace AVANT) et l'espace insécable des montants (« 15 000,00 € »).
+  cleanupDocxWhitespace(doc.getZip());
 
   const buffer = doc.getZip().generate({
     type: 'nodebuffer',

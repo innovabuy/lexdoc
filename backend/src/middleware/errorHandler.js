@@ -166,6 +166,18 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
+  // GO-LIVE-6 LOT D — erreurs Multer (upload) → statut propre, jamais 500.
+  if (err.name === 'MulterError') {
+    const tooLarge = err.code === 'LIMIT_FILE_SIZE';
+    return res.status(tooLarge ? 413 : 400).json({
+      success: false,
+      error: {
+        message: tooLarge ? 'Fichier trop volumineux (maximum 50 Mo).' : 'Envoi de fichier invalide.',
+        code: err.code || 'UPLOAD_ERROR',
+      },
+    });
+  }
+
   // Erreurs JWT
   if (err.name === 'JsonWebTokenError') {
     return res.status(401).json({

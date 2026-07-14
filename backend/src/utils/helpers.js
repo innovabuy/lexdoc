@@ -46,7 +46,14 @@ const serializeBigInt = (obj) => {
   if (obj === null || obj === undefined) return obj;
   if (typeof obj === 'bigint') return obj.toString();
   if (Array.isArray(obj)) return obj.map(serializeBigInt);
+  // GO-LIVE-6 LOT D — ne PAS reconstruire les objets "feuilles" non-plain (Date, Decimal,
+  // Buffer...) : les parcourir champ par champ les transformait en {} (bug de sérialisation
+  // LRAR : createdAt/updatedAt sortaient en {}). On les renvoie tels quels (leur propre
+  // toJSON gère l'ISO / la valeur), on ne récursive que sur les objets littéraux.
+  if (obj instanceof Date || typeof obj.toJSON === 'function') return obj;
   if (typeof obj === 'object') {
+    const proto = Object.getPrototypeOf(obj);
+    if (proto !== Object.prototype && proto !== null) return obj; // instance de classe (Decimal, Buffer, ...)
     const result = {};
     for (const key in obj) {
       result[key] = serializeBigInt(obj[key]);

@@ -12,7 +12,6 @@ import {
   updateFolder,
   addDocCategory,
   generateFromTemplate,
-  forceGenerateFromTemplate,
   checkTemplateDuplicate,
 } from '../../services/foldersApi';
 import FolderPersons from '../../components/folders/FolderPersons';
@@ -345,35 +344,8 @@ export default function FolderDetailPage() {
         setSelectedTemplate(null);
         fetchDocs();
       } else if (result.status === 'missing_fields') {
-        setMissingFields({ fields: result.fields, templateName: result.templateName });
-      }
-    } catch (e) {
-      showError(e.response?.data?.error?.message || 'Erreur de generation');
-    }
-    setTemplateGenerating(false);
-  };
-
-  const handleForceGenerate = async (values) => {
-    if (!selectedTemplate) return;
-    setTemplateGenerating(true);
-    try {
-      // Filter non-empty values
-      const additionalData = {};
-      Object.entries(values || {}).forEach(([k, v]) => {
-        if (v && v.trim()) additionalData[k] = v.trim();
-      });
-      const result = await forceGenerateFromTemplate(selectedTemplate.id, id, {
-        additionalData: Object.keys(additionalData).length > 0 ? additionalData : null,
-      });
-      if (result.status === 'created') {
-        success(`Document "${result.document.name}" genere avec succes`);
-        setMissingFields(null);
-        setSelectedTemplate(null);
-        fetchDocs();
-      } else if (result.status === 'missing_fields') {
-        // GO-LIVE-6 C0 — depuis A1, on ne peut plus forcer un acte à trous. Si des champs
-        // OBLIGATOIRES manquent encore, on l'affiche EXPLICITEMENT (plus de bouton muet) et
-        // on ré-ouvre le formulaire avec les champs à compléter.
+        // GO-LIVE-6 C0 — refus jamais silencieux : on nomme EXPLICITEMENT les champs
+        // obligatoires manquants, puis on ré-ouvre le formulaire pour les compléter.
         const manquants = (result.fields || [])
           .filter((f) => f.required)
           .map((f) => f.label || f.key);
@@ -387,6 +359,7 @@ export default function FolderDetailPage() {
     }
     setTemplateGenerating(false);
   };
+
 
   // Count total docs
   const totalDocs = (docData.categories || []).reduce((s, c) => s + (c.documents?.length || 0), 0) + (docData.uncategorized?.length || 0);
@@ -600,7 +573,6 @@ export default function FolderDetailPage() {
           fields={missingFields.fields}
           templateName={missingFields.templateName}
           onSubmit={handleMissingFieldsSubmit}
-          onForce={handleForceGenerate}
           onClose={() => { setMissingFields(null); setSelectedTemplate(null); }}
           loading={templateGenerating}
         />
