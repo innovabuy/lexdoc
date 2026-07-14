@@ -1,5 +1,53 @@
 # Reprise session — 2026-05-19
 
+## 2026-07-14 — GO-LIVE-6 : corrections de recette (LOTS A→D) — état de fin de journée
+
+**Tag `v0.8.0-golive-6`** (HEAD `6b69a24`, **poussé** sur `origin/master`). 242/242 tests verts.
+Recette fonctionnelle (GO-LIVE-5) : **isolation multi-tenant OK (0 fuite / 60+ sondes)** ;
+le reste corrigé lot par lot, chaque lot **revalidé en régénérant + relisant les actes**.
+Commits : `8b55f9e` (A) · `9b47a45` (B) · `2d011f7` (C) · `6b69a24` (D).
+
+- **A (P0)** : A1 acte incomplet → **refus** si montant/date/partie adverse manque (generate ET
+  /force ; bypass `additionalData:{}` supprimé) ; A2 signature **plus de 500** (settings null
+  null-safe, DEMO simulé) ; A3 download **plus de redirect localhost:9003** → streaming backend
+  (les 38 docs concernés = test/démo, aucun acte réel).
+- **B** : B1 upload validé par **magic number** (.exe rejeté) ; B2 entrées invalides → **400
+  jamais 500** ; B3 objet absent → **404** ; **222 records orphelins** (pré-pilote, test/démo)
+  soft-deleted.
+- **C** : C1 **index UNIQUE partiel (tenantId, email) WHERE deletedAt IS NULL** ; C2 suppression
+  client alignée sur dossier (bloquée sauf `force=true`, cascade) ; C3 personne MORALE sans
+  « nom » (`lastName` nullable, migration) ; C4 **POSTULANT/CO_DEBITEUR** resynchronisés (l'API
+  les refusait) → **le postulant apparaît désormais dans l'assignation** ; C5 **`requireRole('ADMIN')`
+  (403)** sur destructif + signature + LRAR (ASSISTANT refusé, ADMIN passe). 2 migrations Prisma.
+- **D** : bouton « Générer quand même » **retiré** (ne pouvait plus rien forcer) ; sérialisation
+  **Date corrigée à la source** (`serializeBigInt` transformait les Date en `{}` → LRAR
+  `createdAt`) ; validation email création ; upload > 50 Mo → **413** ; nettoyage cosmétique des
+  `<w:t>` (espaces/parenthèses, typo FR respectée) ; **blobs MinIO + tenants de test supprimés**.
+
+### 🌐 Déploiement — CONSTAT FACTUEL (corrige une erreur de recette)
+**Le back-office EST accessible aujourd'hui à `http://76.13.50.173`** : nginx sert bien la SPA
+(`frontend/dist`) + proxifie `/api` → backend ; **login end-to-end prouvé (HTTP 200)**. (Le
+`dist` servi a été rebuild aujourd'hui, il inclut les correctifs.)
+**MAIS** : `app.lexdoc.fr` **→ Vercel** (DNS, PAS ce VPS) et **pas de HTTPS** (nginx :80 seul).
+
+### ✅ Rappel : test de survie hors-site RÉUSSI le **13/07/2026** (cf. section GO-LIVE-4 ci-dessous)
+
+### ⛔ RESTES (fin de journée — à reprendre en GO-LIVE-7)
+1. **DNS + HTTPS** — **bloqué : pas encore la main sur le registrar (accès DNS)**. Repointer
+   `app.lexdoc.fr` (A record) vers `76.13.50.173`, puis certbot/Let's Encrypt sur nginx.
+2. **Credentials DocuSign / SendingBox** réels (aujourd'hui DEMO_MODE + placeholders) — **dépend
+   du DNS** (webhooks/redirect URIs sur le domaine).
+3. **Rebuild front en `VITE_API_URL=/api` relatif** — à faire **avec le HTTPS** (l'actuel
+   `http://76.13.50.173/api` absolu casserait en HTTPS = mixed-content).
+4. **Extranet** : déploiement — **dépend du DNS**.
+5. **Médiateur du tenant (Q12)** : `tenant.mediateurNomComplet` + `mediateurBarreau` non
+   renseignés (LM affiche « Maître , Barreau de , ») — **attente réponse Bienaimé**.
+6. **Rotation du mot de passe Postgres** — exposé aujourd'hui. ⚠️ **Déjà roté en GO-LIVE-4**
+   (cf. section ci-dessous, copie de secours `/root/lexdoc-pg-newpw.*.txt` à rapatrier+`shred`) ;
+   **à re-roter s'il y a eu une nouvelle exposition** — à confirmer avec Jeff.
+7. **Q21 `client.capital` reste `String`** (dette ; assainie à l'affichage par `normalizeCapital`,
+   migration structurée non faite).
+
 ## 2026-07-13 — GO-LIVE-4 : test de survie hors-site RÉUSSI + rotation mdp Postgres
 
 ### ✅ TEST DE SURVIE AU SINISTRE — RÉUSSI (le 13/07/2026, par Jeff, depuis SA machine Windows)
