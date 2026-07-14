@@ -25,6 +25,14 @@ partiellement, même dans un test de vérification. Vérifier la PRÉSENCE d'une
 CONTENU** (`grep -c` / `.Count`, jamais `cat`/`Get-Content`/`Select-String` sans `-c`/`.Count`).
 Corollaire de la règle anti-fuite existante : un secret affiché = un secret fuité.
 
+### 🔁 SUIVI — relancer le test de survie hors-site
+Le hors-site reste **prouvé restaurable** (test RÉUSSI le 13/07), mais **à relancer** :
+1. **après cette 2ᵉ rotation** — pour re-confirmer sur le nouveau `.env` chiffré (le backup
+   chiffré du soir/nuit contiendra le nouveau `DATABASE_URL`) ;
+2. **avec le guide corrigé** (`ops/RESTORE-WINDOWS.md`, vérifs présence-only) — pour valider
+   que la procédure ne fuit plus rien.
+Sans copie de secours persistante désormais : le mot de passe se relit dans `backend/.env` (600).
+
 ## 2026-07-14 — GO-LIVE-6 : corrections de recette (LOTS A→D) — état de fin de journée
 
 **Tag `v0.8.0-golive-6`** (HEAD `6b69a24`, **poussé** sur `origin/master`). 242/242 tests verts.
