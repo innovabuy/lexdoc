@@ -1,5 +1,30 @@
 # Reprise session — 2026-05-19
 
+## 2026-07-14 (soir) — Fuite via le guide de restauration + 2ᵉ rotation Postgres
+
+**Incident.** Le mot de passe Postgres (déjà roté en GO-LIVE-4 le matin) a **re-fuité le soir**
+pendant le test de survie hors-site : la commande de vérification du guide
+`ops/RESTORE-WINDOWS.md` affichait le **contenu du `env.backup` déchiffré**
+(`Select-String -Path env.backup -Pattern "DATABASE_URL"`), donc le `DATABASE_URL` **complet
+avec le mot de passe**, et ce contenu a transité hors du terminal. **La faille était dans la
+procédure elle-même** — pas dans son exécution.
+
+**Traité.** (1) Mot de passe Postgres **re-roté** (ALTER + `.env` 600, health 200, Prisma→25
+clients, 242/242 ; **aucun fichier de secret persistant** cette fois — plus de copie
+`/root/lexdoc-pg-newpw.*.txt`, les anciennes jamais récupérées ont été **shred**). (2) **Guide
+corrigé** : `ops/RESTORE-WINDOWS.md` **et** `ops/RESTORE.md §6` ne vérifient plus que la
+**PRÉSENCE** (`.Count` / `grep -c` → doit valoir 1/3/>0), jamais le contenu ; ajout d'un
+encadré « règle de sécurité absolue » en tête du guide Windows. Audit du guide : seules les
+vérifs db/minio/env exposaient du contenu (table names, noms de fichiers clients, secrets) —
+toutes passées en compte.
+
+### 🔒 RÈGLE PERMANENTE (à ne jamais oublier)
+**Un backup `.env` déchiffré contient TOUS les secrets du système en clair (DATABASE_URL avec
+mot de passe, JWT_SECRET, clés MinIO, SMTP…). Ne JAMAIS afficher son contenu — même
+partiellement, même dans un test de vérification. Vérifier la PRÉSENCE d'une ligne, JAMAIS son
+CONTENU** (`grep -c` / `.Count`, jamais `cat`/`Get-Content`/`Select-String` sans `-c`/`.Count`).
+Corollaire de la règle anti-fuite existante : un secret affiché = un secret fuité.
+
 ## 2026-07-14 — GO-LIVE-6 : corrections de recette (LOTS A→D) — état de fin de journée
 
 **Tag `v0.8.0-golive-6`** (HEAD `6b69a24`, **poussé** sur `origin/master`). 242/242 tests verts.
@@ -42,9 +67,9 @@ Commits : `8b55f9e` (A) · `9b47a45` (B) · `2d011f7` (C) · `6b69a24` (D).
 4. **Extranet** : déploiement — **dépend du DNS**.
 5. **Médiateur du tenant (Q12)** : `tenant.mediateurNomComplet` + `mediateurBarreau` non
    renseignés (LM affiche « Maître , Barreau de , ») — **attente réponse Bienaimé**.
-6. **Rotation du mot de passe Postgres** — exposé aujourd'hui. ⚠️ **Déjà roté en GO-LIVE-4**
-   (cf. section ci-dessous, copie de secours `/root/lexdoc-pg-newpw.*.txt` à rapatrier+`shred`) ;
-   **à re-roter s'il y a eu une nouvelle exposition** — à confirmer avec Jeff.
+6. **Rotation du mot de passe Postgres** — ✅ **FAIT ×2 aujourd'hui** (GO-LIVE-4 matin, puis
+   **re-roté le soir** après la fuite via le guide — cf. section « soir » ci-dessus). Plus de
+   copie de secours persistante ; le mot de passe ne vit que dans `backend/.env` (600).
 7. **Q21 `client.capital` reste `String`** (dette ; assainie à l'affichage par `normalizeCapital`,
    migration structurée non faite).
 

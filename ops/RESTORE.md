@@ -137,14 +137,18 @@ gpg --output db.backup    --decrypt db_20260713_0400.backup.gpg
 gpg --output minio.tar.gz --decrypt minio_20260713_0400.tar.gz.gpg
 gpg --output env.backup   --decrypt env_20260713_0400.backup.gpg
 ```
-**Vérifier que ça s'ouvre vraiment** (le test réussit seulement si le contenu est lisible) :
-- `db.backup` : `pg_restore -l db.backup` (ou via un PostgreSQL/Docker local) doit lister
-  les tables (`clients`, `documents`, …).
-- `minio.tar.gz` : `tar tzf minio.tar.gz` (ou 7-Zip) doit lister le dossier `minio/`.
-- `env.backup` : s'ouvre en texte, contient les variables `DATABASE_URL=…`, etc.
+**Vérifier que ça s'ouvre vraiment** (PRÉSENCE, jamais le CONTENU) :
+- `db.backup` : `pg_restore -l db.backup | grep -cE 'TABLE DATA public (clients|documents|folders)'` → **3**.
+- `minio.tar.gz` : `tar tzf minio.tar.gz | grep -c '^minio/'` → **> 0** (ne pas dérouler : les
+  chemins révèlent des noms de fichiers clients).
+- `env.backup` : `grep -c '^DATABASE_URL=' env.backup` → **1**.
+  🔴 **NE JAMAIS afficher le contenu de `env.backup`** (`cat`/`less`/`grep` sans `-c`) : ce
+  fichier déchiffré contient TOUS les secrets en clair (mot de passe DB, `JWT_SECRET`, clés
+  MinIO, SMTP…). On vérifie qu'une ligne existe, jamais ce qu'elle contient.
 
-Si les 3 s'ouvrent → **le hors-site protège réellement du sinistre**. Sinon, ta copie de
-la clé privée/passphrase est en cause : reprends-la depuis le gestionnaire de mots de passe.
+Si les 3 comptes sont bons → **le hors-site protège réellement du sinistre** — sans avoir
+affiché le moindre secret. Sinon, ta copie de la clé privée/passphrase est en cause :
+reprends-la depuis le gestionnaire de mots de passe.
 
 ## État actuel
 - ✅ Backups locaux : DB + `.env` + **MinIO** (documents), restaurables, script durci

@@ -17,6 +17,15 @@
 > l'affichage correspond à « ✅ ce que tu dois voir », et si ça casse, applique
 > « ❌ si ça échoue ». Ne saute aucune étape, même celles qui semblent évidentes.
 
+> ## 🔴 RÈGLE DE SÉCURITÉ ABSOLUE — ne JAMAIS afficher le contenu d'un secret
+> Ce test déchiffre un fichier `env.backup` qui contient, **par construction, TOUS les
+> secrets du système en clair** (mot de passe de la base, `JWT_SECRET`, clés MinIO, SMTP…).
+> **On vérifie qu'un fichier existe et qu'une ligne est présente — JAMAIS ce qu'elle
+> contient.** N'utilise aucune commande qui affiche le contenu d'`env.backup` (`Get-Content`,
+> `cat`, `type`, `Select-String` **sans** `.Count`). Un secret affiché à l'écran est un
+> secret **fuité** (copier-coller, journal PowerShell, capture). Les commandes de ce guide
+> sont écrites pour ne rien révéler ; ne les modifie pas pour « voir le contenu ».
+
 ---
 
 ## AVANT DE COMMENCER — ouvre PowerShell
@@ -263,11 +272,12 @@ C'est un dump PostgreSQL au format « custom ». Deux niveaux de preuve :
 3. Les outils sont dans `C:\Program Files\PostgreSQL\<version>\bin\`. Liste le
    contenu du dump (adapte le numéro de version au tien) :
 ```powershell
-& "C:\Program Files\PostgreSQL\17\bin\pg_restore.exe" -l db.backup | Select-String -Pattern "clients|documents|folders|TABLE"
+# Compte les tables métier attendues SANS dérouler tout le schéma (présence, pas contenu).
+(& "C:\Program Files\PostgreSQL\17\bin\pg_restore.exe" -l db.backup | Select-String -Pattern "TABLE DATA public (clients|documents|folders)").Count
 ```
-✅ **Ce que tu dois voir :** des lignes listant des tables, dont **`clients`**,
-**`documents`**, **`folders`** (parmi d'autres `TABLE DATA …`). **C'est LA preuve
-que la base est récupérable.**
+✅ **Ce que tu dois voir :** **`3`** (les 3 tables métier `clients`, `documents`,
+`folders` sont présentes dans le dump). **C'est LA preuve que la base est récupérable.**
+*(On ne liste pas tout le contenu du dump : on confirme la présence, pas les données.)*
 
 **Preuve MINIMALE (si tu ne peux pas installer PostgreSQL maintenant) —**
 vérifier que le fichier est bien un dump PostgreSQL intègre (il commence par la
@@ -288,13 +298,14 @@ préférable dès que tu peux installer les outils.)*
 ### 5.2 — Les documents (`minio.tar.gz`)
 
 `tar` est intégré à Windows 10/11 — rien à installer.
+> ⚠️ **N'affiche pas la liste des fichiers** : les chemins révèlent des **noms de
+> documents clients** (confidentialité avocat). On compte, on ne déroule pas.
 ```powershell
-tar -tzf minio.tar.gz | Select-Object -First 20
-tar -tzf minio.tar.gz | Measure-Object -Line
+# Nombre d'entrées sous minio/ SANS afficher les chemins (noms de fichiers clients).
+(tar -tzf minio.tar.gz | Select-String "^minio/").Count
 ```
-✅ **Ce que tu dois voir :** une liste de chemins **commençant par `minio/`**
-(dossiers/fichiers des documents stockés), et un **nombre de lignes > 0** (souvent
-des centaines/milliers). C'est la preuve que les actes et pièces sont là.
+✅ **Ce que tu dois voir :** un **nombre > 0** (souvent des centaines/milliers) : la
+preuve que les actes et pièces sont dans l'archive — sans exposer aucun nom de fichier.
 ❌ **Si `tar: Error opening archive` :** l'archive est corrompue ou le déchiffrement
 a raté → refais l'ÉTAPE 4 pour `minio`.
 ❌ **Si `tar n'est pas reconnu` (vieux Windows) :** installe **7-Zip**
@@ -303,13 +314,23 @@ a raté → refais l'ÉTAPE 4 pour `minio`.
 
 ### 5.3 — Les secrets (`env.backup`)
 
+> 🔴 **NE JAMAIS afficher le contenu de `env.backup`.** Ce fichier déchiffré contient,
+> **par construction, TOUS les secrets du système en clair** : `DATABASE_URL` (avec le
+> mot de passe PostgreSQL), `JWT_SECRET`, les clés MinIO, les identifiants SMTP…
+> L'afficher — **même une seule ligne, même « juste pour vérifier »** — les expose
+> (copier-coller hors du terminal, journal PowerShell, capture d'écran). Une commande
+> qui afficherait `DATABASE_URL=...` **révélerait le mot de passe**.
+> **On vérifie la PRÉSENCE d'une ligne, JAMAIS son contenu.**
+
 ```powershell
-Select-String -Path env.backup -Pattern "DATABASE_URL|MINIO|JWT" | Select-Object -First 5
+# Compte les lignes DATABASE_URL SANS jamais les afficher → le mot de passe n'apparaît pas.
+(Select-String -Path env.backup -Pattern "DATABASE_URL").Count
 ```
-✅ **Ce que tu dois voir :** au moins une ligne **`DATABASE_URL=...`** (et
-probablement des variables MinIO/JWT). C'est du texte lisible.
-❌ **Si le fichier est illisible / vide :** déchiffrement raté → refais l'ÉTAPE 4
+✅ **Ce que tu dois voir :** **`1`** (la variable est présente). Aucun secret à l'écran.
+❌ **Si `0` :** le fichier est vide / illisible → déchiffrement raté, refais l'ÉTAPE 4
 pour `env`.
+⚠️ **Si tu as affiché le contenu par erreur** (une ligne `DATABASE_URL=…` visible à
+l'écran) : considère le mot de passe **compromis** et préviens l'admin pour rotation.
 
 ---
 
@@ -317,17 +338,17 @@ pour `env`.
 
 > ### ✅ Le test est RÉUSSI si, et seulement si, LES TROIS conditions suivantes sont vraies :
 >
-> 1. **Base** — `pg_restore -l db.backup` liste les tables **`clients`,
->    `documents`, `folders`** (preuve forte).
->    *À défaut d'outils PostgreSQL :* `db.backup` commence par **`PGDMP`** et pèse
->    ~200 Ko (preuve minimale acceptable en dépannage).
-> 2. **Documents** — `tar -tzf minio.tar.gz` liste des chemins sous **`minio/`**,
->    en nombre **> 0**.
-> 3. **Secrets** — `env.backup` contient une ligne **`DATABASE_URL=`** lisible.
+> 1. **Base** — le compte des tables métier (`clients`/`documents`/`folders`) = **`3`**
+>    (preuve forte). *À défaut d'outils PostgreSQL :* `db.backup` commence par **`PGDMP`**
+>    et pèse ~200 Ko (preuve minimale acceptable en dépannage).
+> 2. **Documents** — le compte des entrées sous **`minio/`** est **> 0**.
+> 3. **Secrets** — le compte des lignes `DATABASE_URL` dans `env.backup` = **`1`**
+>    (PRÉSENCE vérifiée **sans jamais afficher la valeur** — cf. règle en 5.3).
 >
 > **Si les 3 sont vertes → le hors-site protège réellement du sinistre : depuis ta
 > seule machine, sans le serveur, tu as reconstitué une base restaurable, les
-> documents, et les secrets.** Note la date de réussite (voir ci-dessous).
+> documents, et les secrets — sans qu'aucun secret n'ait été affiché.** Note la date
+> de réussite (voir ci-dessous).
 >
 > **Si UNE seule échoue → le test est ÉCHOUÉ.** N'écris pas « ça marche ». La cause
 > est presque toujours ta **copie de la clé privée / passphrase** (reprends-la
