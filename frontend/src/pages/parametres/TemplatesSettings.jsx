@@ -303,7 +303,7 @@ function CreateTemplateModal({ onClose, onCreate }) {
               <select value={category} onChange={e => setCategory(e.target.value)} className="ts-input">
                 <option value="contrats">Contrats</option>
                 <option value="courriers">Courriers</option>
-                <option value="actes_procedure">Actes de procedure</option>
+                <option value="actes_procedure">Actes de procédure</option>
                 <option value="conclusions">Conclusions</option>
                 <option value="droit_societes">Droit des societes</option>
                 <option value="divers">Divers</option>

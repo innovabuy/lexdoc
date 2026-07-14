@@ -463,15 +463,26 @@ export default function ClientDetailPage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!window.confirm('Supprimer ce client ? Cette action est irréversible.')) return;
-    if (!window.confirm('Confirmez-vous la suppression définitive ?')) return;
+  // GO-LIVE-6 (post-contre-recette) — la suppression d'un client LIÉ était un cul-de-sac :
+  // le back renvoie 400 (« a N dossier(s)… »), l'UI affichait juste une erreur sans issue, et
+  // le double window.confirm natif pouvait être bloqué par le navigateur (perçu comme « figé »).
+  // → un seul dialogue, puis proposition de CASCADE explicite (force=true) comme pour les dossiers.
+  const handleDelete = async (force = false) => {
+    if (!force && !window.confirm('Supprimer ce client ? Cette action est irréversible.')) return;
     try {
-      await deleteClient(id);
+      await deleteClient(id, force);
       toast.success('Client supprimé');
       navigate('/clients');
     } catch (err) {
-      toast.error(err.response?.data?.error?.message || 'Erreur lors de la suppression');
+      const status = err.response?.status;
+      const msg = err.response?.data?.error?.message || 'Erreur lors de la suppression';
+      if (status === 400 && /dossier|force=true/i.test(msg)) {
+        if (window.confirm(`${msg}\n\nSupprimer le client ET tous ses dossiers et documents ? Action irréversible.`)) {
+          return handleDelete(true);
+        }
+        return;
+      }
+      toast.error(msg);
     }
   };
 
@@ -506,7 +517,7 @@ export default function ClientDetailPage() {
             <h1 className="detail-header-name">{clientName}</h1>
             <span className="detail-header-meta">
               {client.type === 'INDIVIDUAL' ? 'PP' : 'PM'}
-              {client.email && <> &middot; {client.email}</>}
+              {client.email && <> · {client.email}</>}
             </span>
           </div>
 

@@ -120,7 +120,7 @@ export default function MissingFieldsModal({
               className="fdp-btn fdp-btn-primary"
               disabled={loading}
             >
-              {loading ? 'Generation...' : 'Completer et generer'}
+              {loading ? 'Génération...' : 'Compléter et générer'}
             </button>
           </div>
         </form>

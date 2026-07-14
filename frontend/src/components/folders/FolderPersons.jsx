@@ -3,15 +3,19 @@ import { AuthContext } from '../../contexts/AuthContext';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
+// GO-LIVE-6 (post-contre-recette) — liste ALIGNÉE sur l'enum PersonRole et sur le wizard
+// de création (POSTULANT était absent ici → une partie créée « Postulant » ne pouvait plus
+// être éditée comme telle). Ordre identique au wizard.
 const PERSON_ROLES = [
   { value: 'PARTIE_ADVERSE', label: 'Partie adverse' },
   { value: 'AVOCAT_ADVERSE', label: 'Avocat adverse' },
+  { value: 'POSTULANT', label: 'Postulant' },
+  { value: 'CO_DEBITEUR', label: 'Co-débiteur' },
   { value: 'TEMOIN', label: 'Témoin' },
   { value: 'EXPERT', label: 'Expert' },
   { value: 'NOTAIRE', label: 'Notaire' },
   { value: 'HUISSIER', label: 'Huissier' },
   { value: 'MEDIATEUR', label: 'Médiateur' },
-  { value: 'CO_DEBITEUR', label: 'Co-débiteur' },
   { value: 'AUTRE', label: 'Autre' },
 ];
 
@@ -442,7 +446,7 @@ export default function FolderPersons({ folderId }) {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nom *
+                    Nom {form.type === 'PHYSIQUE' ? '*' : '(contact)'}
                   </label>
                   <input
                     type="text"
@@ -450,7 +454,7 @@ export default function FolderPersons({ folderId }) {
                     onChange={(e) => setForm({ ...form, lastName: e.target.value })}
                     className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                     placeholder="Nom"
-                    required
+                    required={form.type === 'PHYSIQUE'}
                   />
                 </div>
               </div>

@@ -108,16 +108,22 @@ function calculateCompleteness(client) {
       }
     }
 
-    const filledCount = sectionFields.filter(
-      (f) => client[f.key] != null && client[f.key] !== ''
-    ).length;
-    const sectionPercent = sectionFields.length > 0 ? filledCount / sectionFields.length : 1;
+    // GO-LIVE-6 M5 (post-contre-recette) — le POURCENTAGE ne compte que les champs
+    // CRITIQUES. Une fiche dont tous les champs obligatoires sont remplis atteint 100 %.
+    // Les champs optionnels (téléphone, objet social, filiation…) sont des bonus : ils
+    // n'empêchent JAMAIS d'atteindre 100 % et ne génèrent pas d'alerte « champ manquant ».
+    const isFilled = (f) => client[f.key] != null && client[f.key] !== '';
+    const criticalFields = sectionFields.filter((f) => f.critical);
+    const filledCritical = criticalFields.filter(isFilled).length;
+    // Une section sans champ critique (ex. filiation) est considérée complète (rien d'obligatoire).
+    const sectionPercent = criticalFields.length > 0 ? filledCritical / criticalFields.length : 1;
 
     totalWeight += config.weight;
     filledWeight += config.weight * sectionPercent;
 
-    sectionFields
-      .filter((f) => !client[f.key] || client[f.key] === '')
+    // « manquants » = uniquement les champs critiques non remplis.
+    criticalFields
+      .filter((f) => !isFilled(f))
       .forEach((f) => {
         missing.push({ ...f, section });
       });

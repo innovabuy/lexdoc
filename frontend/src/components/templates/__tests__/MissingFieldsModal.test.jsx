@@ -14,7 +14,7 @@ describe('MissingFieldsModal (M2 — feedback au lieu de no-op)', () => {
   it('affiche un message listant les champs manquants au clic, sans soumettre', () => {
     const onSubmit = vi.fn();
     render(<MissingFieldsModal fields={fields} templateName="Assignation" onSubmit={onSubmit} onClose={() => {}} loading={false} />);
-    fireEvent.click(screen.getByText('Completer et generer'));
+    fireEvent.click(screen.getByText('Compléter et générer'));
     expect(onSubmit).not.toHaveBeenCalled();
     // le message-résumé liste le champ manquant (et pas le champ déjà rempli)
     expect(screen.getByText(/manquant\(s\).*Montant article 700/i)).toBeInTheDocument();
@@ -25,13 +25,13 @@ describe('MissingFieldsModal (M2 — feedback au lieu de no-op)', () => {
     const onSubmit = vi.fn();
     render(<MissingFieldsModal fields={fields} templateName="Assignation" onSubmit={onSubmit} onClose={() => {}} loading={false} />);
     fireEvent.change(screen.getByPlaceholderText('Montant article 700'), { target: { value: '2500' } });
-    fireEvent.click(screen.getByText('Completer et generer'));
+    fireEvent.click(screen.getByText('Compléter et générer'));
     expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ 'dossier.montant_article_700': '2500' }));
   });
 
   it('le bouton n\'est plus désactivé par la validation (cliquable pour obtenir le feedback)', () => {
     render(<MissingFieldsModal fields={fields} templateName="X" onSubmit={() => {}} onClose={() => {}} loading={false} />);
-    expect(screen.getByText('Completer et generer')).not.toBeDisabled();
+    expect(screen.getByText('Compléter et générer')).not.toBeDisabled();
   });
 });

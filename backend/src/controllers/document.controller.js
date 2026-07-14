@@ -115,11 +115,21 @@ const create = async (req, res, next) => {
     // validant contre les catégories du dossier.
     let docCategoryId = null;
     if (category) {
-      const cat = await prisma.folderDocCategory.findFirst({
+      let cat = await prisma.folderDocCategory.findFirst({
         where: { folderId, OR: [{ id: String(category) }, { name: String(category) }] },
         select: { id: true },
       });
-      docCategoryId = cat?.id || null;
+      // GO-LIVE-6 M6 (post-contre-recette) — si l'utilisateur choisit une catégorie
+      // PRÉDÉFINIE que le dossier n'a pas encore (dossiers créés hors wizard = 0 catégorie),
+      // on la crée à la volée pour que le document soit RÉELLEMENT classé (sinon « Non classé »).
+      // Le front n'envoie qu'un id réel (toujours trouvé) OU un nom prédéfini (créé ici).
+      if (!cat) {
+        cat = await prisma.folderDocCategory.create({
+          data: { folderId, name: String(category), ordre: 0 },
+          select: { id: true },
+        });
+      }
+      docCategoryId = cat.id;
     }
 
     // Generate object key

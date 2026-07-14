@@ -86,9 +86,16 @@ function getClientName(folder) {
   return `${folder.client.firstName || ''} ${folder.client.lastName || ''}`.trim() || 'Sans nom';
 }
 
+// GO-LIVE-6 (post-contre-recette) — map d'accents pour les natures d'enum affichées dans
+// l'arbre (« refere » sortait « Refere »). Fallback : capitalise + remplace _ par espace.
+const NATURE_LABELS = {
+  refere: 'Référé', cession: 'Cession', bail: 'Bail', recouvrement: 'Recouvrement',
+  divorce: 'Divorce', succession: 'Succession', licenciement: 'Licenciement',
+  injonction: 'Injonction de payer', assignation: 'Assignation',
+};
 function getNatureLabel(nature) {
   if (!nature) return 'Non classifié';
-  return nature.charAt(0).toUpperCase() + nature.slice(1).replace(/_/g, ' ');
+  return NATURE_LABELS[nature] || (nature.charAt(0).toUpperCase() + nature.slice(1).replace(/[_-]/g, ' '));
 }
 
 function getMonthYear(dateStr) {

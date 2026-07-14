@@ -33,6 +33,10 @@ const NATURE_LABELS = {
 };
 const natureLabel = (n) => NATURE_LABELS[n] || (n ? n.charAt(0).toUpperCase() + n.slice(1).replace(/[_-]/g, ' ') : n);
 
+// GO-LIVE-6 M6 (post-contre-recette) — catégories PRÉDÉFINIES toujours proposées à l'upload,
+// même pour un dossier sans catégorie (créé hors wizard). Le back crée à la volée si besoin.
+const PREDEFINED_DOC_CATEGORIES = ['Actes de procédure', 'Conclusions', 'Correspondances', 'Pièces', 'Décisions'];
+
 /* ── Constants ── */
 const statusLabels = {
   OPEN: 'Ouvert', IN_PROGRESS: 'En cours', PENDING: 'En attente',
@@ -325,8 +329,9 @@ export default function FolderDetailPage() {
       navigate('/dossiers');
     } catch (e) {
       const msg = e.response?.data?.error?.message || '';
-      // C2 : le dossier a des documents → proposer la cascade explicite
-      if (e.response?.status === 400 && /force=true|document/i.test(msg)) {
+      const code = e.response?.data?.error?.code;
+      // C2 : le dossier a des documents → proposer la cascade explicite (détecté par CODE, pas par texte)
+      if (e.response?.status === 400 && (code === 'FOLDER_NOT_EMPTY' || /document/i.test(msg))) {
         setConfirm({
           title: 'Ce dossier contient des documents',
           message: `${msg}\n\nSupprimer le dossier ET tous ses documents ? Cette action est irréversible pour le dossier.`,
@@ -838,8 +843,9 @@ function InfoTab({ folder, editField, editValue, setEditField, setEditValue, han
         </div>
       )}
 
-      {/* Nature for contracts */}
-      {folder.type === 'CONTRACT' && folder.nature && (
+      {/* GO-LIVE-6 (post-contre-recette) — nature affichée pour TOUS les types (via natureLabel),
+          pas seulement CONTRACT : un référé (LITIGATION) montre « Référé » sur sa page détail. */}
+      {folder.nature && (
         <div className="fdp-info-section">
           <h3 className="fdp-section-title">Informations juridiques</h3>
           <div className="fdp-info-fields">
@@ -976,10 +982,10 @@ function DocumentsTab({
             <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
           </svg>
           <h4>Aucun document</h4>
-          <p>Televersez votre premier document ou creez-en un depuis un template</p>
+          <p>Téléversez votre premier document ou créez-en un depuis un template</p>
           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
             <button onClick={onCreateFromTemplate} className="fdp-btn fdp-btn-secondary">
-              Creer depuis un template
+              Créer depuis un template
             </button>
             <button onClick={onUpload} className="fdp-btn fdp-btn-primary">Importer un document</button>
           </div>
@@ -1115,8 +1121,8 @@ function DocumentRow({ doc, onPreview, onDownload, onToggleExtranet, onSendForSi
       <div className="fdp-doc-info">
         <span className="fdp-doc-name">{doc.name}</span>
         <span className="fdp-doc-meta">
-          {formatSize(doc.size)} &middot; {relativeTime(doc.createdAt)}
-          {doc.createdBy && ` &middot; ${doc.createdBy.firstName || ''} ${doc.createdBy.lastName || ''}`}
+          {formatSize(doc.size)} · {relativeTime(doc.createdAt)}
+          {doc.createdBy && ` · ${doc.createdBy.firstName || ''} ${doc.createdBy.lastName || ''}`}
         </span>
       </div>
       <div className="fdp-doc-badges">
@@ -1622,21 +1628,25 @@ function UploadModal({ folderId, categories, onClose, onSuccess, onError }) {
                 className="fdp-input"
               />
             </div>
-            {categories.length > 0 && (
-              <div className="fdp-field">
-                <label>Catégorie</label>
-                <select
-                  value={uploadCategory}
-                  onChange={(e) => setUploadCategory(e.target.value)}
-                  className="fdp-input"
-                >
-                  <option value="">Non classé</option>
-                  {categories.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
+            <div className="fdp-field">
+              <label>Catégorie</label>
+              <select
+                value={uploadCategory}
+                onChange={(e) => setUploadCategory(e.target.value)}
+                className="fdp-input"
+              >
+                <option value="">Non classé</option>
+                {categories.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+                {/* Prédéfinies non déjà présentes (valeur = nom → le back les crée à la volée) */}
+                {PREDEFINED_DOC_CATEGORIES
+                  .filter(name => !categories.some(c => c.name === name))
+                  .map(name => (
+                    <option key={name} value={name}>{name}</option>
                   ))}
-                </select>
-              </div>
-            )}
+              </select>
+            </div>
           </div>
         </div>
         <div className="fdp-modal-footer">

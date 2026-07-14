@@ -49,8 +49,8 @@ export async function archiveClient(id) {
   return data.data;
 }
 
-export async function deleteClient(id) {
-  await api.delete(`/clients/${id}`);
+export async function deleteClient(id, force = false) {
+  await api.delete(`/clients/${id}${force ? '?force=true' : ''}`);
 }
 
 export async function inviteExtranet(id) {

@@ -13,7 +13,7 @@ export default function RegisteredMailModal({ document, folderPersons, type: ini
   // Auto-select first person with address
   useEffect(() => {
     if (folderPersons?.length > 0) {
-      const withAddr = folderPersons.find(p => p.address && p.city && p.postalCode);
+      const withAddr = folderPersons.find(p => p.address && p.address.trim());
       if (withAddr) setRecipientId(withAddr.id);
     }
   }, [folderPersons]);
@@ -110,13 +110,15 @@ export default function RegisteredMailModal({ document, folderPersons, type: ini
               onChange={e => setRecipientId(e.target.value)}
               className="rm-input rm-select"
             >
-              <option value="">Selectionner un destinataire</option>
+              <option value="">Sélectionner un destinataire</option>
               {(folderPersons || []).map(p => {
                 const name = `${p.firstName || ''} ${p.lastName || ''}`.trim() || p.company || 'Sans nom';
-                const hasAddr = p.address && p.city && p.postalCode;
+                // GO-LIVE-6 M1 (post-contre-recette) — l'adresse est un champ LIBRE : on exige
+                // seulement qu'elle soit renseignée (pas une adresse structurée ville+CP).
+                const hasAddr = !!(p.address && p.address.trim());
                 return (
                   <option key={p.id} value={p.id} disabled={!hasAddr}>
-                    {name}{!hasAddr ? ' (adresse incomplete)' : ''}
+                    {name}{!hasAddr ? ' (adresse incomplète)' : ''}
                   </option>
                 );
               })}

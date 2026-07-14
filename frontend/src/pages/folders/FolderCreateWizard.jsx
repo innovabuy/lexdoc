@@ -500,11 +500,17 @@ function StepInfos({ folderType, procedure, nature, infos, parties, selectedClie
                       value={partie.role}
                       onChange={(e) => updateParty(idx, 'role', e.target.value)}
                     >
+                      {/* GO-LIVE-6 (post-contre-recette) — liste alignée sur l'édition (FolderPersons) */}
                       <option value="PARTIE_ADVERSE">Partie adverse</option>
+                      <option value="AVOCAT_ADVERSE">Avocat adverse</option>
                       <option value="POSTULANT">Postulant</option>
+                      <option value="CO_DEBITEUR">Co-débiteur</option>
                       <option value="TEMOIN">Témoin</option>
                       <option value="EXPERT">Expert</option>
-                      <option value="CO_DEBITEUR">Co-débiteur</option>
+                      <option value="NOTAIRE">Notaire</option>
+                      <option value="HUISSIER">Huissier</option>
+                      <option value="MEDIATEUR">Médiateur</option>
+                      <option value="AUTRE">Autre</option>
                     </select>
                     <button type="button" className="wz-btn-ghost wz-btn-ghost--danger" onClick={() => removeParty(idx)}>
                       <Trash2 size={16} />

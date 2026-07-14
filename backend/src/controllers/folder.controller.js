@@ -400,8 +400,11 @@ const deleteFolder = async (req, res, next) => {
     // Check if folder has documents or subfolders
     if (folder._count.documents > 0 || folder._count.children > 0) {
       if (force !== 'true') {
+        // GO-LIVE-6 (post-contre-recette) — message en FRANÇAIS, sans jargon d'API (« force=true »).
+        // Le front détecte la cascade via le code FOLDER_NOT_EMPTY (pas via le texte).
         throw new BadRequestError(
-          `Folder contains ${folder._count.documents} documents and ${folder._count.children} subfolders. Use force=true to delete.`
+          `Ce dossier contient ${folder._count.documents} document(s) et ${folder._count.children} sous-dossier(s).`,
+          'FOLDER_NOT_EMPTY'
         );
       }
 

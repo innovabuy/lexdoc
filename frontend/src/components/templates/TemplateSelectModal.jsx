@@ -4,7 +4,7 @@ import { getTemplates } from '../../services/foldersApi';
 const categoryLabels = {
   contrats: 'Contrats',
   courriers: 'Courriers',
-  actes_procedure: 'Actes de procedure',
+  actes_procedure: 'Actes de procédure',
   conclusions: 'Conclusions',
   divers: 'Divers',
 };
@@ -80,7 +80,7 @@ export default function TemplateSelectModal({ onSelect, onClose, folderType }) {
     <div className="fdp-modal-overlay" onClick={onClose}>
       <div className="fdp-modal tpl-modal" onClick={e => e.stopPropagation()}>
         <div className="fdp-modal-header">
-          <h2>Creer depuis un template</h2>
+          <h2>Créer depuis un template</h2>
           <button onClick={onClose} className="fdp-modal-close">&times;</button>
         </div>
 
