@@ -58,16 +58,46 @@ const COMPLETENESS_FIELDS = {
   },
 };
 
+// GO-LIVE-6 M5 — complétude d'une PERSONNE MORALE : on compte les champs SOCIÉTÉ
+// (alignés sur le garde-fou art. 648), pas les champs personne physique (civilité,
+// naissance, filiation) qui affichaient « 10% / 15 champs manquants » sur une fiche
+// PM pourtant complète.
+const COMPANY_COMPLETENESS_FIELDS = {
+  identity: {
+    weight: 70,
+    fields: [
+      { key: 'companyName', label: 'Raison sociale', critical: true },
+      { key: 'formeSociale', label: 'Forme sociale', critical: true },
+      { key: 'capital', label: 'Capital social', critical: true },
+      { key: 'siege', label: 'Siège social', critical: true },
+      { key: 'villeImmatriculation', label: "Ville d'immatriculation", critical: true },
+      { key: 'numeroImmatriculation', label: 'N° RCS / immatriculation', critical: true },
+      { key: 'objetSocial', label: 'Objet social', critical: false },
+    ],
+  },
+  contact: {
+    weight: 30,
+    fields: [
+      { key: 'email', label: 'Email', critical: true },
+      { key: 'phone', label: 'Téléphone', critical: false },
+    ],
+  },
+};
+
 function calculateCompleteness(client) {
   let totalWeight = 0;
   let filledWeight = 0;
   const missing = [];
 
-  for (const [section, config] of Object.entries(COMPLETENESS_FIELDS)) {
+  // GO-LIVE-6 M5 — le référentiel de complétude DÉPEND DU TYPE.
+  const isCompany = client.type === 'COMPANY' || client.type === 'ASSOCIATION';
+  const referential = isCompany ? COMPANY_COMPLETENESS_FIELDS : COMPLETENESS_FIELDS;
+
+  for (const [section, config] of Object.entries(referential)) {
     const sectionFields = [...config.fields];
 
-    // Add conditional family fields if married/pacsed
-    if (section === 'family' && client.situationFamiliale) {
+    // Champs conjoint conditionnels — uniquement pour une personne physique.
+    if (!isCompany && section === 'family' && client.situationFamiliale) {
       const s = client.situationFamiliale.toLowerCase();
       if (s === 'marie' || s === 'marié' || s === 'pacse' || s === 'pacsé') {
         sectionFields.push(

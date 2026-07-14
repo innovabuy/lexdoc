@@ -719,16 +719,24 @@ const createWizard = async (req, res, next) => {
         });
         if (!clientRecord) throw new NotFoundError('Client not found');
       } else {
-        clientRecord = await tx.client.create({
-          data: {
-            tenantId: req.tenant.id,
-            type: client.type || 'INDIVIDUAL',
-            lastName: client.lastName || '',
-            firstName: client.firstName || null,
-            companyName: client.companyName || null,
-            email: client.email || null,
-          },
-        });
+        // GO-LIVE-6 — déduplication : si un client avec le même email existe déjà dans
+        // le cabinet, on le RÉUTILISE au lieu d'en créer un doublon silencieux (Bienaimé
+        // recréerait un client existant sans s'en apercevoir).
+        clientRecord = client.email
+          ? await tx.client.findFirst({ where: { email: client.email, tenantId: req.tenant.id, deletedAt: null } })
+          : null;
+        if (!clientRecord) {
+          clientRecord = await tx.client.create({
+            data: {
+              tenantId: req.tenant.id,
+              type: client.type || 'INDIVIDUAL',
+              lastName: client.lastName || '',
+              firstName: client.firstName || null,
+              companyName: client.companyName || null,
+              email: client.email || null,
+            },
+          });
+        }
       }
 
       // 2. Generate reference

@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useContext } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useToast } from '../../contexts/ToastContext';
+import { AuthContext } from '../../contexts/AuthContext';
+import ConfirmModal from '../../components/common/ConfirmModal';
 import api from '../../services/api';
 import {
   getFolderDocuments,
@@ -116,6 +118,11 @@ export default function FolderDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { success, error: showError } = useToast();
+  // GO-LIVE-6 M4 — le destructif (suppression) est réservé à l'ADMIN (cf. C5). On CACHE
+  // le bouton pour un non-ADMIN (pas un bouton qui renverrait 403).
+  const { user } = useContext(AuthContext);
+  const isAdmin = user?.role === 'ADMIN';
+  const [confirm, setConfirm] = useState(null); // { title, message, confirmLabel, danger, loading, onConfirm }
 
   const [folder, setFolder] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -275,6 +282,64 @@ export default function FolderDetailPage() {
       showError('Erreur de telechargement');
     }
     setContextMenu(null);
+  };
+
+  // GO-LIVE-6 M4 — suppression de document (ADMIN). Confirmation applicative.
+  const handleDeleteDocument = (doc) => {
+    setConfirm({
+      title: 'Supprimer le document',
+      message: `« ${doc.name} » sera déplacé dans la corbeille.\nCette action reste réversible depuis la corbeille.`,
+      confirmLabel: 'Supprimer',
+      danger: true,
+      onConfirm: async () => {
+        setConfirm((c) => ({ ...c, loading: true }));
+        try {
+          await api.delete(`/documents/${doc.id}`);
+          success('Document supprimé');
+          setConfirm(null);
+          fetchDocs();
+        } catch (e) {
+          showError(e.response?.data?.error?.message || 'Suppression impossible');
+          setConfirm(null);
+        }
+      },
+    });
+  };
+
+  // GO-LIVE-6 M4 — suppression de dossier (ADMIN). C2 : bloqué s'il a des documents,
+  // sauf force=true → on explique et on propose la cascade explicitement.
+  const doDeleteFolder = async (force) => {
+    setConfirm((c) => ({ ...c, loading: true }));
+    try {
+      await api.delete(`/folders/${id}${force ? '?force=true' : ''}`);
+      success('Dossier supprimé');
+      setConfirm(null);
+      navigate('/dossiers');
+    } catch (e) {
+      const msg = e.response?.data?.error?.message || '';
+      // C2 : le dossier a des documents → proposer la cascade explicite
+      if (e.response?.status === 400 && /force=true|document/i.test(msg)) {
+        setConfirm({
+          title: 'Ce dossier contient des documents',
+          message: `${msg}\n\nSupprimer le dossier ET tous ses documents ? Cette action est irréversible pour le dossier.`,
+          confirmLabel: 'Tout supprimer',
+          danger: true,
+          onConfirm: () => doDeleteFolder(true),
+        });
+      } else {
+        showError(msg || 'Suppression impossible');
+        setConfirm(null);
+      }
+    }
+  };
+  const handleDeleteFolder = () => {
+    setConfirm({
+      title: 'Supprimer le dossier',
+      message: `Le dossier « ${folder?.title || ''} » sera supprimé.`,
+      confirmLabel: 'Supprimer',
+      danger: true,
+      onConfirm: () => doDeleteFolder(false),
+    });
   };
 
   const handleAddCategory = async () => {
@@ -441,6 +506,12 @@ export default function FolderDetailPage() {
           <button onClick={() => navigate('/dossiers')} className="fdp-btn fdp-btn-secondary">
             Retour
           </button>
+          {/* GO-LIVE-6 M4 — suppression du dossier, visible pour l'ADMIN uniquement */}
+          {isAdmin && (
+            <button onClick={handleDeleteFolder} className="fdp-btn fdp-btn-secondary" style={{ color: '#dc2626', borderColor: '#fecaca' }}>
+              Supprimer le dossier
+            </button>
+          )}
         </div>
       </div>
 
@@ -502,6 +573,8 @@ export default function FolderDetailPage() {
               onSendRegistered={(doc, type) => { setRegisteredMailDoc(doc); setRegisteredMailType(type || 'LRAR'); }}
               onDuplicate={handleDuplicate}
               onEditMeta={(doc) => setEditMetaDoc(doc)}
+              onDelete={handleDeleteDocument}
+              isAdmin={isAdmin}
               contextMenu={contextMenu}
               setContextMenu={setContextMenu}
               showNewCat={showNewCat}
@@ -618,6 +691,18 @@ export default function FolderDetailPage() {
           onError={(msg) => showError(msg)}
         />
       )}
+
+      {/* GO-LIVE-6 M4 — confirmation de suppression (document / dossier) */}
+      <ConfirmModal
+        open={!!confirm}
+        title={confirm?.title}
+        message={confirm?.message}
+        confirmLabel={confirm?.confirmLabel}
+        danger={confirm?.danger}
+        loading={confirm?.loading}
+        onConfirm={confirm?.onConfirm}
+        onCancel={() => setConfirm(null)}
+      />
 
       {/* Click away for context menu / status menu */}
       {(contextMenu || showStatusMenu) && (
@@ -819,7 +904,7 @@ function InfoTab({ folder, editField, editValue, setEditField, setEditValue, han
 function DocumentsTab({
   docData, loading, expandedCats, setExpandedCats,
   onToggleExtranet, onDownload, onPreview, onUpload, onCreateFromTemplate,
-  onSendForSignature, onSendRegistered, onDuplicate, onEditMeta,
+  onSendForSignature, onSendRegistered, onDuplicate, onEditMeta, onDelete, isAdmin,
   contextMenu, setContextMenu,
   showNewCat, setShowNewCat, newCatName, setNewCatName, onAddCategory,
 }) {
@@ -934,6 +1019,8 @@ function DocumentsTab({
                             onSendRegistered={onSendRegistered}
                             onDuplicate={onDuplicate}
                             onEditMeta={onEditMeta}
+                            onDelete={onDelete}
+                            isAdmin={isAdmin}
                             contextMenu={contextMenu}
                             setContextMenu={setContextMenu}
                           />
@@ -987,6 +1074,8 @@ function DocumentsTab({
                         onSendRegistered={onSendRegistered}
                         onDuplicate={onDuplicate}
                         onEditMeta={onEditMeta}
+                        onDelete={onDelete}
+                        isAdmin={isAdmin}
                         contextMenu={contextMenu}
                         setContextMenu={setContextMenu}
                       />
@@ -1003,7 +1092,7 @@ function DocumentsTab({
 }
 
 /* ── Document Row ── */
-function DocumentRow({ doc, onPreview, onDownload, onToggleExtranet, onSendForSignature, onSendRegistered, onDuplicate, onEditMeta, contextMenu, setContextMenu }) {
+function DocumentRow({ doc, onPreview, onDownload, onToggleExtranet, onSendForSignature, onSendRegistered, onDuplicate, onEditMeta, onDelete, isAdmin, contextMenu, setContextMenu }) {
   const iconType = getDocIcon(doc.mimeType);
   const iconColors = {
     pdf: '#EF4444', word: '#2563EB', excel: '#16A34A', image: '#8B5CF6', doc: '#6B7280',
@@ -1079,6 +1168,13 @@ function DocumentRow({ doc, onPreview, onDownload, onToggleExtranet, onSendForSi
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                   Envoyer en LR simple
                 </button>
+                {/* GO-LIVE-6 M4 — suppression visible pour l'ADMIN uniquement */}
+                {isAdmin && (
+                  <button className="fdp-ctx-item" style={{ color: '#dc2626' }} onClick={() => { setShowMenu(false); onDelete(doc); }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                    Supprimer
+                  </button>
+                )}
               </div>
               <div className="fdp-ctx-backdrop" onClick={() => setShowMenu(false)} />
             </>
@@ -1528,7 +1624,7 @@ function UploadModal({ folderId, categories, onClose, onSuccess, onError }) {
                 >
                   <option value="">Non classe</option>
                   {categories.map(c => (
-                    <option key={c.id} value={c.name}>{c.name}</option>
+                    <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>
               </div>

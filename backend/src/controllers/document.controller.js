@@ -96,7 +96,7 @@ const create = async (req, res, next) => {
       throw new BadRequestError(`Type de fichier non autorisé. Formats acceptés : ${ALLOWED_LABEL}.`);
     }
 
-    const { folderId, name, type, description, tags } = req.body;
+    const { folderId, name, type, description, tags, category } = req.body;
 
     if (!folderId) {
       throw new BadRequestError('Folder ID is required');
@@ -108,6 +108,18 @@ const create = async (req, res, next) => {
     });
     if (!folder) {
       throw new NotFoundError('Folder not found');
+    }
+
+    // GO-LIVE-6 M6 — la catégorie envoyée à l'upload était IGNORÉE (le document tombait
+    // en « Non classé »). On la résout ici (par id OU par nom) vers docCategoryId, en la
+    // validant contre les catégories du dossier.
+    let docCategoryId = null;
+    if (category) {
+      const cat = await prisma.folderDocCategory.findFirst({
+        where: { folderId, OR: [{ id: String(category) }, { name: String(category) }] },
+        select: { id: true },
+      });
+      docCategoryId = cat?.id || null;
     }
 
     // Generate object key
@@ -138,6 +150,7 @@ const create = async (req, res, next) => {
         objectKey: uploaded.objectKey,
         isEncrypted: uploaded.isEncrypted,
         folderId,
+        docCategoryId,
         tenantId: req.tenant.id,
         createdById: req.user.id,
         status: 'DRAFT',
