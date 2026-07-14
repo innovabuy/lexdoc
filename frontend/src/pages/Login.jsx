@@ -51,7 +51,7 @@ export default function Login() {
       <div className="card max-w-md w-full">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">LexDoc</h1>
-          <p className="text-gray-500 mt-2">Connectez-vous a votre espace</p>
+          <p className="text-gray-500 mt-2">Connectez-vous à votre espace</p>
         </div>
         {error && (
           <div className="bg-red-100 text-red-700 p-3 rounded-lg mb-4">

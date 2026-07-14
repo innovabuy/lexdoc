@@ -37,7 +37,7 @@ export default function ClientQuickCreate({ open, onClose, onCreated }) {
       const body =
         type === 'INDIVIDUAL'
           ? { type, lastName: name, firstName, email }
-          : { type: 'COMPANY', companyName: name, email, ...pm };
+          : { type, companyName: name, email, ...pm }; // COMPANY ou ASSOCIATION
       const client = await createClient(body);
       onCreated(client);
       onClose();
@@ -84,6 +84,14 @@ export default function ClientQuickCreate({ open, onClose, onCreated }) {
                 onClick={() => setType('COMPANY')}
               >
                 PM
+              </button>
+              {/* GO-LIVE-6 mineur — Association proposée au filtre mais absente du formulaire */}
+              <button
+                type="button"
+                className={`modal-toggle-btn ${type === 'ASSOCIATION' ? 'modal-toggle-btn--active' : ''}`}
+                onClick={() => setType('ASSOCIATION')}
+              >
+                Asso
               </button>
             </div>
           </div>

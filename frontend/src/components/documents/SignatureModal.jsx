@@ -52,7 +52,7 @@ export default function SignatureModal({ document, folderPersons, onClose, onSuc
   const handleSubmit = async () => {
     const selected = signers.filter(s => s.checked);
     if (selected.length === 0) {
-      if (onError) onError('Selectionnez au moins un signataire');
+      if (onError) onError('Sélectionnez au moins un signataire');
       return;
     }
 
@@ -80,7 +80,7 @@ export default function SignatureModal({ document, folderPersons, onClose, onSuc
     <div className="sm-overlay" onClick={onClose}>
       <div className="sm-modal" onClick={e => e.stopPropagation()}>
         <div className="sm-header">
-          <h2>Envoyer a la signature</h2>
+          <h2>Envoyer à la signature</h2>
           <button onClick={onClose} className="sm-close">&times;</button>
         </div>
 
@@ -188,8 +188,8 @@ export default function SignatureModal({ document, folderPersons, onClose, onSuc
 
         <div className="sm-footer">
           <button onClick={onClose} className="sm-btn sm-btn-secondary" disabled={sending}>Annuler</button>
-          <button onClick={handleSubmit} className="sm-btn sm-btn-primary" disabled={sending || signers.filter(s => s.checked).length === 0}>
-            {sending ? 'Envoi...' : 'Envoyer a la signature'}
+          <button onClick={handleSubmit} className="sm-btn sm-btn-primary" disabled={sending}>
+            {sending ? 'Envoi...' : 'Envoyer à la signature'}
           </button>
         </div>
       </div>

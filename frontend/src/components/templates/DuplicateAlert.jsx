@@ -25,7 +25,7 @@ export default function DuplicateAlert({ existingDocument, onContinue, onCancel 
                 <strong>{existingDocument?.name}</strong>
                 <br />
                 <span className="dup-alert-meta">
-                  Cree le {createdAt} &middot; Statut : {existingDocument?.status || '-'}
+                  Créé le {createdAt} · Statut : {existingDocument?.status || '-'}
                 </span>
               </p>
             </div>

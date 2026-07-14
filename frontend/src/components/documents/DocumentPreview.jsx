@@ -1,12 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { renderAsync } from 'docx-preview';
 import api from '../../services/api';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
+
+const isImage = (mimeType) => mimeType?.startsWith('image/');
+const isPdf = (mimeType) => mimeType === 'application/pdf';
+const isText = (mimeType) => mimeType?.startsWith('text/');
+// GO-LIVE-6 M7 — les .docx sont rendus CÔTÉ CLIENT (docx-preview), pas par le backend.
+const isDocx = (mimeType) =>
+  mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+  mimeType === 'application/msword';
 
 export default function DocumentPreview({ document, onClose }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
+  const [docxBlob, setDocxBlob] = useState(null);
+  const docxRef = useRef(null);
 
   const isPreviewable = (mimeType) => {
     const previewableTypes = [
@@ -17,12 +28,8 @@ export default function DocumentPreview({ document, onClose }) {
       'image/webp',
       'text/plain',
     ];
-    return previewableTypes.includes(mimeType);
+    return previewableTypes.includes(mimeType) || isDocx(mimeType);
   };
-
-  const isImage = (mimeType) => mimeType?.startsWith('image/');
-  const isPdf = (mimeType) => mimeType === 'application/pdf';
-  const isText = (mimeType) => mimeType?.startsWith('text/');
 
   useEffect(() => {
     if (!document) return;
@@ -30,10 +37,29 @@ export default function DocumentPreview({ document, onClose }) {
     const loadPreview = async () => {
       setLoading(true);
       setError(null);
+      setDocxBlob(null);
 
       if (!isPreviewable(document.mimeType)) {
-        setError('Ce type de fichier ne peut pas etre previsualise');
+        setError('Ce type de fichier ne peut pas être prévisualisé.');
         setLoading(false);
+        return;
+      }
+
+      // GO-LIVE-6 M7 — .docx : on récupère le VRAI fichier (endpoint download) et on le
+      // rend dans le navigateur. Pas de conversion serveur.
+      if (isDocx(document.mimeType)) {
+        try {
+          const token = localStorage.getItem('token');
+          const response = await fetch(`${API_BASE}/documents/${document.id}/download`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+          });
+          if (!response.ok) throw new Error('load');
+          setDocxBlob(await response.blob());
+        } catch {
+          setError('Aperçu indisponible pour ce document. Téléchargez le fichier.');
+        } finally {
+          setLoading(false);
+        }
         return;
       }
 
@@ -54,7 +80,7 @@ export default function DocumentPreview({ document, onClose }) {
         setPreviewUrl(url);
       } catch (err) {
         console.error('Preview error:', err);
-        setError('Impossible de charger la previsualisation');
+        setError('Impossible de charger la prévisualisation');
       } finally {
         setLoading(false);
       }
@@ -68,6 +94,23 @@ export default function DocumentPreview({ document, onClose }) {
       }
     };
   }, [document]);
+
+  // GO-LIVE-6 M7 — rend le .docx dans le conteneur une fois le blob prêt et le DOM monté.
+  useEffect(() => {
+    if (!docxBlob || !docxRef.current) return;
+    let cancelled = false;
+    docxRef.current.innerHTML = '';
+    renderAsync(docxBlob, docxRef.current, undefined, {
+      className: 'docx-render',
+      inWrapper: true,
+      ignoreWidth: false,
+      ignoreHeight: false,
+    }).catch((e) => {
+      console.error('docx render error:', e);
+      if (!cancelled) setError('Aperçu impossible (format inattendu ou fichier corrompu). Téléchargez le fichier pour le lire.');
+    });
+    return () => { cancelled = true; };
+  }, [docxBlob]);
 
   const handleDownload = async () => {
     try {
@@ -144,7 +187,7 @@ export default function DocumentPreview({ document, onClose }) {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              Telecharger
+              Télécharger
             </button>
             <button
               onClick={onClose}
@@ -163,7 +206,7 @@ export default function DocumentPreview({ document, onClose }) {
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                <p className="text-gray-600">Chargement de la previsualisation...</p>
+                <p className="text-gray-600">Chargement de la prévisualisation...</p>
               </div>
             </div>
           )}
@@ -173,7 +216,7 @@ export default function DocumentPreview({ document, onClose }) {
               <div className="text-center max-w-md">
                 <span className="text-6xl block mb-4">{getFileIcon(document.mimeType)}</span>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  Previsualisation non disponible
+                  Prévisualisation non disponible
                 </h3>
                 <p className="text-gray-600 mb-6">{error}</p>
                 <button
@@ -183,7 +226,7 @@ export default function DocumentPreview({ document, onClose }) {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
-                  Telecharger le fichier
+                  Télécharger le fichier
                 </button>
               </div>
             </div>
@@ -216,6 +259,21 @@ export default function DocumentPreview({ document, onClose }) {
               )}
             </>
           )}
+
+          {/* GO-LIVE-6 M7 — aperçu .docx rendu côté client, avec bandeau d'avertissement */}
+          {!loading && !error && docxBlob && (
+            <div className="w-full h-full flex flex-col">
+              <div style={{ background: '#fffbeb', borderBottom: '1px solid #fde68a', color: '#92400e', fontSize: 13, padding: '8px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                <span><strong>Aperçu</strong> — le document final peut différer légèrement. Téléchargez le fichier pour vérification avant envoi.</span>
+                <button onClick={handleDownload} className="px-3 py-1 bg-blue-600 text-white rounded whitespace-nowrap" style={{ flexShrink: 0 }}>
+                  Télécharger
+                </button>
+              </div>
+              <div className="flex-1 overflow-auto" style={{ background: '#e5e7eb', padding: 16 }}>
+                <div ref={docxRef} style={{ background: '#fff', margin: '0 auto', maxWidth: 900 }} />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer with document info */}
@@ -226,7 +284,7 @@ export default function DocumentPreview({ document, onClose }) {
             )}
             {document.createdBy && (
               <span>
-                Cree par: {document.createdBy.firstName} {document.createdBy.lastName}
+                Créé par : {document.createdBy.firstName} {document.createdBy.lastName}
               </span>
             )}
           </div>

@@ -232,7 +232,7 @@ router.get('/:id', async (req, res, next) => {
     });
 
     if (!client) {
-      throw new NotFoundError('Client not found');
+      throw new NotFoundError('Client introuvable');
     }
 
     const completeness = calculateCompleteness(client);
@@ -252,7 +252,7 @@ router.get('/:id/completeness', async (req, res, next) => {
     });
 
     if (!client) {
-      throw new NotFoundError('Client not found');
+      throw new NotFoundError('Client introuvable');
     }
 
     const completeness = calculateCompleteness(client);
@@ -270,15 +270,15 @@ router.post('/', async (req, res, next) => {
       formeSociale, capital, siege, rcs, objetSocial, villeImmatriculation, numeroImmatriculation } = req.body;
 
     if (!type) {
-      throw new BadRequestError('Client type is required');
+      throw new BadRequestError('Le type de client est requis');
     }
 
     if (type === 'INDIVIDUAL' && (!firstName || !lastName)) {
-      throw new BadRequestError('First name and last name are required for individual clients');
+      throw new BadRequestError('Le nom et le prénom sont requis pour un particulier');
     }
 
     if ((type === 'COMPANY' || type === 'ASSOCIATION') && !companyName) {
-      throw new BadRequestError('Company name is required for company/association clients');
+      throw new BadRequestError('La raison sociale est requise pour une personne morale');
     }
 
     // GO-LIVE-6 LOT D — validation du format email dès la création (avant, un email
@@ -293,7 +293,7 @@ router.post('/', async (req, res, next) => {
         where: { email, tenantId: req.tenant.id, deletedAt: null },
       });
       if (existing) {
-        throw new BadRequestError('A client with this email already exists');
+        throw new BadRequestError('Un client avec cet email existe déjà');
       }
     }
 
@@ -348,7 +348,7 @@ router.put('/:id', async (req, res, next) => {
     });
 
     if (!existing) {
-      throw new NotFoundError('Client not found');
+      throw new NotFoundError('Client introuvable');
     }
 
     const allowedFields = [
@@ -380,7 +380,7 @@ router.put('/:id', async (req, res, next) => {
         where: { email: data.email, tenantId: req.tenant.id, NOT: { id: req.params.id }, deletedAt: null },
       });
       if (emailTaken) {
-        throw new BadRequestError('A client with this email already exists');
+        throw new BadRequestError('Un client avec cet email existe déjà');
       }
     }
 
@@ -412,7 +412,7 @@ router.patch('/:id/section/:section', async (req, res, next) => {
     });
 
     if (!existing) {
-      throw new NotFoundError('Client not found');
+      throw new NotFoundError('Client introuvable');
     }
 
     const sectionFieldMap = {
@@ -461,7 +461,7 @@ router.patch('/:id/archive', async (req, res, next) => {
     });
 
     if (!existing) {
-      throw new NotFoundError('Client not found');
+      throw new NotFoundError('Client introuvable');
     }
 
     const newIsActive = !existing.isActive;
@@ -489,7 +489,7 @@ router.delete('/:id', requireRole('ADMIN'), async (req, res, next) => {
     });
 
     if (!existing) {
-      throw new NotFoundError('Client not found');
+      throw new NotFoundError('Client introuvable');
     }
 
     const force = req.query.force === 'true';
@@ -559,7 +559,7 @@ router.get('/:id/timeline', async (req, res, next) => {
     });
 
     if (!client) {
-      throw new NotFoundError('Client not found');
+      throw new NotFoundError('Client introuvable');
     }
 
     // Get all folders for this client
@@ -611,7 +611,7 @@ router.post('/:id/send-form', async (req, res, next) => {
     });
 
     if (!client) {
-      throw new NotFoundError('Client not found');
+      throw new NotFoundError('Client introuvable');
     }
 
     if (!client.email) {
@@ -685,7 +685,7 @@ router.post('/:id/invite-extranet', async (req, res, next) => {
     const client = await prisma.client.findFirst({
       where: { id: req.params.id, tenantId: req.tenant.id, deletedAt: null },
     });
-    if (!client) throw new NotFoundError('Client not found');
+    if (!client) throw new NotFoundError('Client introuvable');
     if (!client.email) throw new BadRequestError('Client has no email address');
 
     // Find the client's folders and create ClientAccess for each
@@ -821,7 +821,7 @@ router.post('/:id/remind-extranet', async (req, res, next) => {
     const client = await prisma.client.findFirst({
       where: { id: req.params.id, tenantId: req.tenant.id, deletedAt: null },
     });
-    if (!client) throw new NotFoundError('Client not found');
+    if (!client) throw new NotFoundError('Client introuvable');
     if (!client.email) throw new BadRequestError('Client has no email address');
 
     // Check if profile already submitted
