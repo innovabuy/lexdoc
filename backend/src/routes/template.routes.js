@@ -93,63 +93,12 @@ async function checkLegalPartiesIdentity(template, folder, folderId, tenantId) {
 }
 
 // ============================================================================
-// LIST / SUGGESTIONS
+// LIST
 // ============================================================================
-
-// GET /api/templates/suggestions?type=juridique&nature=cession
-router.get('/suggestions', async (req, res, next) => {
-  try {
-    const { type, nature } = req.query;
-
-    const where = {
-      tenantId: req.tenant.id,
-      deletedAt: null,
-    };
-
-    if (type) {
-      where.OR = [
-        { folderType: type },
-        { folderType: 'les_deux' },
-        { folderType: null },
-      ];
-    }
-
-    const templates = await prisma.template.findMany({
-      where,
-      orderBy: [{ usageCount: 'desc' }, { name: 'asc' }],
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        category: true,
-        folderType: true,
-        folderNature: true,
-        isSystem: true,
-        usageCount: true,
-        variables: true,
-        sourceFileUrl: true,
-      },
-    });
-
-    // Mark recommended templates (matching nature or universal)
-    const result = templates.map(t => ({
-      ...t,
-      recommended: nature ? (t.folderNature === nature || !t.folderNature) : true,
-      hasSourceFile: !!t.sourceFileUrl,
-    }));
-
-    // Sort: recommended first, then by usage count
-    result.sort((a, b) => {
-      if (a.recommended && !b.recommended) return -1;
-      if (!a.recommended && b.recommended) return 1;
-      return (b.usageCount || 0) - (a.usageCount || 0);
-    });
-
-    return successResponse(res, result);
-  } catch (error) {
-    next(error);
-  }
-});
+// GO-LIVE-6 B2(c) — GET /templates/suggestions SUPPRIMÉ. Il n'alimentait que l'étape
+// "documents recommandés" du wizard (elle-même supprimée : elle proposait ~34 templates
+// non pertinents — son calcul `recommended` marquait quasiment TOUT comme recommandé).
+// Les documents se génèrent à la demande via /templates/generate. Pas de code mort.
 
 // GET /api/templates — full list grouped by category
 router.get('/', async (req, res, next) => {

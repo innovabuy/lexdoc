@@ -688,7 +688,9 @@ const getActivity = async (req, res, next) => {
  */
 const createWizard = async (req, res, next) => {
   try {
-    const { client, type, nature, infos, parties, documents, extranet } = req.body;
+    // GO-LIVE-6 B2 — `documents` retiré : le wizard ne crée plus de documents placeholder
+    // (voir suppression de l'ex-étape 7). Les documents se génèrent à la demande.
+    const { client, type, nature, infos, parties, extranet } = req.body;
 
     if (!client) throw new BadRequestError('Client is required');
     if (!type) throw new BadRequestError('Type is required');
@@ -835,32 +837,11 @@ const createWizard = async (req, res, next) => {
         }
       }
 
-      // 7. Create placeholder documents (real generation in Phase 3)
-      if (documents && Array.isArray(documents)) {
-        for (let i = 0; i < documents.length; i++) {
-          const doc = documents[i];
-          await tx.document.create({
-            data: {
-              tenantId: req.tenant.id,
-              folderId: folder.id,
-              createdById: req.user.id,
-              clientId: clientRecord.id,
-              docCategoryId: firstCategoryId,
-              templateId: doc.templateId || null,
-              name: doc.name || 'Document',
-              type: doc.type || 'OTHER',
-              filename: 'pending.docx',
-              originalName: `${doc.name || 'Document'}.docx`,
-              mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-              size: BigInt(0),
-              checksum: 'pending',
-              bucketName: 'documents',
-              objectKey: `pending/${folder.id}/${Date.now()}-${i}`,
-              status: 'DRAFT',
-            },
-          });
-        }
-      }
+      // 7. (SUPPRIMÉ — GO-LIVE-6 B2) — le wizard ne crée plus de documents "placeholder"
+      //    (size 0, objectKey `pending/…`, jamais générés). Ils apparaissaient comme des
+      //    documents fantômes (404 au téléchargement, échec silencieux). Les documents se
+      //    génèrent désormais à la demande via /templates/generate (flux qui produit un
+      //    vrai .docx et porte les garde-fous champs requis / identité des parties).
 
       // 8. Update extranet if requested
       if (extranet && clientRecord.id) {

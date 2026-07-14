@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../contexts/ToastContext';
 import {
   Search, X, ChevronLeft, ChevronRight, Plus, Trash2, Check,
-  AlertTriangle, FileText, Scale, Briefcase, Users, Send, FolderPlus
+  AlertTriangle, Scale, Briefcase, Users, Send, FolderPlus
 } from 'lucide-react';
-import { createFolderWizard, getTemplateSuggestions } from '../../services/foldersApi';
+import { createFolderWizard } from '../../services/foldersApi';
 import { createClient } from '../../services/clientsApi';
 import api from '../../services/api';
 import './FolderCreateWizard.css';
@@ -230,18 +230,20 @@ function StepClient({ selectedClient, onSelect }) {
 function QuickCreateInline({ onCreated, onCancel }) {
   const [type, setType] = useState('INDIVIDUAL');
   const [name, setName] = useState('');
+  // GO-LIVE-6 B1 — un particulier a un nom ET un prénom (requis par l'API et l'acte).
+  const [firstName, setFirstName] = useState('');
   const [email, setEmail] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || (type === 'INDIVIDUAL' && !firstName.trim())) return;
     setSaving(true);
     setError('');
     try {
       const body = type === 'INDIVIDUAL'
-        ? { type, lastName: name, email: email || undefined }
+        ? { type, lastName: name, firstName, email: email || undefined }
         : { type: 'COMPANY', companyName: name, email: email || undefined };
       const client = await createClient(body);
       onCreated(client);
@@ -266,6 +268,15 @@ function QuickCreateInline({ onCreated, onCancel }) {
           onChange={(e) => setName(e.target.value)}
           required
         />
+        {type === 'INDIVIDUAL' && (
+          <input
+            className="wz-input"
+            placeholder="Prénom"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            required
+          />
+        )}
         <input
           className="wz-input"
           type="email"
@@ -621,7 +632,7 @@ function StepInfos({ folderType, procedure, nature, infos, parties, selectedClie
 // STEP 4 — DOCUMENTS + RECAP
 // ============================================================================
 
-function StepRecap({ selectedClient, folderType, procedure, nature, infos, parties, templates, selectedTemplates, onToggleTemplate, extranet, onToggleExtranet, onLoadMore }) {
+function StepRecap({ selectedClient, folderType, procedure, nature, infos, parties, extranet, onToggleExtranet }) {
   const typeLabel = folderType === 'juridique' ? 'Juridique' : 'Judiciaire';
   const natureLabel = folderType === 'juridique'
     ? NATURES_JURIDIQUE.find(n => n.value === nature)?.label || nature || '—'
@@ -629,38 +640,11 @@ function StepRecap({ selectedClient, folderType, procedure, nature, infos, parti
 
   return (
     <div className="wz-step">
-      <h2 className="wz-step-title">Documents & Récapitulatif</h2>
+      <h2 className="wz-step-title">Récapitulatif</h2>
 
-      {/* Documents to generate */}
-      <div className="wz-recap-section">
-        <h3 className="wz-recap-section-title"><FileText size={18} /> Documents à générer</h3>
-        {templates.length > 0 ? (
-          <div className="wz-template-list">
-            {templates.map((t) => {
-              const isSelected = selectedTemplates.some(s => s.id === t.id);
-              return (
-                <label key={t.id} className={`wz-template-item ${isSelected ? 'wz-template-item--selected' : ''}`}>
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => onToggleTemplate(t)}
-                  />
-                  <div className="wz-template-item-info">
-                    <span className="wz-template-item-name">{t.name}</span>
-                    {t.description && <span className="wz-template-item-desc">{t.description}</span>}
-                  </div>
-                  {t.recommended && <span className="wz-template-badge">Recommandé</span>}
-                </label>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="wz-templates-empty">
-            Aucun template disponible pour ce type de dossier.
-            Les documents pourront être ajoutés ultérieurement.
-          </div>
-        )}
-      </div>
+      {/* GO-LIVE-6 B2 — l'étape "Documents à générer" a été retirée : le wizard ne
+          pré-génère plus de documents (source des fantômes size 0). Les documents se
+          créent à la demande depuis le dossier, avec le formulaire des champs requis. */}
 
       {/* Extranet */}
       <div className="wz-recap-section">
@@ -714,10 +698,6 @@ function StepRecap({ selectedClient, folderType, procedure, nature, infos, parti
             </div>
           )}
           <div className="wz-recap-row">
-            <span className="wz-recap-label">Documents</span>
-            <span className="wz-recap-value">{selectedTemplates.length} document{selectedTemplates.length !== 1 ? 's' : ''} à générer</span>
-          </div>
-          <div className="wz-recap-row">
             <span className="wz-recap-label">Extranet</span>
             <span className="wz-recap-value">{extranet ? 'Activé' : 'Non activé'}</span>
           </div>
@@ -754,8 +734,6 @@ export default function FolderCreateWizard() {
     dateAudience: '',
   });
   const [parties, setParties] = useState([]);
-  const [templates, setTemplates] = useState([]);
-  const [selectedTemplates, setSelectedTemplates] = useState([]);
   const [extranet, setExtranet] = useState(false);
 
   // Pre-fill juridiction from procedure
@@ -764,29 +742,6 @@ export default function FolderCreateWizard() {
       setInfos(prev => ({ ...prev, juridiction: procedure }));
     }
   }, [procedure]);
-
-  // Load templates when entering step 4
-  useEffect(() => {
-    if (step === 4 && folderType) {
-      getTemplateSuggestions({ type: folderType, nature: nature || undefined })
-        .then((data) => {
-          setTemplates(data);
-          // Pre-select recommended templates
-          setSelectedTemplates(prev => {
-            if (prev.length > 0) return prev;
-            return data.filter(t => t.recommended);
-          });
-        })
-        .catch(() => setTemplates([]));
-    }
-  }, [step, folderType, nature]);
-
-  const toggleTemplate = (template) => {
-    setSelectedTemplates(prev => {
-      const exists = prev.some(t => t.id === template.id);
-      return exists ? prev.filter(t => t.id !== template.id) : [...prev, template];
-    });
-  };
 
   // Step validation
   const canNext = () => {
@@ -840,11 +795,6 @@ export default function FolderCreateWizard() {
                   : null,
               }))
           : undefined,
-        documents: selectedTemplates.map(t => ({
-          templateId: t.id,
-          name: t.name,
-          type: 'OTHER',
-        })),
         extranet,
       };
 
@@ -904,9 +854,6 @@ export default function FolderCreateWizard() {
             nature={nature}
             infos={infos}
             parties={parties}
-            templates={templates}
-            selectedTemplates={selectedTemplates}
-            onToggleTemplate={toggleTemplate}
             extranet={extranet}
             onToggleExtranet={setExtranet}
           />

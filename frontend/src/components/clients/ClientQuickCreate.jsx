@@ -5,6 +5,8 @@ import { createClient } from '../../services/clientsApi';
 export default function ClientQuickCreate({ open, onClose, onCreated }) {
   const [type, setType] = useState('INDIVIDUAL');
   const [name, setName] = useState('');
+  // GO-LIVE-6 B1 — un particulier a un NOM ET un PRÉNOM (requis par l'API et par l'acte).
+  const [firstName, setFirstName] = useState('');
   const [email, setEmail] = useState('');
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -19,6 +21,7 @@ export default function ClientQuickCreate({ open, onClose, onCreated }) {
   const validate = () => {
     const errs = {};
     if (!name.trim()) errs.name = 'Requis';
+    if (type === 'INDIVIDUAL' && !firstName.trim()) errs.firstName = 'Requis';
     if (!email.trim()) errs.email = 'Requis';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = 'Format email invalide';
     setErrors(errs);
@@ -33,7 +36,7 @@ export default function ClientQuickCreate({ open, onClose, onCreated }) {
     try {
       const body =
         type === 'INDIVIDUAL'
-          ? { type, lastName: name, email }
+          ? { type, lastName: name, firstName, email }
           : { type: 'COMPANY', companyName: name, email, ...pm };
       const client = await createClient(body);
       onCreated(client);
@@ -41,6 +44,7 @@ export default function ClientQuickCreate({ open, onClose, onCreated }) {
       // Reset
       setType('INDIVIDUAL');
       setName('');
+      setFirstName('');
       setEmail('');
       setPm(emptyPm);
       setErrors({});
@@ -97,6 +101,21 @@ export default function ClientQuickCreate({ open, onClose, onCreated }) {
             />
             {errors.name && <span className="modal-field-error">{errors.name}</span>}
           </div>
+
+          {type === 'INDIVIDUAL' && (
+            <div className="modal-field">
+              <label className="modal-label">
+                Prénom<span className="required">*</span>
+              </label>
+              <input
+                className={`modal-input ${errors.firstName ? 'modal-input--error' : ''}`}
+                value={firstName}
+                onChange={(e) => { setFirstName(e.target.value); setErrors((p) => ({ ...p, firstName: null })); }}
+                placeholder="Jean"
+              />
+              {errors.firstName && <span className="modal-field-error">{errors.firstName}</span>}
+            </div>
+          )}
 
           {/* GO-LIVE-1.C.1 — identité PM (optionnelle à la création, complétable ensuite) */}
           {type === 'COMPANY' && (

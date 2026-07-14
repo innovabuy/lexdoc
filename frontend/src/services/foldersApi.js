@@ -10,13 +10,8 @@ export async function getNextReference() {
   return data.data;
 }
 
-export async function getTemplateSuggestions(params = {}) {
-  const query = new URLSearchParams();
-  if (params.type) query.set('type', params.type);
-  if (params.nature) query.set('nature', params.nature);
-  const { data } = await api.get(`/templates/suggestions?${query}`);
-  return data.data || [];
-}
+// GO-LIVE-6 B2(c) — getTemplateSuggestions retiré : la route /templates/suggestions et
+// l'étape "documents recommandés" du wizard ont été supprimées (fantômes + non pertinent).
 
 export async function searchClients(search) {
   const { data } = await api.get(`/clients?search=${encodeURIComponent(search)}&pageSize=10`);
