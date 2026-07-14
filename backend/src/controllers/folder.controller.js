@@ -130,6 +130,16 @@ const getById = async (req, res, next) => {
       include: {
         client: true,
         createdBy: { select: { id: true, firstName: true, lastName: true, email: true } },
+        // GO-LIVE-6 M1 — `persons` manquait : la liste des destinataires LRAR/signature
+        // (alimentée par folder.persons) sortait vide alors que le dossier a des parties.
+        persons: {
+          select: {
+            id: true, role: true, type: true,
+            firstName: true, lastName: true, company: true, email: true,
+            address: true, city: true, postalCode: true, country: true,
+          },
+          orderBy: [{ role: 'asc' }, { lastName: 'asc' }],
+        },
         parent: { select: { id: true, title: true, reference: true } },
         children: {
           select: {

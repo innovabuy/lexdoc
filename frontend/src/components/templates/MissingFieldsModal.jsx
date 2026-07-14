@@ -21,23 +21,31 @@ export default function MissingFieldsModal({
     fields.forEach(f => { init[f.key] = f.currentValue || ''; });
     return init;
   });
+  // GO-LIVE-6 M2 — une fois qu'on a tenté de générer, on surligne les champs manquants.
+  const [attempted, setAttempted] = useState(false);
 
   const handleChange = (key, val) => {
     setValues(prev => ({ ...prev, [key]: val }));
   };
 
+  const requiredFields = fields.filter(f => f.required);
+  const optionalFields = fields.filter(f => !f.required);
+  const isEmpty = (f) => !values[f.key]?.trim();
+  const missingRequired = requiredFields.filter(isEmpty);
+  const allRequiredFilled = missingRequired.length === 0;
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Filter only fields with actual values
+    // GO-LIVE-6 M2 — plus de bouton grisé muet : si des champs obligatoires manquent,
+    // on les LISTE (message) et on les SURLIGNE, au lieu de ne rien faire.
+    setAttempted(true);
+    if (!allRequiredFilled) return;
     const filled = {};
     Object.entries(values).forEach(([k, v]) => {
       if (v && v.trim()) filled[k] = v.trim();
     });
     onSubmit(filled);
   };
-
-  const requiredFields = fields.filter(f => f.required);
-  const optionalFields = fields.filter(f => !f.required);
 
   // Group by section
   const grouped = {};
@@ -46,8 +54,6 @@ export default function MissingFieldsModal({
     if (!grouped[section]) grouped[section] = [];
     grouped[section].push(f);
   });
-
-  const allRequiredFilled = requiredFields.every(f => values[f.key]?.trim());
 
   return (
     <div className="fdp-modal-overlay" onClick={onClose}>
@@ -90,6 +96,7 @@ export default function MissingFieldsModal({
                         onChange={e => handleChange(f.key, e.target.value)}
                         placeholder={f.label}
                         className="fdp-input mfm-input"
+                        style={attempted && f.required && isEmpty(f) ? { borderColor: '#dc2626', background: '#fef2f2' } : undefined}
                       />
                     </div>
                   ))}
@@ -98,6 +105,12 @@ export default function MissingFieldsModal({
             ))}
           </div>
 
+          {attempted && !allRequiredFilled && (
+            <div style={{ margin: '0 20px 8px', padding: '10px 12px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', fontSize: 13 }}>
+              Impossible de générer : champ(s) obligatoire(s) manquant(s) — {missingRequired.map(f => f.label).join(', ')}.
+            </div>
+          )}
+
           <div className="fdp-modal-footer mfm-footer">
             <button type="button" onClick={onClose} className="fdp-btn fdp-btn-secondary">
               Annuler
@@ -105,7 +118,7 @@ export default function MissingFieldsModal({
             <button
               type="submit"
               className="fdp-btn fdp-btn-primary"
-              disabled={loading || !allRequiredFilled}
+              disabled={loading}
             >
               {loading ? 'Generation...' : 'Completer et generer'}
             </button>

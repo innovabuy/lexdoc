@@ -112,7 +112,7 @@ export default function RegisteredMailModal({ document, folderPersons, type: ini
             >
               <option value="">Selectionner un destinataire</option>
               {(folderPersons || []).map(p => {
-                const name = `${p.firstName || ''} ${p.lastName || ''}`.trim() || p.companyName || 'Sans nom';
+                const name = `${p.firstName || ''} ${p.lastName || ''}`.trim() || p.company || 'Sans nom';
                 const hasAddr = p.address && p.city && p.postalCode;
                 return (
                   <option key={p.id} value={p.id} disabled={!hasAddr}>
