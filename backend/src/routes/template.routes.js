@@ -8,6 +8,7 @@ const { NotFoundError, BadRequestError } = require('../utils/errors');
 const { sanitizeFilename } = require('../utils/helpers');
 const storageService = require('../services/storage.service');
 const templateEngine = require('../services/template-engine.service');
+const { pmIdentityMissing } = require('../utils/legal-format');
 const logger = require('../config/logger');
 
 router.use(authenticate);
@@ -45,6 +46,45 @@ function computeRequiredMissing(template, data) {
     }
   }
   return { missing, requiredMissing };
+}
+
+// ============================================================================
+// GO-LIVE-6 (recette UI) — art. 648 CPC : dans un ACTE DE PROCÉDURE, une partie
+// PERSONNE MORALE doit être identifiée par sa FORME sociale, son SIÈGE et son n°
+// d'IMMATRICULATION (RCS) — à défaut l'assignation est irrégulière (nullité pour
+// vice de forme). Ces champs ne sont PAS déclarés dans template.variables : on
+// inspecte donc les ENREGISTREMENTS des parties. Vaut pour le DEMANDEUR (client PM)
+// ET les DÉFENDEURS (PARTIE_ADVERSE de type MORALE). Une personne PHYSIQUE n'a pas
+// de RCS → aucun blocage. MED (courriers) / LM (droit_societes) ne sont pas des
+// actes de procédure → non impactées.
+async function checkActeProcedureLegalParties(template, folder, folderId, tenantId) {
+  if (template.category !== 'actes_procedure') return [];
+  const problems = [];
+
+  // Demandeur = le client du dossier, s'il est une personne morale.
+  if (folder.clientId) {
+    const client = await prisma.client.findFirst({
+      where: { id: folder.clientId, tenantId },
+      select: { type: true, companyName: true, formeSociale: true, siege: true, numeroImmatriculation: true },
+    });
+    if (client && (client.type === 'COMPANY' || client.type === 'ASSOCIATION')) {
+      // siège du client = colonne `siege`
+      const missing = pmIdentityMissing({ formeSociale: client.formeSociale, siege: client.siege, numeroImmatriculation: client.numeroImmatriculation });
+      if (missing.length) problems.push(`Demandeur ${(client.companyName || 'société').trim()} : ${missing.join(', ')}`);
+    }
+  }
+
+  // Défendeurs = personnes PARTIE_ADVERSE de type MORALE.
+  const adverses = await prisma.folderPerson.findMany({
+    where: { folderId, tenantId, role: 'PARTIE_ADVERSE', type: 'MORALE' },
+    select: { company: true, formeSociale: true, address: true, numeroImmatriculation: true },
+  });
+  for (const a of adverses) {
+    // siège de la partie adverse = colonne `address`
+    const missing = pmIdentityMissing({ formeSociale: a.formeSociale, siege: a.address, numeroImmatriculation: a.numeroImmatriculation });
+    if (missing.length) problems.push(`Défendeur ${(a.company || 'société adverse').trim()} : ${missing.join(', ')}`);
+  }
+  return problems;
 }
 
 // ============================================================================
@@ -428,6 +468,15 @@ router.post('/generate', async (req, res, next) => {
     });
     if (!folder) throw new NotFoundError('Folder not found');
 
+    // GO-LIVE-6 — refus si une partie personne morale d'un acte de procédure est
+    // incomplète (art. 648 CPC) : forme sociale, siège, n° RCS. Message explicite.
+    const legalPartyProblems = await checkActeProcedureLegalParties(template, folder, folderId, req.tenant.id);
+    if (legalPartyProblems.length > 0) {
+      throw new BadRequestError(
+        `Acte de procédure : identité de personne morale incomplète (art. 648 CPC) — ${legalPartyProblems.join(' ; ')}. Complétez la fiche de la partie avant de générer.`
+      );
+    }
+
     // 2. Collect data
     const data = await templateEngine.collectData(folderId, req.tenant.id);
 
@@ -607,6 +656,15 @@ router.post('/generate/force', async (req, res, next) => {
       include: { client: { select: { id: true, firstName: true, lastName: true, companyName: true } } },
     });
     if (!folder) throw new NotFoundError('Folder not found');
+
+    // GO-LIVE-6 — même garde-fou art. 648 CPC en /force : "force" ne saute que les
+    // champs optionnels, jamais l'identité légale d'une partie personne morale.
+    const legalPartyProblems = await checkActeProcedureLegalParties(template, folder, folderId, req.tenant.id);
+    if (legalPartyProblems.length > 0) {
+      throw new BadRequestError(
+        `Acte de procédure : identité de personne morale incomplète (art. 648 CPC) — ${legalPartyProblems.join(' ; ')}. Complétez la fiche de la partie avant de générer.`
+      );
+    }
 
     const data = await templateEngine.collectData(folderId, req.tenant.id);
     if (additionalData) {

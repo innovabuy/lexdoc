@@ -166,4 +166,16 @@ module.exports = {
   numberToFrenchWords,
   frenchDateInWords,
   frenchHourInWords,
+  pmIdentityMissing,
 };
+
+// GO-LIVE-6 — art. 648 CPC : liste les champs d'identité d'une PERSONNE MORALE manquants
+// (forme sociale, siège, n° d'immatriculation). Pur, testable ; le siège est passé
+// directement (client → colonne `siege`, personne adverse → colonne `address`).
+function pmIdentityMissing({ formeSociale, siege, numeroImmatriculation } = {}) {
+  const missing = [];
+  if (!formeSociale || !String(formeSociale).trim()) missing.push('forme sociale');
+  if (!siege || !String(siege).trim()) missing.push('siège');
+  if (!numeroImmatriculation || !String(numeroImmatriculation).trim()) missing.push('n° RCS');
+  return missing;
+}
